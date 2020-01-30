@@ -377,9 +377,10 @@ function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
  * @param  {Object} codebook from protocol in redux state
  * @param  {Function} onError
  * @param  {Function} saveFile injected SaveFile dependency (called with the xml contents)
+ * @param  {String} filePrefix to use for file name (defaults to 'networkcanvas')
  * @return {} the return value from saveFile
  */
-const createGraphML = (networkData, codebook, onError, saveFile) => {
+const createGraphML = (networkData, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
   let xmlString = '';
   try {
     for (const chunk of graphMLGenerator(networkData, codebook)) { // eslint-disable-line
@@ -394,7 +395,7 @@ const createGraphML = (networkData, codebook, onError, saveFile) => {
     onError,
     'graphml',
     ['graphml'],
-    'networkcanvas.graphml',
+    `${filePrefix}.graphml`,
     'text/xml',
     { message: 'Your network canvas graphml file.', subject: 'network canvas export' },
   );
