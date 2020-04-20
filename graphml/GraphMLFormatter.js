@@ -9,6 +9,35 @@ class GraphMLFormatter {
     this.useDirectedEdges = useDirectedEdges;
   }
 
+  streamToString = (stream) => {
+    const chunks = [];
+    return new Promise((resolve, reject) => {
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('error', reject);
+      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+    });
+  }
+
+  writeToString() {
+    const generator = graphMLGenerator(
+      this.network,
+      this.codebook,
+      this.useDirectedEdges,
+    );
+    const inStream = new Readable({
+      read(/* size */) {
+        const { done, value } = generator.next();
+        if (done) {
+          this.push(null);
+        } else {
+          this.push(value);
+        }
+      },
+    });
+
+    return this.streamToString(inStream);
+  }
+
   writeToStream(outStream) {
     const generator = graphMLGenerator(
       this.network,
