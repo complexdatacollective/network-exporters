@@ -1,4 +1,5 @@
 /* eslint-env jest */
+/* eslint-disable @codaco/spellcheck/spell-checker */
 
 const { DOMParser } = require('xmldom');
 const { graphMLGenerator } = require('../createGraphML');

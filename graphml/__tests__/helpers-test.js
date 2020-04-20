@@ -13,7 +13,7 @@ describe('getGraphMLTypeForKey', () => {
   });
 
   it('identifies a string', () => {
-    const node = { attributes: { name: 'alice' } };
+    const node = { attributes: { name: 'Alice' } };
     expect(getGraphMLTypeForKey([node], 'name')).toEqual('string');
   });
 
