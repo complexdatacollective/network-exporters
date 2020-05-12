@@ -1,0 +1,3 @@
+[submodule "networkQuery"]
+	path = networkQuery
+	url = https://github.com/codaco/networkQuery.git

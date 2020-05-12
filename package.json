@@ -17,10 +17,13 @@
   },
   "homepage": "https://github.com/codaco/network-exporters#readme",
   "devDependencies": {
+    "archiver": "^4.0.1",
+    "big-integer": "^1.6.48",
     "eslint": "^5.10.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.14.0",
     "jest": "^23.6.0",
+    "jszip": "^3.4.0",
     "xmldom": "^0.1.27"
   },
   "jest": {
