@@ -1,9 +1,11 @@
-const { Readable } = require('stream');
+import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty } from '../../utils/reservedAttributes';
+import { convertUuidToDecimal } from '../utils';
+import { processEntityVariables } from '../network';
 
-const { convertUuidToDecimal, nodePrimaryKeyProperty, nodeAttributesProperty, caseProperty, processEntityVariables } = require('../network');
+const { Readable } = require('stream');
 const { cellValue, csvEOL } = require('./csv');
 
-const asEgoList = (network, _, codebook) => {
+const asEgoList = (network, codebook) => {
   const egoList = Array.isArray(network.ego) ? network.ego : [network.ego];
   const variables = codebook && codebook.ego ? codebook.ego.variables : {};
   const processedEgo = egoList.map(ego => (processEntityVariables(ego, variables)));
@@ -16,11 +18,11 @@ const asEgoList = (network, _, codebook) => {
  */
 const attributeHeaders = (egos) => {
   const initialHeaderSet = new Set([]);
-  initialHeaderSet.add(nodePrimaryKeyProperty);
+  initialHeaderSet.add(entityPrimaryKeyProperty);
   initialHeaderSet.add(caseProperty);
 
   const headerSet = egos.reduce((headers, ego) => {
-    Object.keys((ego && ego[nodeAttributesProperty]) || {}).forEach((key) => {
+    Object.keys((ego && ego[entityAttributesProperty]) || {}).forEach((key) => {
       headers.add(key);
     });
     return headers;
@@ -32,7 +34,7 @@ const getPrintableAttribute = (attribute) => {
   switch (attribute) {
     case caseProperty:
       return 'networkCanvasCaseID';
-    case nodePrimaryKeyProperty:
+    case entityPrimaryKeyProperty:
       return 'networkCanvasEgoID';
     default:
       return attribute;
@@ -60,12 +62,12 @@ const toCSVStream = (egos, outStream) => {
         const values = attrNames.map((attrName) => {
           // The primary key and ego id exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === nodePrimaryKeyProperty) {
+          if (attrName === entityPrimaryKeyProperty) {
             value = convertUuidToDecimal(ego[attrName]);
           } else if (attrName === caseProperty) {
             value = ego[attrName];
           } else {
-            value = ego[nodeAttributesProperty][attrName];
+            value = ego[entityAttributesProperty][attrName];
           }
           return cellValue(value);
         });
@@ -87,8 +89,8 @@ const toCSVStream = (egos, outStream) => {
 };
 
 class EgoListFormatter {
-  constructor(data, directed = false, _, codebook) {
-    this.list = asEgoList(data, directed, codebook) || [];
+  constructor(data, codebook) {
+    this.list = asEgoList(data, codebook) || [];
   }
   writeToStream(outStream) {
     // TODO not a list here...somewhere else needs to compile the egos
@@ -96,9 +98,4 @@ class EgoListFormatter {
   }
 }
 
-
-module.exports = {
-  EgoListFormatter,
-  asEgoList,
-  toCSVStream,
-};
+export default EgoListFormatter;

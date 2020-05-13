@@ -1,5 +1,6 @@
-/* eslint-disable no-underscore-dangle */
 import { merge, isEmpty } from 'lodash';
+import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook } from './formatters/network';
+import { sessionProperty, caseProperty, protocolProperty } from './utils/reservedAttributes';
 
 const fs = require('fs');
 const path = require('path');
@@ -9,8 +10,7 @@ const { flattenDeep } = require('lodash');
 const { archive } = require('./utils/archive');
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
 const { makeTempDir, removeTempDir } = require('./formatters/dir');
-const { insertEgoInNetworks, transposedCodebook, unionOfNetworks } = require('./formatters/network');
-const { formatsAreValid, getFileExtension, getFormatterClass, partitionByEdgeType } = require('./formatters/utils');
+const { getFileExtension, getFormatterClass, partitionByEdgeType } = require('./formatters/utils');
 
 const escapeFilePart = part => part.replace(/\W/g, '');
 
@@ -44,14 +44,13 @@ const exportFile = (
   edgeType,
   exportFormat,
   outDir,
-  network, {
-    useDirectedEdges,
-    useEgoData,
-    codebook,
-  } = {},
+  network,
+  codebook,
+  exportOptions,
 ) => {
   const Formatter = getFormatterClass(exportFormat);
   const extension = getFileExtension(exportFormat);
+
   if (!Formatter || !extension) {
     return Promise.reject(new RequestError(`Invalid export format ${exportFormat}`));
   }
@@ -60,7 +59,7 @@ const exportFile = (
   let writeStream;
 
   const pathPromise = new Promise((resolve, reject) => {
-    const formatter = new Formatter(network, useDirectedEdges, useEgoData, codebook);
+    const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(namePrefix, edgeType, exportFormat, extension);
     const filepath = path.join(outDir, outputName);
     writeStream = fs.createWriteStream(filepath);
@@ -91,29 +90,6 @@ const exportFile = (
  * Interface for all data exports
  */
 
-/**
- * exportOptions is an object containing possible parameters for the exporter.
- * Available parameters are:
- *
- * {
- *   exportGraphML: { // [true|false|Object]
- *     includeNCMeta: [true|false],
- *   },
- *   exportCSV: { // [true|false|Object]
- *     adjacencyMatrix: [true|false],
- *     attributeList: [true|false],
- *     edgeList: [true|false],
- *     egoAttributeList: [true|false],
- *   },
- *   globalOptions: {
- *     resequenceIDs: [true|false],
- *     unifyNetworks: [true|false],
- *     useDirectedEdges: [true|false],
- *   },
- * };
- *
- */
-
 class FileExportManager {
   constructor(exportOptions = {}) {
     const defaultGraphMLOptions = {
@@ -121,7 +97,7 @@ class FileExportManager {
     };
 
     const defaultCSVOptions = {
-      adjacencyMatrix: true,
+      adjacencyMatrix: false,
       attributeList: true,
       edgeList: true,
       egoAttributeList: true,
@@ -163,6 +139,7 @@ class FileExportManager {
       return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
     }
 
+    // TODO: reject if sessions contains protocol not supplied in protocols
     // Reject if export options arent valid
     // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
     //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
@@ -173,11 +150,7 @@ class FileExportManager {
 
     let promisedExports;
 
-    const exportFormats = [
-      ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-      ...(this.exportOptions.exportCSV ? ['csv'] : []),
-    ];
-
+    // First, create a temporary working directory somewhere on the FS.
     const exportPromise = makeTempDir()
       .then((dir) => {
         tmpDir = dir;
@@ -185,46 +158,57 @@ class FileExportManager {
           throw new Error('Temporary directory unavailable');
         }
       })
-      .then(() => sessions.map((session) => {
-        const id = session && session._id;
-        const caseID = session && session.data && session.data.sessionVariables &&
-          session.data.sessionVariables._caseID;
-        return {
-          ...session.data,
-          _id: id,
-          _caseID: caseID,
-        };
-      }))
-      .then(networks => insertEgoInNetworks(networks))
-      .then(networks => (this.exportOptions.unifyNetworks ? [unionOfNetworks(networks)] : networks))
-      .then((networks) => {
+      // Then, insert a reference to the ego ID in to all nodes and edges
+      .then(() => insertEgoIntoSessionNetworks(sessions))
+      // Then, process the union option: conflate into one massive network if enabled.
+      // This should be changed to group by protocol
+      // TODO: this needs to happen PER PROTOCOL so that meta data can be maintained
+      .then(sessionsWithEgo =>
+        (this.exportOptions.unifyNetworks ? [unionOfNetworks(sessionsWithEgo)] : sessionsWithEgo))
+      // Then, encode each network in each format specified, using the options for each.
+      // Write the resulting file to the temp directory
+      .then((sessionsWithUnion) => {
         promisedExports = flattenDeep(
           // Export every network
           // => [n1, n2]
-          networks.map(network =>
+          sessionsWithUnion.map((session) => {
+            // TODO: update this to properly detect types
+            const exportFormats = [
+              'ego',
+              ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
+              ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
+              ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
+              ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
+            ];
+
             // ...in every file format requested
             // => [[n1.matrix.csv, n1.attrs.csv], [n2.matrix.csv, n2.attrs.csv]]
-            exportFormats.map(format =>
+            return exportFormats.map(format =>
               // ...partitioning matrix & edge-list output based on edge type
               // => [ [[n1.matrix.knows.csv, n1.matrix.likes.csv], [n1.attrs.csv]],
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
-              partitionByEdgeType(network, format).map((partitionedNetwork) => {
-                const prefix = network._id ? `${network._caseID}_${network._id}` : protocol.name;
+              partitionByEdgeType(session, format).map((partitionedNetwork) => {
+                const protocol = protocols[session[protocolProperty]];
+                const prefix = session[sessionProperty] ? `${session[caseProperty]}_${session[sessionProperty]}` : protocol.name;
                 // gather one promise for each exported file
+                console.log(protocol, transposedCodebook(protocol.codebook));
                 return exportFile(
                   prefix,
                   partitionedNetwork.edgeType,
                   format,
                   tmpDir,
                   partitionedNetwork,
+                  transposedCodebook(protocol.codebook),
                   this.exportOptions,
                 );
               }),
-            ),
-          ),
+            );
+          }),
         );
         return Promise.all(promisedExports);
       })
+      // Then, Zip the result.
+      // TODO: Determine if zipping is required based on number of files.
       .then((exportedPaths) => {
         if (exportedPaths.length === 0) {
           throw new RequestError(ErrorMessages.NothingToExport);

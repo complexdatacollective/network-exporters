@@ -3,10 +3,11 @@ const { Readable } = require('stream');
 const { graphMLGenerator } = require('./createGraphML');
 
 class GraphMLFormatter {
-  constructor(data, useDirectedEdges, _, codebook) {
+  constructor(data, codebook, exportOptions) {
     this.network = data;
     this.codebook = codebook;
-    this.useDirectedEdges = useDirectedEdges;
+    this.useDirectedEdges = exportOptions.globalOptions.useDirectedEdges;
+    console.log('gml', data, codebook);
   }
 
   streamToString = (stream) => {
@@ -64,4 +65,4 @@ class GraphMLFormatter {
   }
 }
 
-module.exports = GraphMLFormatter;
+export default GraphMLFormatter;

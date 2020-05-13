@@ -1,33 +1,19 @@
-const { includes } = require('lodash');
-const bigInt = require('big-integer');
+import { entityPrimaryKeyProperty, egoProperty, sessionProperty } from '../utils/reservedAttributes';
+import { getEntityAttributes } from './utils';
 
+const { includes } = require('lodash');
 const getQuery = require('../../networkQuery/query').default;
 const getFilter = require('../../networkQuery/filter').default;
 
-// TODO: share with other places this is defined
-const nodePrimaryKeyProperty = '_uid';
-const egoProperty = '_egoID';
-const caseProperty = '_caseID';
-const entityTypeProperty = '_type'; // NC sends as 'type' at the top level, but this will allow us to also look for a user attribute named type
-
-const nodeAttributesProperty = 'attributes';
-
-const getEntityAttributes = node => (node && node[nodeAttributesProperty]) || {};
-
-const convertUuidToDecimal = uuid => (
-  // BigInt support is in node 10.4, this poly-fills for now
-  uuid ? bigInt(uuid.toString().replace(/-/g, ''), 16).toString(10) : uuid
-);
-
-const unionOfNetworks = networks =>
-  networks.reduce((union, network) => {
-    union.nodes.push(...network.nodes);
-    union.edges.push(...network.edges);
-    union.ego.push(network.ego);
+export const unionOfNetworks = sessions =>
+  sessions.reduce((union, session) => {
+    union.nodes.push(...session.nodes);
+    union.edges.push(...session.edges);
+    union.ego.push(session.ego);
     return union;
-  }, { nodes: [], edges: [], ego: [], _id: '' });
+  }, { nodes: [], edges: [], ego: [], [sessionProperty]: '' }); // Reset session ID
 
-const processEntityVariables = (entity, variables) => ({
+export const processEntityVariables = (entity, variables) => ({
   ...entity,
   attributes: Object.keys(getEntityAttributes(entity)).reduce(
     (accumulatedAttributes, attributeName) => {
@@ -59,7 +45,7 @@ const processEntityVariables = (entity, variables) => ({
  * @param  {Object} inclusionQueryConfig a query definition with asserting rules
  * @return {Object[]} a subset of the networks
  */
-const filterNetworksWithQuery = (networks, inclusionQueryConfig) =>
+export const filterNetworksWithQuery = (networks, inclusionQueryConfig) =>
   (inclusionQueryConfig ? networks.filter(getQuery(inclusionQueryConfig)) : networks);
 
 /**
@@ -68,7 +54,7 @@ const filterNetworksWithQuery = (networks, inclusionQueryConfig) =>
  * @param  {Object} filterConfig a filter definition with rules
  * @return {Object[]} a copy of `networks`, each possibly containing a subset of the original
  */
-const filterNetworkEntities = (networks, filterConfig) => {
+export const filterNetworkEntities = (networks, filterConfig) => {
   if (!filterConfig || !filterConfig.rules || !filterConfig.rules.length) {
     return networks;
   }
@@ -76,24 +62,26 @@ const filterNetworkEntities = (networks, filterConfig) => {
   return networks.map(network => filter(network));
 };
 
-const insertNetworkEgo = network => (
+// Iterates a network, and adds an attribute to nodes and edges
+// that references the ego ID that nominated it
+export const insertNetworkEgo = session => (
   {
-    ...network,
-    nodes: network.nodes.map(node => (
-      { [egoProperty]: network.ego[nodePrimaryKeyProperty], ...node }
+    ...session,
+    nodes: session.nodes.map(node => (
+      { [egoProperty]: session.ego[entityPrimaryKeyProperty], ...node }
     )),
-    edges: network.edges.map(edge => (
-      { [egoProperty]: network.ego[nodePrimaryKeyProperty], ...edge }
+    edges: session.edges.map(edge => (
+      { [egoProperty]: session.ego[entityPrimaryKeyProperty], ...edge }
     )),
-    ego: { ...network.sessionVariables, ...network.ego },
+    // ego: { ...network.sessionVariables, ...network.ego }, -- Why spread session vars?
   }
 );
 
-const insertEgoInNetworks = networks => (
-  networks.map(network => insertNetworkEgo(network))
+export const insertEgoIntoSessionNetworks = sessions => (
+  sessions.map(session => insertNetworkEgo(session))
 );
 
-const transposedCodebookVariables = (sectionCodebook, definition) => {
+export const transposedCodebookVariables = (sectionCodebook, definition) => {
   if (!definition.variables) { // not required for edges
     sectionCodebook[definition.name] = definition; // eslint-disable-line no-param-reassign
     return sectionCodebook;
@@ -113,30 +101,13 @@ const transposedCodebookVariables = (sectionCodebook, definition) => {
   return sectionCodebook;
 };
 
-const transposedCodebookSection = (section = {}) =>
+export const transposedCodebookSection = (section = {}) =>
   Object.values(section).reduce((sectionCodebook, definition) => (
     transposedCodebookVariables(sectionCodebook, definition)
   ), {});
 
-const transposedCodebook = (codebook = {}) => ({
+export const transposedCodebook = (codebook = {}) => ({
   edge: transposedCodebookSection(codebook.edge),
   node: transposedCodebookSection(codebook.node),
   ego: transposedCodebookVariables({}, { ...codebook.ego, name: 'ego' }).ego,
 });
-
-module.exports = {
-  convertUuidToDecimal,
-  filterNetworkEntities,
-  filterNetworksWithQuery,
-  getEntityAttributes,
-  insertEgoInNetworks,
-  nodeAttributesProperty,
-  entityTypeProperty,
-  egoProperty,
-  caseProperty,
-  nodePrimaryKeyProperty,
-  processEntityVariables,
-  transposedCodebook,
-  transposedCodebookSection,
-  unionOfNetworks,
-};

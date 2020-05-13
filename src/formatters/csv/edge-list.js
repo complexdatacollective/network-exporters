@@ -1,7 +1,10 @@
+import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { convertUuidToDecimal } from '../utils';
+import { processEntityVariables } from '../network';
+
 const { Readable } = require('stream');
 
 const { cellValue, csvEOL } = require('./csv');
-const { convertUuidToDecimal, nodePrimaryKeyProperty, entityTypeProperty, egoProperty, nodeAttributesProperty, processEntityVariables } = require('../network');
 
 /**
  * Builds an edge list for a network, based only on its edges (it need
@@ -23,7 +26,7 @@ const { convertUuidToDecimal, nodePrimaryKeyProperty, entityTypeProperty, egoPro
  *                            default: false
  * @return {Array} the edges list
  */
-const asEdgeList = (network, directed = false, _, codebook) => {
+const asEdgeList = (network, codebook, directed) => {
   const processedEdges = (network.edges || []).map((edge) => {
     const variables = codebook && codebook.edge[edge.type] ?
       codebook.edge[edge.type].variables : {};
@@ -45,18 +48,16 @@ const asEdgeList = (network, directed = false, _, codebook) => {
  * The output of this formatter will contain the primary key (_uid)
  * and all model data (inside the `attributes` property)
  */
-const attributeHeaders = (edges, withEgo) => {
+const attributeHeaders = (edges) => {
   const initialHeaderSet = new Set([]);
-  if (withEgo) {
-    initialHeaderSet.add(egoProperty);
-  }
-  initialHeaderSet.add(nodePrimaryKeyProperty);
+  initialHeaderSet.add(egoProperty);
+  initialHeaderSet.add(entityPrimaryKeyProperty);
   initialHeaderSet.add(entityTypeProperty);
   initialHeaderSet.add('from');
   initialHeaderSet.add('to');
 
   const headerSet = edges.reduce((headers, edge) => {
-    Object.keys(edge[nodeAttributesProperty] || []).forEach((key) => {
+    Object.keys(edge[entityAttributesProperty] || []).forEach((key) => {
       headers.add(key);
     });
     return headers;
@@ -68,7 +69,7 @@ const getPrintableAttribute = (attribute) => {
   switch (attribute) {
     case egoProperty:
       return 'networkCanvasEgoID';
-    case nodePrimaryKeyProperty:
+    case entityPrimaryKeyProperty:
       return 'networkCanvasEdgeID';
     case 'from':
       return 'networkCanvasSource';
@@ -94,11 +95,11 @@ const getPrintableAttribute = (attribute) => {
  *
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (edges, outStream, withEgo = false) => {
+const toCSVStream = (edges, outStream) => {
   const totalChunks = edges.length;
   let chunkContent;
   let chunkIndex = 0;
-  const attrNames = attributeHeaders(edges, withEgo);
+  const attrNames = attributeHeaders(edges);
   let headerWritten = false;
   let edge;
 
@@ -112,13 +113,13 @@ const toCSVStream = (edges, outStream, withEgo = false) => {
         const values = attrNames.map((attrName) => {
           // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === nodePrimaryKeyProperty || attrName === egoProperty ||
+          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty ||
             attrName === 'to' || attrName === 'from') {
             value = convertUuidToDecimal(edge[attrName]);
           } else if (attrName === entityTypeProperty) {
             value = edge.type;
           } else {
-            value = edge[nodeAttributesProperty][attrName];
+            value = edge[entityAttributesProperty][attrName];
           }
           return cellValue(value);
         });
@@ -140,17 +141,13 @@ const toCSVStream = (edges, outStream, withEgo = false) => {
 };
 
 class EdgeListFormatter {
-  constructor(data, directed = false, includeEgo = false, codebook) {
-    this.list = asEdgeList(data, directed, includeEgo, codebook);
-    this.includeEgo = includeEgo;
+  constructor(data, codebook, exportOptions) {
+    const directed = exportOptions.globalOptions.useDirectedEdges;
+    this.list = asEdgeList(data, codebook, directed);
   }
   writeToStream(outStream) {
-    return toCSVStream(this.list, outStream, this.includeEgo);
+    return toCSVStream(this.list, outStream);
   }
 }
 
-module.exports = {
-  EdgeListFormatter,
-  asEdgeList,
-  toCSVStream,
-};
+export default EdgeListFormatter;

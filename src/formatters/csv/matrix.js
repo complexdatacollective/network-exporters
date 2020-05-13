@@ -1,9 +1,10 @@
 /* eslint-disable no-bitwise */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
+import { entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { convertUuidToDecimal } from '../utils';
 
 const { Readable } = require('stream');
 
-const { convertUuidToDecimal, nodePrimaryKeyProperty } = require('../network');
 const { csvEOL } = require('./csv');
 
 /**
@@ -57,7 +58,7 @@ class AdjacencyMatrix {
     // Track only unique IDs (duplicates are discarded). The ordering here provides the ordering for
     // both header and data output.
     const nodes = network.nodes || [];
-    const uniqueNodeIds = [...new Set(nodes.map(node => node[nodePrimaryKeyProperty]))];
+    const uniqueNodeIds = [...new Set(nodes.map(node => node[entityPrimaryKeyProperty]))];
     this.uniqueNodeIds = uniqueNodeIds;
 
     const dimension = uniqueNodeIds.length;
@@ -91,7 +92,7 @@ class AdjacencyMatrix {
     const byteIndex = ~~(elementIndex / 8);
     const bitIndex = elementIndex % 8;
     const adjacencyBitmask = 1 << (7 - bitIndex); // cells are ordered left->right
-    this.arrayView[byteIndex] = this.arrayView[byteIndex] | adjacencyBitmask;
+    this.arrayView[byteIndex] = this.arrayView[byteIndex] || adjacencyBitmask;
   }
 
   /**
@@ -251,7 +252,4 @@ class AdjacencyMatrixFormatter {
   }
 }
 
-module.exports = {
-  AdjacencyMatrixFormatter,
-  asAdjacencyMatrix,
-};
+export default AdjacencyMatrixFormatter;

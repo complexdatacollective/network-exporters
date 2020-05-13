@@ -1,11 +1,11 @@
+import { entityAttributesProperty } from '../../utils/reservedAttributes';
 const { isNil } = require('lodash');
 
-const nodePrimaryKeyProperty = '_uid';
-const nodeAttributesProperty = 'attributes';
-const getEntityAttributes = node => (node && node[nodeAttributesProperty]) || {};
+
+export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
 // TODO: VariableType[Values] is shared with 'protocol-consts' in NC
-const VariableType = Object.freeze({
+export const VariableType = Object.freeze({
   boolean: 'boolean',
   text: 'text',
   number: 'number',
@@ -16,10 +16,10 @@ const VariableType = Object.freeze({
   location: 'location',
 });
 
-const VariableTypeValues = Object.freeze(Object.values(VariableType));
+export const VariableTypeValues = Object.freeze(Object.values(VariableType));
 
 // returns a graphml type
-const getGraphMLTypeForKey = (data, key) => (
+export const getGraphMLTypeForKey = (data, key) => (
   data.reduce((result, value) => {
     const attrs = getEntityAttributes(value);
     if (isNil(attrs[key])) return result;
@@ -40,24 +40,24 @@ const getGraphMLTypeForKey = (data, key) => (
     return 'string';
   }, ''));
 
-const getVariableInfo = (codebook, type, element, key) => (
+export const getVariableInfo = (codebook, type, element, key) => (
   codebook[type]
   && codebook[type][element.type]
   && codebook[type][element.type].variables
   && codebook[type][element.type].variables[key]
 );
 
-const codebookExists = (codebook, type, element, key) => {
+export const codebookExists = (codebook, type, element, key) => {
   const variableInfo = getVariableInfo(codebook, type, element, key);
   return variableInfo && variableInfo.type && VariableTypeValues.includes(variableInfo.type);
 };
 
-const getTypeFromCodebook = (codebook, type, element, key, variableAttribute = 'type') => {
+export const getTypeFromCodebook = (codebook, type, element, key, variableAttribute = 'type') => {
   const variableInfo = getVariableInfo(codebook, type, element, key);
   return variableInfo && variableInfo[variableAttribute];
 };
 
-const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
+export const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
   const element = xmlDoc.createElement(tagName);
   Object.entries(attrs).forEach(([key, val]) => {
     element.setAttribute(key, val);
@@ -68,14 +68,5 @@ const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
   return element;
 };
 
-const createDataElement = (xmlDoc, key, text) =>
+export const createDataElement = (xmlDoc, key, text) =>
   createElement(xmlDoc, 'data', { key }, xmlDoc.createTextNode(text));
-
-exports.nodePrimaryKeyProperty = nodePrimaryKeyProperty;
-exports.nodeAttributesProperty = nodeAttributesProperty;
-exports.getEntityAttributes = getEntityAttributes;
-exports.createDataElement = createDataElement;
-exports.getGraphMLTypeForKey = getGraphMLTypeForKey;
-exports.getTypeFromCodebook = getTypeFromCodebook;
-exports.codebookExists = codebookExists;
-exports.VariableType = VariableType;

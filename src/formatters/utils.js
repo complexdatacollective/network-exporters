@@ -1,41 +1,23 @@
+import { entityAttributesProperty } from '../utils/reservedAttributes';
+import AdjacencyMatrixFormatter from './csv/matrix';
+import AttributeListFormatter from './csv/attribute-list';
+import EgoListFormatter from './csv/ego-list';
+import EdgeListFormatter from './csv/edge-list';
+import GraphMLFormatter from './graphml/GraphMLFormatter';
+
 /**
  * @module ExportUtils
  */
+export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
-const {
-  AdjacencyMatrixFormatter,
-  AttributeListFormatter,
-  EgoListFormatter,
-  EdgeListFormatter,
-  GraphMLFormatter,
-} = require('./index');
+export const convertUuidToDecimal = uuid => (
+  false ? BigInt(uuid.toString().replace(/-/g, ''), 16).toString(10) : uuid
+);
 
-/**
- * Possible values for data export
- * @enum {string}
- */
-const formats = {
-  graphml: 'graphml',
-  // CSV:
-  adjacencyMatrix: 'adjacencyMatrix',
-  attributeList: 'attributeList',
-  edgeList: 'edgeList',
-  ego: 'ego',
-};
-
-const extensions = {
+export const extensions = {
   graphml: '.graphml',
   csv: '.csv',
 };
-
-/**
- * Check validity of supplied formats
- * @param  {string[]} suppliedFormats
- * @return {boolean} `true` if every supplied format is a valid type (or suppliedFormats is empty);
- *                   `false` if suppliedFormats is falsy or contains an invalid format.
- */
-const formatsAreValid = suppliedFormats =>
-  (suppliedFormats && suppliedFormats.every(format => formats[format])) || false;
 
 /**
  * Partition a network as needed for edge-list and adjacency-matrix formats.
@@ -47,14 +29,14 @@ const formatsAreValid = suppliedFormats =>
  * @return {Array} An array of networks, partitioned by edge type. Each network object is decorated
  *                 with an additional `edgeType` prop to facilitate format naming.
  */
-const partitionByEdgeType = (network, format) => {
+export const partitionByEdgeType = (network, format) => {
   switch (format) {
-    case formats.graphml:
-    case formats.ego:
-    case formats.attributeList:
+    case 'graphml':
+    case 'ego':
+    case 'attributeList':
       return [network];
-    case formats.edgeList:
-    case formats.adjacencyMatrix: {
+    case 'edgeList':
+    case 'adjacencyMatrix': {
       if (!network.edges.length) {
         return [network];
       }
@@ -82,14 +64,14 @@ const partitionByEdgeType = (network, format) => {
  * @param  {string} formatterType one of the `format`s
  * @return {string}
  */
-const getFileExtension = (formatterType) => {
+export const getFileExtension = (formatterType) => {
   switch (formatterType) {
-    case formats.graphml:
+    case 'graphml':
       return extensions.graphml;
-    case formats.adjacencyMatrix:
-    case formats.edgeList:
-    case formats.attributeList:
-    case formats.ego:
+    case 'adjacencyMatrix':
+    case 'edgeList':
+    case 'attributeList':
+    case 'ego':
       return extensions.csv;
     default:
       return null;
@@ -101,28 +83,19 @@ const getFileExtension = (formatterType) => {
  * @param  {string} formatterType one of the `format`s
  * @return {class}
  */
-const getFormatterClass = (formatterType) => {
+export const getFormatterClass = (formatterType) => {
   switch (formatterType) {
-    case formats.graphml:
+    case 'graphml':
       return GraphMLFormatter;
-    case formats.adjacencyMatrix:
+    case 'adjacencyMatrix':
       return AdjacencyMatrixFormatter;
-    case formats.edgeList:
+    case 'edgeList':
       return EdgeListFormatter;
-    case formats.attributeList:
+    case 'attributeList':
       return AttributeListFormatter;
-    case formats.ego:
+    case 'ego':
       return EgoListFormatter;
     default:
       return null;
   }
-};
-
-module.exports = {
-  extensions,
-  formats,
-  formatsAreValid,
-  getFileExtension,
-  getFormatterClass,
-  partitionByEdgeType,
 };

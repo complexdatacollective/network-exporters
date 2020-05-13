@@ -1,9 +1,12 @@
+import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { convertUuidToDecimal } from '../utils';
+import { processEntityVariables } from '../network';
+
 const { Readable } = require('stream');
 
-const { convertUuidToDecimal, nodePrimaryKeyProperty, nodeAttributesProperty, entityTypeProperty, egoProperty, processEntityVariables } = require('../network');
 const { cellValue, csvEOL } = require('./csv');
 
-const asAttributeList = (network, _, codebook) => {
+const asAttributeList = (network, codebook) => {
   const processedNodes = (network.nodes || []).map((node) => {
     if (codebook && codebook.node[node.type]) {
       return processEntityVariables(node, codebook.node[node.type].variables);
@@ -17,16 +20,14 @@ const asAttributeList = (network, _, codebook) => {
  * The output of this formatter will contain the primary key (_uid)
  * and all model data (inside the `attributes` property)
  */
-const attributeHeaders = (nodes, withEgo) => {
+const attributeHeaders = (nodes) => {
   const initialHeaderSet = new Set([]);
-  if (withEgo) {
-    initialHeaderSet.add(egoProperty);
-  }
-  initialHeaderSet.add(nodePrimaryKeyProperty);
+  initialHeaderSet.add(egoProperty);
+  initialHeaderSet.add(entityPrimaryKeyProperty);
   initialHeaderSet.add(entityTypeProperty);
 
   const headerSet = nodes.reduce((headers, node) => {
-    Object.keys(node[nodeAttributesProperty] || []).forEach((key) => {
+    Object.keys(node[entityAttributesProperty] || []).forEach((key) => {
       headers.add(key);
     });
     return headers;
@@ -38,7 +39,7 @@ const getPrintableAttribute = (attribute) => {
   switch (attribute) {
     case egoProperty:
       return 'networkCanvasEgoID';
-    case nodePrimaryKeyProperty:
+    case entityPrimaryKeyProperty:
       return 'networkCanvasAlterID';
     case entityTypeProperty:
       return 'networkCanvasNodeType';
@@ -50,9 +51,9 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (nodes, outStream, withEgo = false) => {
+const toCSVStream = (nodes, outStream) => {
   const totalRows = nodes.length;
-  const attrNames = attributeHeaders(nodes, withEgo);
+  const attrNames = attributeHeaders(nodes);
   let headerWritten = false;
   let rowIndex = 0;
   let rowContent;
@@ -68,12 +69,12 @@ const toCSVStream = (nodes, outStream, withEgo = false) => {
         const values = attrNames.map((attrName) => {
           // The primary key and ego id exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === nodePrimaryKeyProperty || attrName === egoProperty) {
+          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty) {
             value = convertUuidToDecimal(node[attrName]);
           } else if (attrName === entityTypeProperty) {
             value = node.type;
           } else {
-            value = node[nodeAttributesProperty][attrName];
+            value = node[entityAttributesProperty][attrName];
           }
           return cellValue(value);
         });
@@ -95,18 +96,12 @@ const toCSVStream = (nodes, outStream, withEgo = false) => {
 };
 
 class AttributeListFormatter {
-  constructor(data, directed = false, includeEgo = false, codebook) {
-    this.list = asAttributeList(data, directed, codebook) || [];
-    this.includeEgo = includeEgo;
+  constructor(data, codebook) {
+    this.list = asAttributeList(data, codebook) || [];
   }
   writeToStream(outStream) {
-    return toCSVStream(this.list, outStream, this.includeEgo);
+    return toCSVStream(this.list, outStream);
   }
 }
 
-
-module.exports = {
-  AttributeListFormatter,
-  asAttributeList,
-  toCSVStream,
-};
+export default AttributeListFormatter;
