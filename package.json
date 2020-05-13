@@ -2,7 +2,7 @@
   "name": "network-exporters",
   "version": "1.0.0",
   "description": "Utility for exporting a network",
-  "main": "graphml/createGraphML.js",
+  "main": "src/FileExportManager.js",
   "scripts": {
     "lint": "eslint **/*.js",
     "test": "jest"

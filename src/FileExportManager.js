@@ -1,25 +1,16 @@
 /* eslint-disable no-underscore-dangle */
+import { merge, isEmpty } from 'lodash';
 
 const fs = require('fs');
 const path = require('path');
 const logger = require('electron-log');
 const { flattenDeep } = require('lodash');
 
-const SessionDB = require('./SessionDB');
 const { archive } = require('./utils/archive');
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
 const { makeTempDir, removeTempDir } = require('./formatters/dir');
-const {
-  insertEgoInNetworks,
-  transposedCodebook,
-  unionOfNetworks,
-} = require('./formatters/network');
-const {
-  formatsAreValid,
-  getFileExtension,
-  getFormatterClass,
-  partitionByEdgeType,
-} = require('./formatters/utils');
+const { insertEgoInNetworks, transposedCodebook, unionOfNetworks } = require('./formatters/network');
+const { formatsAreValid, getFileExtension, getFormatterClass, partitionByEdgeType } = require('./formatters/utils');
 
 const escapeFilePart = part => part.replace(/\W/g, '');
 
@@ -53,8 +44,11 @@ const exportFile = (
   edgeType,
   exportFormat,
   outDir,
-  network,
-  { useDirectedEdges, useEgoData, codebook } = {},
+  network, {
+    useDirectedEdges,
+    useEgoData,
+    codebook,
+  } = {},
 ) => {
   const Formatter = getFormatterClass(exportFormat);
   const extension = getFileExtension(exportFormat);
@@ -70,8 +64,12 @@ const exportFile = (
     const outputName = makeFilename(namePrefix, edgeType, exportFormat, extension);
     const filepath = path.join(outDir, outputName);
     writeStream = fs.createWriteStream(filepath);
-    writeStream.on('finish', () => { resolve(filepath); });
-    writeStream.on('error', (err) => { reject(err); });
+    writeStream.on('finish', () => {
+      resolve(filepath);
+    });
+    writeStream.on('error', (err) => {
+      reject(err);
+    });
     // TODO: on('ready')?
     logger.debug(`Writing file ${filepath}`);
     streamController = formatter.writeToStream(writeStream);
@@ -92,67 +90,94 @@ const exportFile = (
 /**
  * Interface for all data exports
  */
-class ExportManager {
-  constructor(sessionDataDir) {
-    // TODO: path is duplicated in ProtocolManager
-    const sessionDbFile = path.join(sessionDataDir, 'db', 'sessions.db');
-    this.sessionDB = new SessionDB(sessionDbFile);
+
+/**
+ * exportOptions is an object containing possible parameters for the exporter.
+ * Available parameters are:
+ *
+ * {
+ *   exportGraphML: { // [true|false|Object]
+ *     includeNCMeta: [true|false],
+ *   },
+ *   exportCSV: { // [true|false|Object]
+ *     adjacencyMatrix: [true|false],
+ *     attributeList: [true|false],
+ *     edgeList: [true|false],
+ *     egoAttributeList: [true|false],
+ *   },
+ *   globalOptions: {
+ *     resequenceIDs: [true|false],
+ *     unifyNetworks: [true|false],
+ *     useDirectedEdges: [true|false],
+ *   },
+ * };
+ *
+ */
+
+class FileExportManager {
+  constructor(exportOptions = {}) {
+    const defaultGraphMLOptions = {
+      includeNCMeta: true,
+    };
+
+    const defaultCSVOptions = {
+      adjacencyMatrix: true,
+      attributeList: true,
+      edgeList: true,
+      egoAttributeList: true,
+    };
+
+    const defaultExportOptions = {
+      exportGraphML: defaultGraphMLOptions,
+      exportCSV: defaultCSVOptions,
+      globalOptions: {
+        resequenceIDs: false,
+        unifyNetworks: false,
+        useDirectedEdges: false,
+      },
+    };
+
+    // Allow shorthand 'true' to accept default export options for a given type
+    this.exportOptions = {
+      ...merge(defaultExportOptions, exportOptions),
+      ...(exportOptions.exportGraphML === true ? { exportGraphML: defaultGraphMLOptions } : {}),
+      ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
+    };
   }
 
   /**
-   * Produces one or more export files, zips them up if needed, writes the results to a
-   * temporary location, and returns [a promise resolving to] the filepath.
+   * Main export method. Returns a promise.
    *
-   * @async
-   * @param {Object} protocol the saved protocol from DB
-   * @param {string} options.destinationFilepath local FS path to output the final file
-   * @param {Array<string>} options.exportFormats
-   *        Possible values: "adjacencyMatrix", "attributeList", "edgeList", "ego", "graphml"
-   * @param {Array} options.csvTypes if `exportFormat` is "csv", then include these types in output.
-   *                                Options: ["adjacencyMatrix", "attributeList", "edgeList", "ego"]
-   * @param {boolean} options.exportNetworkUnion true if all interview networks should be merged
-   *                                             false if each interview network should be exported
-   *                                             individually
-   * @param {boolean} options.useDirectedEdges used by the formatters. May be removed in the future
-   *                                           if information is encapsulated in network.
-   * @return {Promise} A `promise` that resloves to a filepath (string). The promise is decorated
-   *                     with an `abort` function to support request cancellations.
-   *                     If the export is aborted, then the returned promise will never settle.
-   * @return {string} filepath of written file
+   * @param {*} sessions        collection of session objects
+   * @param {*} protocols       collection of protocol objects, containing all protocols
+   *                            mentioned in sessions collection.
+   * @param {*} destinationPath path to write the resulting files to
    */
-  createExportFile(
-    protocol,
-    {
-      destinationFilepath,
-      exportFormats,
-      exportNetworkUnion,
-      useDirectedEdges,
-      useEgoData,
-    } = {},
-  ) {
-    if (!protocol) {
-      return Promise.reject(new RequestError(ErrorMessages.NotFound));
+  exportSessions(sessions, protocols, destinationPath) {
+    // Reject if required parameters aren't provided
+    if (
+      (!sessions && !isEmpty(sessions)) ||
+      (!protocols && !isEmpty(protocols)) ||
+      !destinationPath
+    ) {
+      return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
     }
-    if (!destinationFilepath || !formatsAreValid(exportFormats) || !exportFormats.length) {
-      return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
-    }
+
+    // Reject if export options arent valid
+    // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
+    //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
+    // }
 
     let tmpDir;
     const cleanUp = () => removeTempDir(tmpDir);
 
     let promisedExports;
-    const exportOpts = {
-      useDirectedEdges,
-      useEgoData,
-      codebook: transposedCodebook(protocol.codebook),
-    };
 
-    // Export flow:
-    // 1. fetch all networks produced for this protocol's interviews
-    // 2. optional: insert ego into each network
-    // 3. optional: merge all networks into a single union for export
-    // 4. export each format for each network
-    // 5. save ZIP file to requested location
+    const exportFormats = [
+      ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
+      ...(this.exportOptions.exportCSV ? ['csv'] : []),
+    ];
+
     const exportPromise = makeTempDir()
       .then((dir) => {
         tmpDir = dir;
@@ -160,15 +185,18 @@ class ExportManager {
           throw new Error('Temporary directory unavailable');
         }
       })
-      .then(() => this.sessionDB.findAll(protocol._id, null, null))
-      .then(sessions => sessions.map((session) => {
+      .then(() => sessions.map((session) => {
         const id = session && session._id;
         const caseID = session && session.data && session.data.sessionVariables &&
           session.data.sessionVariables._caseID;
-        return { ...session.data, _id: id, _caseID: caseID };
+        return {
+          ...session.data,
+          _id: id,
+          _caseID: caseID,
+        };
       }))
-      .then(networks => (useEgoData ? insertEgoInNetworks(networks) : networks))
-      .then(networks => (exportNetworkUnion ? [unionOfNetworks(networks)] : networks))
+      .then(networks => insertEgoInNetworks(networks))
+      .then(networks => (this.exportOptions.unifyNetworks ? [unionOfNetworks(networks)] : networks))
       .then((networks) => {
         promisedExports = flattenDeep(
           // Export every network
@@ -177,7 +205,7 @@ class ExportManager {
             // ...in every file format requested
             // => [[n1.matrix.csv, n1.attrs.csv], [n2.matrix.csv, n2.attrs.csv]]
             exportFormats.map(format =>
-              // ...partitioning martrix & edge-list output based on edge type
+              // ...partitioning matrix & edge-list output based on edge type
               // => [ [[n1.matrix.knows.csv, n1.matrix.likes.csv], [n1.attrs.csv]],
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
               partitionByEdgeType(network, format).map((partitionedNetwork) => {
@@ -189,15 +217,19 @@ class ExportManager {
                   format,
                   tmpDir,
                   partitionedNetwork,
-                  exportOpts);
-              }))));
+                  this.exportOptions,
+                );
+              }),
+            ),
+          ),
+        );
         return Promise.all(promisedExports);
       })
       .then((exportedPaths) => {
         if (exportedPaths.length === 0) {
           throw new RequestError(ErrorMessages.NothingToExport);
         }
-        return archive(exportedPaths, destinationFilepath);
+        return archive(exportedPaths, destinationPath);
       })
       .catch((err) => {
         cleanUp();
@@ -217,4 +249,4 @@ class ExportManager {
   }
 }
 
-module.exports = ExportManager;
+export default FileExportManager;

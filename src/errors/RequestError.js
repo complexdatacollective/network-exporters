@@ -17,16 +17,14 @@ const ErrorMessages = {
   FilelistNotSingular: 'Multiple files must be uploaded separately',
   InvalidContainerFile: 'Invalid file',
   InvalidContainerFileExtension: 'File must have a ".netcanvas" extension',
-  InvalidPairingCode: 'Incorrect pairing code',
   InvalidProtocolFormat: 'Invalid protocol format',
   InvalidRequestBody: 'Could not parse request data',
   InvalidZip: 'Invalid ZIP file',
   InvalidExportOptions: 'Invalid export options',
+  MissingParameters: 'Missing export parameters',
   MissingProtocolFile: 'Missing protocol file',
   NotFound: 'Not found',
   NothingToExport: 'No data available to export',
-  ProtocolAlreadyExists: 'This protocol has already been imported, and cannot be overwritten. If you have changed your protocol since importing it, either rename it to create a new workspace, or remove the existing protocol.',
-  ProtocolNotFoundForSession: 'The associated protocol does not exist on this server',
   VerificationFailed: 'Request verification failed',
 };
 
