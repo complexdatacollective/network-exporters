@@ -132,9 +132,9 @@ class FileExportManager {
   exportSessions(sessions, protocols, destinationPath) {
     // Reject if required parameters aren't provided
     if (
-      (!sessions && !isEmpty(sessions)) ||
-      (!protocols && !isEmpty(protocols)) ||
-      !destinationPath
+      (!sessions && !isEmpty(sessions))
+      || (!protocols && !isEmpty(protocols))
+      || !destinationPath
     ) {
       return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
     }
@@ -200,8 +200,7 @@ class FileExportManager {
                   transposedCodebook(protocol.codebook),
                   this.exportOptions,
                 );
-              }),
-            );
+              }));
           }),
         );
         return Promise.all(promisedExports);

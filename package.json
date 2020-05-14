@@ -17,12 +17,10 @@
   },
   "homepage": "https://github.com/codaco/network-exporters#readme",
   "devDependencies": {
-    "archiver": "^4.0.1",
-    "eslint": "^5.10.0",
+    "eslint": "^7.0.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.14.0",
     "jest": "^23.6.0",
-    "jszip": "^3.4.0",
     "xmldom": "^0.1.27"
   },
   "jest": {
@@ -30,5 +28,7 @@
       "<rootDir>/**/*-test.js"
     ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "electron-log": "^4.1.2"
+  }
 }
