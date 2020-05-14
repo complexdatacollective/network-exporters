@@ -34,7 +34,6 @@ const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
            http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
 
 const getGraphHeader = (useDirectedEdges) => {
-  console.log('getGraphHeader', useDirectedEdges);
   const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
   return `<graph edgedefault="${edgeDefault}">${eol}`;
 };
