@@ -1,4 +1,4 @@
-import uuid from 'uuid/v4';
+import { v4 as uuid } from 'uuid';
 import { findKey, forInRight, includes } from 'lodash';
 import {
   getEntityAttributes,
@@ -34,6 +34,7 @@ const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
            http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
 
 const getGraphHeader = (useDirectedEdges) => {
+  console.log('getGraphHeader', useDirectedEdges);
   const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
   return `<graph edgedefault="${edgeDefault}">${eol}`;
 };
@@ -273,7 +274,7 @@ const generateDataElements = (
 };
 
 // Generator to supply XML content in chunks to both string and stream producers
-export function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
+export function* graphMLGenerator(networkData, codebook, useDirectedEdges = false) {
   const serializer = new globalContext.XMLSerializer();
   const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
 
