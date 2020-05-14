@@ -1,5 +1,5 @@
 import { merge, isEmpty } from 'lodash';
-import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook } from './formatters/network';
+import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook, resequenceIds } from './formatters/network';
 import { sessionProperty, caseProperty, protocolProperty } from './utils/reservedAttributes';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
@@ -134,7 +134,6 @@ class FileExportManager {
       exportGraphML: defaultGraphMLOptions,
       exportCSV: defaultCSVOptions,
       globalOptions: {
-        resequenceIDs: false,
         unifyNetworks: false,
         useDirectedEdges: false,
       },
@@ -187,11 +186,13 @@ class FileExportManager {
       })
       // Then, insert a reference to the ego ID in to all nodes and edges
       .then(() => insertEgoIntoSessionNetworks(sessions))
+      // Then, resequence IDs for this export
+      .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
       // Then, process the union option: conflate into one massive network if enabled.
       // This should be changed to group by protocol
       // TODO: this needs to happen PER PROTOCOL so that meta data can be maintained
-      .then(sessionsWithEgo =>
-        (this.exportOptions.unifyNetworks ? [unionOfNetworks(sessionsWithEgo)] : sessionsWithEgo))
+      .then(sessionsWithResequencedIDs =>
+        (this.exportOptions.unifyNetworks ? [unionOfNetworks(sessionsWithResequencedIDs)] : sessionsWithResequencedIDs))
       // Then, encode each network in each format specified, using the options for each.
       // Write the resulting file to the temp directory
       .then((sessionsWithUnion) => {
@@ -216,7 +217,7 @@ class FileExportManager {
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
               partitionByEdgeType(session, format).map((partitionedNetwork) => {
                 const protocol = protocols[session[protocolProperty]];
-                const prefix = session[sessionProperty] ? `${session[caseProperty]}_${session[sessionProperty]}` : protocol.name;
+                const prefix = session[sessionProperty] ? `${session.sessionVariables[caseProperty]}_${session[sessionProperty]}` : protocol.name;
                 // gather one promise for each exported file
                 return exportFile(
                   prefix,

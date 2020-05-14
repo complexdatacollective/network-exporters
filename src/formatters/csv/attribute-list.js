@@ -1,4 +1,4 @@
-import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty, exportIDProperty } from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
 import { processEntityVariables } from '../network';
 
@@ -22,6 +22,7 @@ const asAttributeList = (network, codebook) => {
  */
 const attributeHeaders = (nodes) => {
   const initialHeaderSet = new Set([]);
+  initialHeaderSet.add(exportIDProperty);
   initialHeaderSet.add(egoProperty);
   initialHeaderSet.add(entityPrimaryKeyProperty);
   initialHeaderSet.add(entityTypeProperty);
@@ -37,6 +38,8 @@ const attributeHeaders = (nodes) => {
 
 const getPrintableAttribute = (attribute) => {
   switch (attribute) {
+    case exportIDProperty:
+      return 'ID';
     case egoProperty:
       return 'networkCanvasEgoID';
     case entityPrimaryKeyProperty:
@@ -69,7 +72,7 @@ const toCSVStream = (nodes, outStream) => {
         const values = attrNames.map((attrName) => {
           // The primary key and ego id exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty) {
+          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty || attrName === exportIDProperty) {
             value = convertUuidToDecimal(node[attrName]);
           } else if (attrName === entityTypeProperty) {
             value = node.type;

@@ -1,4 +1,4 @@
-import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty, exportIDProperty } from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
 import { processEntityVariables } from '../network';
 
@@ -54,9 +54,12 @@ const asEdgeList = (network, codebook, directed) => {
  */
 const attributeHeaders = (edges) => {
   const initialHeaderSet = new Set([]);
+  initialHeaderSet.add(exportIDProperty);
   initialHeaderSet.add(egoProperty);
   initialHeaderSet.add(entityPrimaryKeyProperty);
   initialHeaderSet.add(entityTypeProperty);
+  initialHeaderSet.add('_from');
+  initialHeaderSet.add('_to');
   initialHeaderSet.add('from');
   initialHeaderSet.add('to');
 
@@ -71,14 +74,20 @@ const attributeHeaders = (edges) => {
 
 const getPrintableAttribute = (attribute) => {
   switch (attribute) {
+    case exportIDProperty:
+      return 'ID';
     case egoProperty:
       return 'networkCanvasEgoID';
     case entityPrimaryKeyProperty:
       return 'networkCanvasEdgeID';
     case 'from':
-      return 'networkCanvasSource';
+      return 'networkCanvasSourceID';
     case 'to':
-      return 'networkCanvasTarget';
+      return 'networkCanvasTargetID';
+    case '_from':
+      return 'from';
+    case '_to':
+      return 'to';
     case entityTypeProperty:
       return 'networkCanvasEdgeType';
     default:
@@ -117,8 +126,13 @@ const toCSVStream = (edges, outStream) => {
         const values = attrNames.map((attrName) => {
           // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty
-            || attrName === 'to' || attrName === 'from') {
+          if (
+            attrName === entityPrimaryKeyProperty
+            || attrName === exportIDProperty
+            || attrName === egoProperty
+            || attrName === 'to' || attrName === 'from'
+            || attrName === '_to' || attrName === '_from'
+          ) {
             value = convertUuidToDecimal(edge[attrName]);
           } else if (attrName === entityTypeProperty) {
             value = edge.type;

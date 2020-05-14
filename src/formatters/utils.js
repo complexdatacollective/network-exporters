@@ -8,9 +8,10 @@ export const getEntityAttributes = node => (node && node[entityAttributesPropert
 
 // This conversion is required because the Ego R package depends on numerical node IDs:
 // https://github.com/codaco/Server/pull/237#issuecomment-479141519
-export const convertUuidToDecimal = uuid => (
-  uuid ? BigInt(`0x${uuid.toString().replace(/-/g, '')}`).toString(10) : uuid
-);
+// export const convertUuidToDecimal = uuid => (
+//   uuid ? BigInt(`0x${uuid.toString().replace(/-/g, '')}`).toString(10) : uuid
+// );
+export const convertUuidToDecimal = uuid => uuid;
 
 export const extensions = {
   graphml: '.graphml',

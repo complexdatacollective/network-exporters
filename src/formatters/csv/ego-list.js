@@ -62,7 +62,7 @@ const toCSVStream = (egos, outStream) => {
         const values = attrNames.map((attrName) => {
           // The primary key and ego id exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === entityPrimaryKeyProperty) {
+          if (attrName === entityPrimaryKeyProperty || attrName === caseProperty) {
             value = convertUuidToDecimal(ego[attrName]);
           } else if (attrName === caseProperty) {
             value = ego[attrName];
