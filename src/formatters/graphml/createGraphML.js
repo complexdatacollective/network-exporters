@@ -1,15 +1,3 @@
-// Sharing Issues:
-// - [x] APIs (string output vs streaming); see saveFile()
-//    - Change in signature: NetworkCanvas must inject saveFile as a final arg
-// - [ ] linebreak handling?
-// - [x] need to abstract DOMParser
-// - [x] need to abstract XMLSerializer (see xmlToString())
-// - [x] need directed as an option (until network encapsulates this)
-// - [x] updated export (default/named)
-// - [x] source data differs (we're working with resolved names in Server)
-//    - this affects variable type lookup for nodes and labels for edges
-// - [x] document is not global
-
 const { findKey, forInRight, includes } = require('lodash');
 const uuid = require('uuid');
 
