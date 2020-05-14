@@ -1,16 +1,14 @@
-const { findKey, forInRight, includes } = require('lodash');
-const uuid = require('uuid');
-
-const {
-  nodeAttributesProperty,
-  nodePrimaryKeyProperty,
+import uuid from 'uuid/v4';
+import { findKey, forInRight, includes } from 'lodash';
+import {
   getEntityAttributes,
   createDataElement,
   getGraphMLTypeForKey,
   getTypeFromCodebook,
   codebookExists,
   VariableType,
-} = require('./helpers');
+} from './helpers';
+import { entityAttributesProperty, entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
@@ -198,8 +196,8 @@ const generateDataElements = (
     const domElement = document.createElement(type);
     const nodeAttrs = getEntityAttributes(dataElement);
 
-    if (dataElement[nodePrimaryKeyProperty]) {
-      domElement.setAttribute('id', dataElement[nodePrimaryKeyProperty]);
+    if (dataElement[entityPrimaryKeyProperty]) {
+      domElement.setAttribute('id', dataElement[entityPrimaryKeyProperty]);
     } else {
       domElement.setAttribute('id', uuid());
     }
@@ -275,7 +273,7 @@ const generateDataElements = (
 };
 
 // Generator to supply XML content in chunks to both string and stream producers
-function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
+export function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
   const serializer = new globalContext.XMLSerializer();
   const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
 
@@ -293,7 +291,7 @@ function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
     xmlDoc,
     nodes,
     'node',
-    [nodePrimaryKeyProperty],
+    [entityPrimaryKeyProperty],
     codebook,
     layoutVariable,
   );
@@ -301,14 +299,14 @@ function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
     xmlDoc,
     edges,
     'edge',
-    [nodePrimaryKeyProperty, 'from', 'to', 'type'],
+    [entityPrimaryKeyProperty, 'from', 'to', 'type'],
     codebook,
   );
   const generateNodeElements = nodes => generateDataElements(
     xmlDoc,
     nodes,
     'node',
-    [nodePrimaryKeyProperty, nodeAttributesProperty],
+    [entityPrimaryKeyProperty, entityAttributesProperty],
     codebook,
     layoutVariable,
   );
@@ -316,7 +314,7 @@ function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
     xmlDoc,
     edges,
     'edge',
-    [nodePrimaryKeyProperty, nodeAttributesProperty, 'from', 'to', 'type'],
+    [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type'],
     codebook,
   );
 
@@ -368,7 +366,7 @@ function* graphMLGenerator(networkData, codebook, useDirectedEdges) {
  * @param  {String} filePrefix to use for file name (defaults to 'networkcanvas')
  * @return {} the return value from saveFile
  */
-const createGraphML = (networkData, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
+export const createGraphML = (networkData, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
   let xmlString = '';
   try {
     for (const chunk of graphMLGenerator(networkData, codebook)) { // eslint-disable-line
@@ -388,12 +386,3 @@ const createGraphML = (networkData, codebook, onError, saveFile, filePrefix = 'n
     { message: 'Your network canvas graphml file.', subject: 'network canvas export' },
   );
 };
-
-// Provides ES6 named + default imports via babel
-Object.defineProperty(exports, '__esModule', {
-  value: true,
-});
-
-exports.default = createGraphML;
-exports.createGraphML = createGraphML;
-exports.graphMLGenerator = graphMLGenerator;

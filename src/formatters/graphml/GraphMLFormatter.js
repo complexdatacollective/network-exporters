@@ -1,6 +1,5 @@
-const { Readable } = require('stream');
-
-const { graphMLGenerator } = require('./createGraphML');
+import { Readable } from 'stream';
+import { graphMLGenerator } from './createGraphML';
 
 class GraphMLFormatter {
   constructor(data, codebook, exportOptions) {

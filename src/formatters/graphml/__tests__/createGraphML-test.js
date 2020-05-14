@@ -16,6 +16,16 @@ describe('buildGraphML', () => {
   let codebook;
   let xml;
 
+  const exportOptions = {
+    exportGraphML: true,
+    exportCSV: false,
+    globalOptions: {
+      resequenceIDs: false,
+      unifyNetworks: false,
+      useDirectedEdges: false,
+    },
+  };
+
   beforeEach(() => {
     network = {
       nodes: [
@@ -42,7 +52,7 @@ describe('buildGraphML', () => {
         },
       },
     };
-    xml = buildXML(network, codebook);
+    xml = buildXML(network, codebook, exportOptions);
   });
 
   it('produces a graphml document', () => {
@@ -87,7 +97,15 @@ describe('buildGraphML', () => {
 
   describe('with directed edge option', () => {
     beforeEach(() => {
-      xml = buildXML(network, codebook, true);
+      const exportOptionsWithDirectedEdges = {
+        exportGraphML: true,
+        exportCSV: false,
+        globalOptions: {
+          useDirectedEdges: true,
+        },
+      };
+
+      xml = buildXML(network, codebook, exportOptionsWithDirectedEdges);
     });
 
     it('specifies directed edges', () => {
