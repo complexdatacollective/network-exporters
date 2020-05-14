@@ -63,7 +63,7 @@ export const insertEgoIntoSessionNetworks = sessions => (
 );
 
 export const resequenceIds = (sessions) => {
-  let resequencedId = 1;
+  let resequencedId = 0;
   const idMap = {};
   const resequencedEntities = sessions.map(session => ({
     ...session,
