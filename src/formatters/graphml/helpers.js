@@ -1,4 +1,5 @@
 import { entityAttributesProperty } from '../../utils/reservedAttributes';
+
 const { isNil } = require('lodash');
 
 

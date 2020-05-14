@@ -11,7 +11,7 @@ import GraphMLFormatter from './graphml/GraphMLFormatter';
 export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
 export const convertUuidToDecimal = uuid => (
-  false ? BigInt(uuid.toString().replace(/-/g, ''), 16).toString(10) : uuid
+  uuid ? BigInt(uuid.toString().replace(/-/g, ''), 16).toString(10) : uuid
 );
 
 export const extensions = {

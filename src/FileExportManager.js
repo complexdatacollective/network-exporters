@@ -191,7 +191,6 @@ class FileExportManager {
                 const protocol = protocols[session[protocolProperty]];
                 const prefix = session[sessionProperty] ? `${session[caseProperty]}_${session[sessionProperty]}` : protocol.name;
                 // gather one promise for each exported file
-                console.log(protocol, transposedCodebook(protocol.codebook));
                 return exportFile(
                   prefix,
                   partitionedNetwork.edgeType,

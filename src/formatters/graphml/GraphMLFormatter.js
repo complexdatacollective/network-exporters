@@ -7,7 +7,6 @@ class GraphMLFormatter {
     this.network = data;
     this.codebook = codebook;
     this.useDirectedEdges = exportOptions.globalOptions.useDirectedEdges;
-    console.log('gml', data, codebook);
   }
 
   streamToString = (stream) => {

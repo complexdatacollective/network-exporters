@@ -7,7 +7,7 @@ const { graphMLGenerator } = require('../createGraphML');
 describe('buildGraphML', () => {
   const buildXML = (...args) => {
     let xmlString = '';
-    for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax
+    for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax, no-unused-vars, max-len
       xmlString += chunk;
     }
     return (new DOMParser()).parseFromString(xmlString);
