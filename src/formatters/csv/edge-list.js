@@ -26,7 +26,7 @@ const { cellValue, csvEOL } = require('./csv');
  *                            default: false
  * @return {Array} the edges list
  */
-const asEdgeList = (network, codebook, _) => {
+const asEdgeList = (network, codebook, directed) => {
   const processedEdges = (network.edges || []).map((edge) => {
     const variables = codebook && codebook.edge[edge.type]
       ? codebook.edge[edge.type].variables : {};
@@ -36,15 +36,15 @@ const asEdgeList = (network, codebook, _) => {
   // This code block duplicated the edges when directed mode was off.
   // It has been disabled pending full directed mode support:
   // https://netcanvasteam.slack.com/archives/G1Q262J3Y/p1589465079036100
-  // if (directed === false) {
-  //   // this may change if we have support for directed vs undirected edges in NC
-  //   return (processedEdges || []).reduce((arr, edge) => (
-  //     arr.concat(
-  //       { ...edge, to: edge.to, from: edge.from },
-  //       { ...edge, to: edge.from, from: edge.to },
-  //     )
-  //   ), []);
-  // }
+  if (directed === false) {
+    // // this may change if we have support for directed vs undirected edges in NC
+    // return (processedEdges || []).reduce((arr, edge) => (
+    //   arr.concat(
+    //     { ...edge, to: edge.to, from: edge.from },
+    //     { ...edge, to: edge.from, from: edge.to },
+    //   )
+    // ), []);
+  }
   return processedEdges;
 };
 
