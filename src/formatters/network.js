@@ -79,10 +79,10 @@ export const resequenceIds = (sessions) => {
     ),
     edges: session.edges.map(
       (edge) => {
-        const newID = resequencedId + 1;
-        idMap[edge._uid] = newID;
+        resequencedId += 1;
+        idMap[edge._uid] = resequencedId;
         return {
-          _id: newID,
+          _id: resequencedId,
           ...edge,
         };
       },
