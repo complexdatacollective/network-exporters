@@ -92,6 +92,7 @@ class EgoListFormatter {
   constructor(data, codebook) {
     this.list = asEgoList(data, codebook) || [];
   }
+
   writeToStream(outStream) {
     // TODO not a list here...somewhere else needs to compile the egos
     return toCSVStream(this.list, outStream);

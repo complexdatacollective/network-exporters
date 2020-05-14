@@ -1,8 +1,7 @@
 /* eslint-env jest */
-/* eslint-disable @codaco/spellcheck/spell-checker */
 
-const { DOMParser } = require('xmldom');
-const { graphMLGenerator } = require('../createGraphML');
+import { DOMParser } from 'xmldom';
+import { graphMLGenerator } from '../createGraphML';
 
 describe('buildGraphML', () => {
   const buildXML = (...args) => {

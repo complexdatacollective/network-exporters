@@ -4,7 +4,7 @@
   "description": "Utility for exporting a network",
   "main": "src/FileExportManager.js",
   "scripts": {
-    "lint": "eslint **/*.js",
+    "lint": "eslint src",
     "test": "jest"
   },
   "repository": {
@@ -17,18 +17,44 @@
   },
   "homepage": "https://github.com/codaco/network-exporters#readme",
   "devDependencies": {
+    "@babel/core": "^7.8.3",
+    "@babel/plugin-proposal-class-properties": "^7.7.4",
+    "@babel/plugin-proposal-json-strings": "^7.7.4",
+    "@babel/plugin-syntax-dynamic-import": "^7.7.4",
+    "@babel/plugin-syntax-import-meta": "^7.7.4",
+    "@babel/preset-env": "^7.7.7",
+    "@babel/preset-react": "^7.7.4",
+    "babel-eslint": "^10.1.0",
+    "babel-jest": "^25.1.0",
+    "babel-loader": "^8.0.6",
     "eslint": "^7.0.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.14.0",
     "jest": "^23.6.0",
+    "lodash": "^4.17.15",
     "xmldom": "^0.1.27"
   },
   "jest": {
-    "testMatch": [
-      "<rootDir>/**/*-test.js"
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>[/\\\\](www|docs|node_modules|scripts|test)[/\\\\]"
+    ],
+    "testEnvironment": "node",
+    "testURL": "http://localhost",
+    "transform": {
+      "/node_modules/(?!codaco/ui).+\\.js$": "<rootDir>/node_modules/babel-jest",
+      "^.+\\.(js|jsx)$": "<rootDir>/node_modules/babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!@codaco/ui).+\\.js$"
     ]
   },
   "dependencies": {
-    "electron-log": "^4.1.2"
+    "@babel/runtime": "^7.8.3",
+    "archiver": "^4.0.1",
+    "electron-log": "^4.1.2",
+    "jszip": "^3.4.0"
   }
 }

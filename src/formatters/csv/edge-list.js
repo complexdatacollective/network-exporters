@@ -28,8 +28,8 @@ const { cellValue, csvEOL } = require('./csv');
  */
 const asEdgeList = (network, codebook, directed) => {
   const processedEdges = (network.edges || []).map((edge) => {
-    const variables = codebook && codebook.edge[edge.type] ?
-      codebook.edge[edge.type].variables : {};
+    const variables = codebook && codebook.edge[edge.type]
+      ? codebook.edge[edge.type].variables : {};
     return processEntityVariables(edge, variables);
   });
   if (directed === false) {
@@ -113,8 +113,8 @@ const toCSVStream = (edges, outStream) => {
         const values = attrNames.map((attrName) => {
           // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
           let value;
-          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty ||
-            attrName === 'to' || attrName === 'from') {
+          if (attrName === entityPrimaryKeyProperty || attrName === egoProperty
+            || attrName === 'to' || attrName === 'from') {
             value = convertUuidToDecimal(edge[attrName]);
           } else if (attrName === entityTypeProperty) {
             value = edge.type;
@@ -145,6 +145,7 @@ class EdgeListFormatter {
     const directed = exportOptions.globalOptions.useDirectedEdges;
     this.list = asEdgeList(data, codebook, directed);
   }
+
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
   }

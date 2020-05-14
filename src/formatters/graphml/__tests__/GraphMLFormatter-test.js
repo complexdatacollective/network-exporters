@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
-const { Writable } = require('stream');
-const GraphMLFormatter = require('../GraphMLFormatter');
+import { Writable } from 'stream';
+import GraphMLFormatter from '../GraphMLFormatter';
 
 const makeWriteableStream = () => {
   const chunks = [];

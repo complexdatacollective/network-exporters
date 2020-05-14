@@ -1,6 +1,11 @@
 import { merge, isEmpty } from 'lodash';
 import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook } from './formatters/network';
 import { sessionProperty, caseProperty, protocolProperty } from './utils/reservedAttributes';
+import AdjacencyMatrixFormatter from './formatters/csv/matrix';
+import AttributeListFormatter from './formatters/csv/attribute-list';
+import EgoListFormatter from './formatters/csv/ego-list';
+import EdgeListFormatter from './formatters/csv/edge-list';
+import GraphMLFormatter from './formatters/graphml/GraphMLFormatter';
 
 const fs = require('fs');
 const path = require('path');
@@ -10,7 +15,7 @@ const { flattenDeep } = require('lodash');
 const { archive } = require('./utils/archive');
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
 const { makeTempDir, removeTempDir } = require('./formatters/dir');
-const { getFileExtension, getFormatterClass, partitionByEdgeType } = require('./formatters/utils');
+const { getFileExtension, partitionByEdgeType } = require('./formatters/utils');
 
 const escapeFilePart = part => part.replace(/\W/g, '');
 
@@ -24,6 +29,28 @@ const makeFilename = (prefix, edgeType, exportFormat, extension) => {
     name += `_${escapeFilePart(edgeType)}`;
   }
   return `${name}${extension}`;
+};
+
+/**
+ * Formatter factory
+ * @param  {string} formatterType one of the `format`s
+ * @return {class}
+ */
+const getFormatterClass = (formatterType) => {
+  switch (formatterType) {
+    case 'graphml':
+      return GraphMLFormatter;
+    case 'adjacencyMatrix':
+      return AdjacencyMatrixFormatter;
+    case 'edgeList':
+      return EdgeListFormatter;
+    case 'attributeList':
+      return AttributeListFormatter;
+    case 'ego':
+      return EgoListFormatter;
+    default:
+      return null;
+  }
 };
 
 /**

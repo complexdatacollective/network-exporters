@@ -27,7 +27,9 @@ const cellValue = (value) => {
       serialized = value.toString(); // value will never be null here
     }
     return quoteValue(serialized);
-  } else if (typeof value === 'string') {
+  }
+
+  if (typeof value === 'string') {
     let escapedValue = value;
     if (value.indexOf('"') >= 0) {
       escapedValue = quoteValue(value);

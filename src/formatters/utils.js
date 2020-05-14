@@ -1,9 +1,4 @@
 import { entityAttributesProperty } from '../utils/reservedAttributes';
-import AdjacencyMatrixFormatter from './csv/matrix';
-import AttributeListFormatter from './csv/attribute-list';
-import EgoListFormatter from './csv/ego-list';
-import EdgeListFormatter from './csv/edge-list';
-import GraphMLFormatter from './graphml/GraphMLFormatter';
 
 /**
  * @module ExportUtils
@@ -73,28 +68,6 @@ export const getFileExtension = (formatterType) => {
     case 'attributeList':
     case 'ego':
       return extensions.csv;
-    default:
-      return null;
-  }
-};
-
-/**
- * Formatter factory
- * @param  {string} formatterType one of the `format`s
- * @return {class}
- */
-export const getFormatterClass = (formatterType) => {
-  switch (formatterType) {
-    case 'graphml':
-      return GraphMLFormatter;
-    case 'adjacencyMatrix':
-      return AdjacencyMatrixFormatter;
-    case 'edgeList':
-      return EdgeListFormatter;
-    case 'attributeList':
-      return AttributeListFormatter;
-    case 'ego':
-      return EgoListFormatter;
     default:
       return null;
   }

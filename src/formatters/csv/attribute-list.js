@@ -99,6 +99,7 @@ class AttributeListFormatter {
   constructor(data, codebook) {
     this.list = asAttributeList(data, codebook) || [];
   }
+
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
   }

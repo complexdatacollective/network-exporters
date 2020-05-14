@@ -1,7 +1,5 @@
+import { isNil } from 'lodash';
 import { entityAttributesProperty } from '../../utils/reservedAttributes';
-
-const { isNil } = require('lodash');
-
 
 export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 

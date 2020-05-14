@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const JSZip = require('jszip');
-const isElectron = require('./Environment').isElectron;
-const isCordova = require('./Environment').isCordova;
-const getEnvironment = require('./Environment').getEnvironment;
+const isElectron = require('./Environment').isElectron; // eslint-disable-line prefer-destructuring
+const isCordova = require('./Environment').isCordova; // eslint-disable-line prefer-destructuring
+const getEnvironment = require('./Environment').getEnvironment; // eslint-disable-line prefer-destructuring
 
 
 // const zlibFastestCompression = 1;
@@ -51,8 +51,7 @@ const archiveElectron = (sourcePaths, destinationPath) =>
 const getFile = (filename, fileSystem) => new Promise((resolve, reject) => {
   fileSystem.root.getFile(filename, { create: false, exclusive: false },
     fileEntry => resolve(fileEntry),
-    err => reject(err),
-  );
+    err => reject(err));
 });
 
 const createReader = fileEntry => new Promise((resolve, reject) => {
@@ -80,7 +79,8 @@ const archiveCordova = (sourcePaths, targetFileName, fileWriter, filesystem) => 
         reader.onloadend = data => resolve(zip.file(file.name, data.target.result));
         reader.onerror = err => reject(err);
         reader.readAsText(file);
-      })));
+      })),
+  );
 
   return new Promise((resolve, reject) => {
     Promise.all(promisedExports).then(() => {

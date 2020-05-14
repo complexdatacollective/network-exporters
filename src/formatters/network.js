@@ -2,8 +2,6 @@ import { entityPrimaryKeyProperty, egoProperty, sessionProperty } from '../utils
 import { getEntityAttributes } from './utils';
 
 const { includes } = require('lodash');
-const getQuery = require('../../networkQuery/query').default;
-const getFilter = require('../../networkQuery/filter').default;
 
 export const unionOfNetworks = sessions =>
   sessions.reduce((union, session) => {
@@ -27,7 +25,9 @@ export const processEntityVariables = (entity, variables) => ({
           }
         ), {});
         return { ...accumulatedAttributes, ...optionData };
-      } else if (variables[attributeName] && variables[attributeName].type === 'layout') {
+      }
+
+      if (variables[attributeName] && variables[attributeName].type === 'layout') {
         const layoutAttrs = {
           [`${attributeName}_x`]: attributeData && attributeData.x,
           [`${attributeName}_y`]: attributeData && attributeData.y,
@@ -35,32 +35,9 @@ export const processEntityVariables = (entity, variables) => ({
         return { ...accumulatedAttributes, ...layoutAttrs };
       }
       return { ...accumulatedAttributes, [attributeName]: attributeData };
-    }, {}),
+    }, {},
+  ),
 });
-
-/**
- * Run the query on each network; filter for those which meet the criteria (i.e., where the query
- * evaluates to `true`).
- * @param  {Object[]} networks An array of NC networks
- * @param  {Object} inclusionQueryConfig a query definition with asserting rules
- * @return {Object[]} a subset of the networks
- */
-export const filterNetworksWithQuery = (networks, inclusionQueryConfig) =>
-  (inclusionQueryConfig ? networks.filter(getQuery(inclusionQueryConfig)) : networks);
-
-/**
- * Filter each network based on the filter config.
- * @param  {Object[]} networks An array of NC networks
- * @param  {Object} filterConfig a filter definition with rules
- * @return {Object[]} a copy of `networks`, each possibly containing a subset of the original
- */
-export const filterNetworkEntities = (networks, filterConfig) => {
-  if (!filterConfig || !filterConfig.rules || !filterConfig.rules.length) {
-    return networks;
-  }
-  const filter = getFilter(filterConfig);
-  return networks.map(network => filter(network));
-};
 
 // Iterates a network, and adds an attribute to nodes and edges
 // that references the ego ID that nominated it
