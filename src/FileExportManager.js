@@ -187,12 +187,13 @@ class FileExportManager {
       // Then, insert a reference to the ego ID in to all nodes and edges
       .then(() => insertEgoIntoSessionNetworks(sessions))
       // Then, resequence IDs for this export
-      .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
+      .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
       // Then, process the union option: conflate into one massive network if enabled.
       // This should be changed to group by protocol
       // TODO: this needs to happen PER PROTOCOL so that meta data can be maintained
       .then(sessionsWithResequencedIDs =>
-        (this.exportOptions.unifyNetworks ? [unionOfNetworks(sessionsWithResequencedIDs)] : sessionsWithResequencedIDs))
+        (this.exportOptions.unifyNetworks
+          ? [unionOfNetworks(sessionsWithResequencedIDs)] : sessionsWithResequencedIDs))
       // Then, encode each network in each format specified, using the options for each.
       // Write the resulting file to the temp directory
       .then((sessionsWithUnion) => {

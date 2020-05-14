@@ -1,3 +1,4 @@
+/* eslint-disable no-underscore-dangle */
 import { entityPrimaryKeyProperty, egoProperty, sessionProperty } from '../utils/reservedAttributes';
 import { getEntityAttributes } from './utils';
 
@@ -52,7 +53,8 @@ export const insertNetworkEgo = session => (
     edges: session.edges.map(edge => (
       { [egoProperty]: session.ego[entityPrimaryKeyProperty], ...edge }
     )),
-    ego: { ...session.sessionVariables, ...session.ego }, // Spread session vars over ego so they can be encoded in file
+    // Spread session vars over ego so they can be encoded in file
+    ego: { ...session.sessionVariables, ...session.ego },
   }
 );
 
@@ -61,50 +63,45 @@ export const insertEgoIntoSessionNetworks = sessions => (
 );
 
 export const resequenceIds = (sessions) => {
-
   let resequencedId = 1;
-  const idMap = {}
-  const resequencedEntities = sessions.map(session => {
-    return {
-      ...session,
-      nodes: session.nodes.map(
-        node => {
-          const newID = resequencedId++;
-          idMap[node._uid] = newID;
-          return {
-            _id: newID,
-            ...node,
-          };
-        },
-      ),
-      edges: session.edges.map(
-        edge => {
-          const newID = resequencedId++;
-          idMap[edge._uid] = newID;
-          return {
-            _id: newID,
-            ...edge,
-          };
-        },
-      )
-    }
-  });
+  const idMap = {};
+  const resequencedEntities = sessions.map(session => ({
+    ...session,
+    nodes: session.nodes.map(
+      (node) => {
+        resequencedId += 1;
+        idMap[node._uid] = resequencedId;
+        return {
+          _id: resequencedId,
+          ...node,
+        };
+      },
+    ),
+    edges: session.edges.map(
+      (edge) => {
+        const newID = resequencedId + 1;
+        idMap[edge._uid] = newID;
+        return {
+          _id: newID,
+          ...edge,
+        };
+      },
+    ),
+  }));
 
-  const resequencedEdges = resequencedEntities.map(session => {
-    return {
-      ...session,
-      edges: session.edges.map(
-        edge => ({
-            ...edge,
-            _from: idMap[edge.from],
-            _to: idMap[edge.to],
-        }),
-      )
-    }
-  });
+  const resequencedEdges = resequencedEntities.map(session => ({
+    ...session,
+    edges: session.edges.map(
+      edge => ({
+        ...edge,
+        _from: idMap[edge.from],
+        _to: idMap[edge.to],
+      }),
+    ),
+  }));
+
   return resequencedEdges;
-
-}
+};
 
 export const transposedCodebookVariables = (sectionCodebook, definition) => {
   if (!definition.variables) { // not required for edges
