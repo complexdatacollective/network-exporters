@@ -58,6 +58,7 @@
     "archiver": "^4.0.1",
     "electron-log": "^4.1.2",
     "jszip": "^3.4.0",
+    "sanitize-filename": "^1.6.3",
     "uuid": "^8.0.0"
   }
 }

@@ -11,6 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('electron-log');
 const { flattenDeep } = require('lodash');
+const sanitizeFilename = require('sanitize-filename');
 
 const { archive } = require('./utils/archive');
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
@@ -218,7 +219,11 @@ class FileExportManager {
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
               partitionByEdgeType(session, format).map((partitionedNetwork) => {
                 const protocol = protocols[session[protocolProperty]];
-                const prefix = session[sessionProperty] ? `${session.sessionVariables[caseProperty]}_${session[sessionProperty]}` : protocol.name;
+
+                // Strip illegal characters from caseID
+                const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
+
+                const prefix = session[sessionProperty] ? `${sanitizedCaseID}_${session[sessionProperty]}` : protocol.name;
                 // gather one promise for each exported file
                 return exportFile(
                   prefix,
