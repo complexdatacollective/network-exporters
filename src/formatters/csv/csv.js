@@ -6,6 +6,24 @@
 const csvEOL = '\r\n'; // always this, not os-specific
 
 /**
+ * Function to determine if a given value contains characters that are
+ * difficult to encode, and should be quoted.
+ * @param  {string} value a string to be considered
+ * @return {boolean} if the string contains difficult to encode characters
+ */
+const containsDifficultCharacters = (string) => {
+  const difficultCharacters = [
+    '"', // Single quote
+    ',', // Comma
+    '\r', // line ending
+    '\n', // carriage return
+  ];
+
+  return difficultCharacters.some(character => string.includes(character));
+};
+
+
+/**
  * @param  {string} value a string potentially containing quotes
  * @return {string} a quote-delimited string, with internal quotation marks escaped (as '""')
  */
@@ -31,10 +49,8 @@ const cellValue = (value) => {
 
   if (typeof value === 'string') {
     let escapedValue = value;
-    if (value.indexOf('"') >= 0) {
+    if (containsDifficultCharacters(value)) {
       escapedValue = quoteValue(value);
-    } else if (escapedValue.indexOf(',') >= 0) {
-      escapedValue = `"${escapedValue}"`; // values containing commas need quotes
     }
     return escapedValue;
   }
