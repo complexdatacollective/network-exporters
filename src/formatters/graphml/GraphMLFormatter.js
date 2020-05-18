@@ -1,11 +1,18 @@
 import { Readable } from 'stream';
 import { graphMLGenerator } from './createGraphML';
 
+/** Class providing a graphML formatter. */
 class GraphMLFormatter {
+  /**
+   * Create a graphML formatter.
+   * @param {Object} network - a NC format network object.
+   * @param {Object} codebook - the codebook for this network.
+   * @param {Object} exportOptions - global export options object from FileExportManager.
+   */
   constructor(network, codebook, exportOptions) {
     this.network = network;
     this.codebook = codebook;
-    this.useDirectedEdges = exportOptions.globalOptions.useDirectedEdges;
+    this.exportOptions = exportOptions;
   }
 
   streamToString = (stream) => {
@@ -17,11 +24,14 @@ class GraphMLFormatter {
     });
   }
 
+  /**
+   * A (unused?) method allowing writing the file to a string.
+   */
   writeToString() {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.useDirectedEdges,
+      this.exportOptions,
     );
     const inStream = new Readable({
       read(/* size */) {
@@ -37,15 +47,20 @@ class GraphMLFormatter {
     return this.streamToString(inStream);
   }
 
+  /**
+   * Write the file to a stream one chunk at a time.
+   * @param {Stream} outStream
+   */
   writeToStream(outStream) {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.useDirectedEdges,
+      this.exportOptions,
     );
     const inStream = new Readable({
       read(/* size */) {
         const { done, value } = generator.next();
+        console.log(value);
         if (done) {
           this.push(null);
         } else {

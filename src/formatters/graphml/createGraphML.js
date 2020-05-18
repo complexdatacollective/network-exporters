@@ -8,7 +8,7 @@ import {
   codebookExists,
   VariableType,
 } from './helpers';
-import { entityAttributesProperty, entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty, sessionProperty, remoteProtocolProperty } from '../../utils/reservedAttributes';
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
@@ -27,21 +27,40 @@ if (typeof window !== 'undefined' && window.DOMParser && window.XMLSerializer) {
 
 const eol = '\n';
 
-const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>
-  <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
-           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-           xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
-           http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
+const getNCMetaAttributes = (sessionVariables) => {
+  const attributesToMap = [
+    caseProperty,
+    sessionProperty,
+    remoteProtocolProperty,
+  ];
 
-const getGraphHeader = (useDirectedEdges) => {
+  return attributesToMap.map(attribute => (`nc:${attribute}="${sessionVariables[attribute]}"${eol}`)).join('');
+}
+
+const getXmlHeader = (exportOptions, sessionVariables) => {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+  <graphml
+    xmlns="http://graphml.graphdrawing.org/xmlns"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
+    xmlns:nc="http://schema.networkcanvas.com/xmlns"
+    ${ exportOptions.exportGraphML.includeNCMeta ? getNCMetaAttributes(sessionVariables) : '' }>${eol}`;
+}
+
+
+// Use exportOptions.defaultOptions from FileExportManager to determine parameters
+// for edge direction.
+const getGraphHeader = ({ globalOptions: { useDirectedEdges } }) => {
   const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
   return `<graph edgedefault="${edgeDefault}">${eol}`;
 };
 
 const xmlFooter = `</graph>${eol}</graphml>${eol}`;
 
-const setUpXml = (useDirectedEdges) => {
-  const graphMLOutline = `${xmlHeader}${getGraphHeader(useDirectedEdges)}${xmlFooter}`;
+// Use exportOptions from FileExportManager to determine XML properties
+const setUpXml = (exportOptions, sessionVariables) => {
+  const graphMLOutline = `${getXmlHeader(exportOptions, sessionVariables)}${getGraphHeader(exportOptions)}${xmlFooter}`;
+  console.log(graphMLOutline);
   return (new globalContext.DOMParser()).parseFromString(graphMLOutline, 'text/xml');
 };
 
@@ -50,7 +69,7 @@ const setUpXml = (useDirectedEdges) => {
 //                  codebook: `{ fragment: <DocumentFragment>, missingVariables: [] }`.
 const generateKeyElements = (
   document, // the XML ownerDocument
-  entities, // networkData.nodes or edges
+  entities, // network.nodes or edges
   type, // 'node' or 'edge'
   excludeList, // Variables to exlude
   codebook, // codebook
@@ -272,15 +291,20 @@ const generateDataElements = (
   return fragment;
 };
 
-// Generator to supply XML content in chunks to both string and stream producers
-export function* graphMLGenerator(networkData, codebook, useDirectedEdges = false) {
+/**
+ * Generator function to supply XML content in chunks to both string and stream producers
+ * @param {*} network
+ * @param {*} codebook
+ * @param {*} exportOptions
+ */
+export function* graphMLGenerator(network, codebook, exportOptions) {
   const serializer = new globalContext.XMLSerializer();
   const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
+  yield getXmlHeader(exportOptions, network.sessionVariables);
 
-  yield xmlHeader;
+  const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
 
-  const xmlDoc = setUpXml(useDirectedEdges);
-
+  console.log(xmlDoc);
   // find the first variable of type layout
   let layoutVariable;
   forInRight(codebook.node, (value) => {
@@ -322,14 +346,14 @@ export function* graphMLGenerator(networkData, codebook, useDirectedEdges = fals
   const {
     missingVariables: missingNodeVars,
     fragment: nodeKeyFragment,
-  } = generateNodeKeys(networkData.nodes);
+  } = generateNodeKeys(network.nodes);
   yield serialize(nodeKeyFragment);
 
   // generate keys for edges and add to keys for nodes
   const {
     missingVariables: missingEdgeVars,
     fragment: edgeKeyFragment,
-  } = generateEdgeKeys(networkData.edges);
+  } = generateEdgeKeys(network.edges);
   yield serialize(edgeKeyFragment); // after we've potentially thrown missingVariables
 
   const missingVariables = [...missingNodeVars, ...missingEdgeVars];
@@ -341,16 +365,16 @@ export function* graphMLGenerator(networkData, codebook, useDirectedEdges = fals
     // return null;
   }
 
-  yield getGraphHeader(useDirectedEdges);
+  yield getGraphHeader(exportOptions);
 
   // add nodes and edges to graph
-  for (let i = 0; i < networkData.nodes.length; i += 100) {
-    const nodeFragment = generateNodeElements(networkData.nodes.slice(i, i + 100));
+  for (let i = 0; i < network.nodes.length; i += 100) {
+    const nodeFragment = generateNodeElements(network.nodes.slice(i, i + 100));
     yield serialize(nodeFragment);
   }
 
-  for (let i = 0; i < networkData.edges.length; i += 100) {
-    const edgeFragment = generateEdgeElements(networkData.edges.slice(i, i + 100));
+  for (let i = 0; i < network.edges.length; i += 100) {
+    const edgeFragment = generateEdgeElements(network.edges.slice(i, i + 100));
     yield serialize(edgeFragment);
   }
 
@@ -359,17 +383,17 @@ export function* graphMLGenerator(networkData, codebook, useDirectedEdges = fals
 
 /**
  * Network Canvas interface for ExportData
- * @param  {Object} networkData network from redux state
+ * @param  {Object} network network from redux state
  * @param  {Object} codebook from protocol in redux state
  * @param  {Function} onError
  * @param  {Function} saveFile injected SaveFile dependency (called with the xml contents)
  * @param  {String} filePrefix to use for file name (defaults to 'networkcanvas')
  * @return {} the return value from saveFile
  */
-export const createGraphML = (networkData, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
+export const createGraphML = (network, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
   let xmlString = '';
   try {
-    for (const chunk of graphMLGenerator(networkData, codebook)) { // eslint-disable-line
+    for (const chunk of graphMLGenerator(network, codebook)) { // eslint-disable-line
       xmlString += chunk;
     }
   } catch (err) {

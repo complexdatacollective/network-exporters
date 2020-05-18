@@ -143,15 +143,12 @@ export const transposedCodebookVariables = (sectionCodebook, definition) => {
     return sectionCodebook;
   }
 
-  const displayVariable = definition.variables[definition.displayVariable];
-
   const variables = Object.values(definition.variables).reduce((acc, variable) => {
     acc[variable.name] = variable;
     return acc;
   }, {});
   sectionCodebook[definition.name] = { // eslint-disable-line no-param-reassign
     ...definition,
-    displayVariable: displayVariable && displayVariable.name,
     variables,
   };
   return sectionCodebook;

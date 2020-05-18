@@ -159,6 +159,8 @@ class FileExportManager {
    * @param {*} destinationPath path to write the resulting files to
    */
   exportSessions(sessions, protocols, destinationPath) {
+
+    console.log('exportsessions', sessions, protocols);
     // Reject if required parameters aren't provided
     if (
       (!sessions && !isEmpty(sessions))
@@ -221,12 +223,13 @@ class FileExportManager {
               // => [ [[n1.matrix.knows.csv, n1.matrix.likes.csv], [n1.attrs.csv]],
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
               partitionByEdgeType(session, format).map((partitionedNetwork) => {
-                const protocol = protocols[session[protocolProperty]];
+                console.log(partitionedNetwork);
+                const protocol = protocols[session.sessionVariables[protocolProperty]];
 
                 // Strip illegal characters from caseID
                 const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
 
-                const prefix = session[sessionProperty] ? `${sanitizedCaseID}_${session[sessionProperty]}` : protocol.name;
+                const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : protocol.name;
                 // gather one promise for each exported file
                 return exportFile(
                   prefix,
