@@ -1,5 +1,5 @@
 import { merge, isEmpty } from 'lodash';
-import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook, resequenceIds } from './formatters/network';
+import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook, resequenceIds, partitionByEdgeType } from './formatters/network';
 import { sessionProperty, caseProperty, protocolProperty } from './utils/reservedAttributes';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
@@ -16,7 +16,7 @@ const sanitizeFilename = require('sanitize-filename');
 const { archive } = require('./utils/archive');
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
 const { makeTempDir, removeTempDir } = require('./formatters/dir');
-const { getFileExtension, partitionByEdgeType } = require('./formatters/utils');
+const { getFileExtension } = require('./formatters/utils');
 
 const escapeFilePart = part => part.replace(/\W/g, '');
 
@@ -56,13 +56,13 @@ const getFormatterClass = (formatterType) => {
 
 /**
  * Export a single (CSV or graphml) file
- * @param  {string} namePrefix
- * @param  {formats} exportFormat
+ * @param  {string} namePrefix used to construct the filename
+ * @param  {string} edgeType an edge type - used by CSV formatters
+ * @param  {formats} exportFormat a special config object that specifies the formatter class
  * @param  {string} outDir directory where we should write the file
  * @param  {object} network NC-formatted network `({ nodes, edges, ego })`
- * @param  {object} [options]
- * @param  {boolean} [options.useDirectedEdges=false] true to force directed edges
- * @param  {Object} [options.codebook] needed for graphML export
+ * @param  {Object} codebook needed to lookup variable types for encoding
+ * @param  {Object} exportOptions the new style configuration object, passed through to the formatter
  * @return {Promise} promise decorated with an `abort` method.
  *                           If aborted, the returned promise will never settle.
  * @private
@@ -79,10 +79,13 @@ const exportFile = (
   const Formatter = getFormatterClass(exportFormat);
   const extension = getFileExtension(exportFormat);
 
+  // TODO: complete validation of parameters
   if (!Formatter || !extension) {
     return Promise.reject(new RequestError(`Invalid export format ${exportFormat}`));
   }
 
+  // Establish variables to hold the stream controller (needed to handle abort method)
+  // and the strem itself.
   let streamController;
   let writeStream;
 
@@ -97,8 +100,7 @@ const exportFile = (
     writeStream.on('error', (err) => {
       reject(err);
     });
-    // TODO: on('ready')?
-    logger.debug(`Writing file ${filepath}`);
+
     streamController = formatter.writeToStream(writeStream);
   });
 
@@ -125,7 +127,7 @@ class FileExportManager {
     };
 
     const defaultCSVOptions = {
-      adjacencyMatrix: false,
+      adjacencyMatrix: true,
       attributeList: true,
       edgeList: true,
       egoAttributeList: true,
@@ -135,8 +137,8 @@ class FileExportManager {
       exportGraphML: defaultGraphMLOptions,
       exportCSV: defaultCSVOptions,
       globalOptions: {
-        unifyNetworks: false,
-        useDirectedEdges: false,
+        unifyNetworks: false, // TODO
+        useDirectedEdges: false, // TODO
       },
     };
 
@@ -190,7 +192,6 @@ class FileExportManager {
       // Then, resequence IDs for this export
       .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
       // Then, process the union option: conflate into one massive network if enabled.
-      // This should be changed to group by protocol
       // TODO: this needs to happen PER PROTOCOL so that meta data can be maintained
       .then(sessionsWithResequencedIDs =>
         (this.exportOptions.unifyNetworks
@@ -202,7 +203,9 @@ class FileExportManager {
           // Export every network
           // => [n1, n2]
           sessionsWithUnion.map((session) => {
-            // TODO: update this to properly detect types
+
+            // Translate our new configuration object back into the old syntax
+            // TODO: update this to use the new configuration object directly.
             const exportFormats = [
               'ego',
               ...(this.exportOptions.exportGraphML ? ['graphml'] : []),

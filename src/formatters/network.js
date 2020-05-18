@@ -1,5 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-import { entityPrimaryKeyProperty, egoProperty, sessionProperty } from '../utils/reservedAttributes';
+import { entityPrimaryKeyProperty, egoProperty, sessionProperty, exportIDProperty } from '../utils/reservedAttributes';
 import { getEntityAttributes } from './utils';
 
 const { includes } = require('lodash');
@@ -62,17 +62,60 @@ export const insertEgoIntoSessionNetworks = sessions => (
   sessions.map(session => insertNetworkEgo(session))
 );
 
+/**
+ * Partition a network as needed for edge-list and adjacency-matrix formats.
+ * Each network contains a reference to the original nodes, with a subset of edges
+ * based on the type.
+ *
+ * @param  {Array} network in NC format
+ * @param  {string} format one of `formats`
+ * @return {Array} An array of networks, partitioned by edge type. Each network object is decorated
+ *                 with an additional `edgeType` prop to facilitate format naming.
+ */
+export const partitionByEdgeType = (network, format) => {
+  switch (format) {
+    case 'graphml':
+    case 'ego':
+    case 'attributeList':
+      return [network];
+    case 'edgeList':
+    case 'adjacencyMatrix': {
+      if (!network.edges.length) {
+        return [network];
+      }
+
+      const { nodes } = network;
+      const partitionedEdgeMap = network.edges.reduce((edgeMap, edge) => {
+        edgeMap[edge.type] = edgeMap[edge.type] || []; // eslint-disable-line no-param-reassign
+        edgeMap[edge.type].push(edge);
+        return edgeMap;
+      }, {});
+
+      return Object.entries(partitionedEdgeMap).map(([edgeType, edges]) => ({
+        nodes,
+        edges,
+        edgeType,
+      }));
+    }
+    default:
+      throw new Error('Unexpected format', format);
+  }
+};
+
+
+// Iterates sessions and adds an automatically incrementing counter to
+// allow for human readable IDs
 export const resequenceIds = (sessions) => {
   let resequencedId = 0;
-  const idMap = {};
+  const IDLookupMap = {}; // Create a lookup object { [oldID] -> [incrementedID] }
   const resequencedEntities = sessions.map(session => ({
     ...session,
     nodes: session.nodes.map(
       (node) => {
         resequencedId += 1;
-        idMap[node._uid] = resequencedId;
+        IDLookupMap[node.entityPrimaryKeyProperty] = resequencedId;
         return {
-          _id: resequencedId,
+          [exportIDProperty]: resequencedId,
           ...node,
         };
       },
@@ -80,27 +123,18 @@ export const resequenceIds = (sessions) => {
     edges: session.edges.map(
       (edge) => {
         resequencedId += 1;
-        idMap[edge._uid] = resequencedId;
+        IDLookupMap[edge.entityPrimaryKeyProperty] = resequencedId;
         return {
-          _id: resequencedId,
+          [exportIDProperty]: resequencedId,
+          _from: IDLookupMap[edge.from],
+          _to: IDLookupMap[edge.to],
           ...edge,
         };
       },
     ),
   }));
 
-  const resequencedEdges = resequencedEntities.map(session => ({
-    ...session,
-    edges: session.edges.map(
-      edge => ({
-        ...edge,
-        _from: idMap[edge.from],
-        _to: idMap[edge.to],
-      }),
-    ),
-  }));
-
-  return resequencedEdges;
+  return resequencedEntities;
 };
 
 export const transposedCodebookVariables = (sectionCodebook, definition) => {

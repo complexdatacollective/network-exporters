@@ -2,8 +2,8 @@ import { Readable } from 'stream';
 import { graphMLGenerator } from './createGraphML';
 
 class GraphMLFormatter {
-  constructor(data, codebook, exportOptions) {
-    this.network = data;
+  constructor(network, codebook, exportOptions) {
+    this.network = network;
     this.codebook = codebook;
     this.useDirectedEdges = exportOptions.globalOptions.useDirectedEdges;
   }
