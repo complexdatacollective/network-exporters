@@ -3,6 +3,19 @@ import { entityAttributesProperty } from '../../utils/reservedAttributes';
 
 export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
+// Gephi does not support long lines in graphML, meaning we need to "beautify" the output
+export const formatXml = (xml, tab) => { // tab = optional indent value, default is tab (\t)
+  console.log('formatXML');
+  var formatted = '', indent= '';
+  tab = tab || '\t';
+  xml.split(/>\s*</).forEach(function(node) {
+      if (node.match( /^\/\w/ )) indent = indent.substring(tab.length); // decrease indent by one 'tab'
+      formatted += indent + '<' + node + '>\r\n';
+      if (node.match( /^<?\w[^>]*[^\/]$/ )) indent += tab;              // increase indent
+  });
+  return formatted.substring(1, formatted.length-3);
+}
+
 // TODO: VariableType[Values] is shared with 'protocol-consts' in NC
 export const VariableType = Object.freeze({
   boolean: 'boolean',

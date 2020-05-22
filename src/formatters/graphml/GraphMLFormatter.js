@@ -60,7 +60,6 @@ class GraphMLFormatter {
     const inStream = new Readable({
       read(/* size */) {
         const { done, value } = generator.next();
-        console.log(value);
         if (done) {
           this.push(null);
         } else {

@@ -5,8 +5,8 @@ import {
   createDataElement,
   getGraphMLTypeForKey,
   getTypeFromCodebook,
-  codebookExists,
   VariableType,
+  formatXml,
 } from './helpers';
 import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty, sessionProperty, remoteProtocolProperty } from '../../utils/reservedAttributes';
 
@@ -60,25 +60,24 @@ const xmlFooter = `</graph>${eol}</graphml>${eol}`;
 // Use exportOptions from FileExportManager to determine XML properties
 const setUpXml = (exportOptions, sessionVariables) => {
   const graphMLOutline = `${getXmlHeader(exportOptions, sessionVariables)}${getGraphHeader(exportOptions)}${xmlFooter}`;
-  console.log(graphMLOutline);
   return (new globalContext.DOMParser()).parseFromString(graphMLOutline, 'text/xml');
 };
 
 // <key> elements provide the type definitions for GraphML data elements
-// @return {Object} a fragment to insert, and any variables that were missing from the variable
-//                  codebook: `{ fragment: <DocumentFragment>, missingVariables: [] }`.
+// @return {Object} a fragment to insert
+//                  codebook: `{ fragment: <DocumentFragment> }`.
 const generateKeyElements = (
   document, // the XML ownerDocument
   entities, // network.nodes or edges
   type, // 'node' or 'edge'
-  excludeList, // Variables to exlude
+  excludeList, // Variables to exlcude
   codebook, // codebook
   layoutVariable, // boolean value uses for edges?
+  serialize, // serialize function
 ) => {
-  const fragment = document.createDocumentFragment();
+  let fragment = '';
 
   // generate keys for attributes
-  const missingVariables = [];
   const done = [];
 
   // add keys for gephi positions
@@ -88,13 +87,13 @@ const generateKeyElements = (
     xElement.setAttribute('attr.name', 'x');
     xElement.setAttribute('attr.type', 'double');
     xElement.setAttribute('for', type);
-    fragment.appendChild(xElement);
+    fragment += `${serialize(xElement)}`;
     const yElement = document.createElement('key');
     yElement.setAttribute('id', 'y');
     yElement.setAttribute('attr.name', 'y');
     yElement.setAttribute('attr.type', 'double');
     yElement.setAttribute('for', type);
-    fragment.appendChild(yElement);
+    fragment += `${serialize(yElement)}`;
   }
 
   if (type === 'edge') {
@@ -103,7 +102,7 @@ const generateKeyElements = (
     label.setAttribute('attr.name', 'label');
     label.setAttribute('attr.type', 'string');
     label.setAttribute('for', type);
-    fragment.appendChild(label);
+    fragment += `${serialize(label)}`;
   }
 
   // add type
@@ -113,14 +112,14 @@ const generateKeyElements = (
     edgeType.setAttribute('attr.name', 'networkCanvasEdgeType');
     edgeType.setAttribute('attr.type', 'string');
     edgeType.setAttribute('for', type);
-    fragment.appendChild(edgeType);
+    fragment += `${serialize(edgeType)}`;
   } else {
     const nodeType = document.createElement('key');
     nodeType.setAttribute('id', 'networkCanvasNodeType');
     nodeType.setAttribute('attr.name', 'networkCanvasNodeType');
     nodeType.setAttribute('attr.type', 'string');
     nodeType.setAttribute('for', type);
-    fragment.appendChild(nodeType);
+    fragment += `${serialize(nodeType)}`;
   }
 
   entities.forEach((element) => {
@@ -136,10 +135,6 @@ const generateKeyElements = (
         keyElement.setAttribute('id', keyName);
         keyElement.setAttribute('attr.name', keyName);
 
-        if (!codebookExists(codebook, type, element, key)) {
-          missingVariables.push(`"${key}" in ${type}.${element.type}`);
-        }
-
         const variableType = getTypeFromCodebook(codebook, type, element, key);
         switch (variableType) {
           case VariableType.boolean:
@@ -152,7 +147,7 @@ const generateKeyElements = (
             break;
           }
           case VariableType.layout: {
-            // special handling for locations
+            // special handling for layout variables
             keyElement.setAttribute('attr.name', `${keyName}Y`);
             keyElement.setAttribute('id', `${keyName}Y`);
             keyElement.setAttribute('attr.type', 'double');
@@ -161,7 +156,7 @@ const generateKeyElements = (
             keyElement2.setAttribute('attr.name', `${keyName}X`);
             keyElement2.setAttribute('attr.type', 'double');
             keyElement2.setAttribute('for', type);
-            fragment.appendChild(keyElement2);
+            fragment += `${serialize(keyElement2)}`;
             break;
           }
           case VariableType.categorical: {
@@ -177,7 +172,7 @@ const generateKeyElements = (
                 keyElement2.setAttribute('attr.name', `${keyName}_${option.value}`);
                 keyElement2.setAttribute('attr.type', 'boolean');
                 keyElement2.setAttribute('for', type);
-                fragment.appendChild(keyElement2);
+                fragment += `${serialize(keyElement2)}`;
               }
             });
             break;
@@ -189,15 +184,13 @@ const generateKeyElements = (
             keyElement.setAttribute('attr.type', 'string');
         }
         keyElement.setAttribute('for', type);
-        fragment.appendChild(keyElement);
+        console.log('key element is:', keyElement);
+        fragment += `${serialize(keyElement)}`;
         done.push(keyName);
       }
     });
   });
-  return {
-    fragment,
-    missingVariables,
-  };
+  return fragment;
 };
 
 // @return {DocumentFragment} a fragment containing all XML elements for the supplied dataList
@@ -208,8 +201,9 @@ const generateDataElements = (
   excludeList, // Attributes to exclude lookup of in codebook
   codebook, // Copy of codebook
   layoutVariable, // Primary layout variable. Null for edges
+  serialize, // serialize function
 ) => {
-  const fragment = document.createDocumentFragment();
+  let fragment = '';
 
   dataList.forEach((dataElement) => {
     const domElement = document.createElement(type);
@@ -225,7 +219,6 @@ const generateDataElements = (
       domElement.setAttribute('source', dataElement.from);
       domElement.setAttribute('target', dataElement.to);
     }
-    fragment.appendChild(domElement);
 
     if (type === 'edge') {
       const label = codebook && codebook[type]
@@ -286,6 +279,8 @@ const generateDataElements = (
       domElement.appendChild(createDataElement(document, 'x', nodeAttrs[layoutVariable].x * canvasWidth));
       domElement.appendChild(createDataElement(document, 'y', (1.0 - nodeAttrs[layoutVariable].y) * canvasHeight));
     }
+
+    fragment += `${formatXml(serialize(domElement))}`;
   });
 
   return fragment;
@@ -303,8 +298,6 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
   yield getXmlHeader(exportOptions, network.sessionVariables);
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
-
-  console.log(xmlDoc);
   // find the first variable of type layout
   let layoutVariable;
   forInRight(codebook.node, (value) => {
@@ -318,6 +311,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     [entityPrimaryKeyProperty],
     codebook,
     layoutVariable,
+    serialize,
   );
   const generateEdgeKeys = edges => generateKeyElements(
     xmlDoc,
@@ -325,6 +319,8 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     'edge',
     [entityPrimaryKeyProperty, 'from', 'to', 'type'],
     codebook,
+    null,
+    serialize,
   );
   const generateNodeElements = nodes => generateDataElements(
     xmlDoc,
@@ -333,6 +329,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     [entityPrimaryKeyProperty, entityAttributesProperty],
     codebook,
     layoutVariable,
+    serialize,
   );
   const generateEdgeElements = edges => generateDataElements(
     xmlDoc,
@@ -340,73 +337,59 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     'edge',
     [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type'],
     codebook,
+    null,
+    serialize,
   );
 
   // generate keys for nodes
-  const {
-    missingVariables: missingNodeVars,
-    fragment: nodeKeyFragment,
-  } = generateNodeKeys(network.nodes);
-  yield serialize(nodeKeyFragment);
+  yield generateNodeKeys(network.nodes);
 
   // generate keys for edges and add to keys for nodes
-  const {
-    missingVariables: missingEdgeVars,
-    fragment: edgeKeyFragment,
-  } = generateEdgeKeys(network.edges);
-  yield serialize(edgeKeyFragment); // after we've potentially thrown missingVariables
-
-  const missingVariables = [...missingNodeVars, ...missingEdgeVars];
-  if (missingVariables.length > 0) {
-    // hard fail if checking the codebook fails
-    // remove this to fall back to using "text" for unknowns
-    // throw new Error(`The codebook seems to be missing
-    // "type" of: ${join(missingVariables, ', ')}.`);
-    // return null;
-  }
+  yield generateEdgeKeys(network.edges);
 
   yield getGraphHeader(exportOptions);
 
   // add nodes and edges to graph
   for (let i = 0; i < network.nodes.length; i += 100) {
-    const nodeFragment = generateNodeElements(network.nodes.slice(i, i + 100));
-    yield serialize(nodeFragment);
+    yield generateNodeElements(network.nodes.slice(i, i + 100));
   }
 
   for (let i = 0; i < network.edges.length; i += 100) {
-    const edgeFragment = generateEdgeElements(network.edges.slice(i, i + 100));
-    yield serialize(edgeFragment);
+    yield generateEdgeElements(network.edges.slice(i, i + 100));
   }
 
   yield xmlFooter;
 }
 
-/**
- * Network Canvas interface for ExportData
- * @param  {Object} network network from redux state
- * @param  {Object} codebook from protocol in redux state
- * @param  {Function} onError
- * @param  {Function} saveFile injected SaveFile dependency (called with the xml contents)
- * @param  {String} filePrefix to use for file name (defaults to 'networkcanvas')
- * @return {} the return value from saveFile
- */
-export const createGraphML = (network, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
-  let xmlString = '';
-  try {
-    for (const chunk of graphMLGenerator(network, codebook)) { // eslint-disable-line
-      xmlString += chunk;
-    }
-  } catch (err) {
-    onError(err);
-    return null;
-  }
-  return saveFile(
-    xmlString,
-    onError,
-    'graphml',
-    ['graphml'],
-    `${filePrefix}.graphml`,
-    'text/xml',
-    { message: 'Your network canvas graphml file.', subject: 'network canvas export' },
-  );
-};
+// /**
+//  * Network Canvas interface for ExportData
+//  * @param  {Object} network network from redux state
+//  * @param  {Object} codebook from protocol in redux state
+//  * @param  {Function} onError
+//  * @param  {Function} saveFile injected SaveFile dependency (called with the xml contents)
+//  * @param  {String} filePrefix to use for file name (defaults to 'networkcanvas')
+//  * @return {} the return value from saveFile
+//  */
+// export const createGraphML = (network, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
+//   let xmlString = '';
+//   try {
+//     for (const chunk of graphMLGenerator(network, codebook)) { // eslint-disable-line
+//       xmlString += chunk;
+//     }
+//   } catch (err) {
+//     onError(err);
+//     return null;
+//   }
+
+//   const formattedString = formatXml(xmlString);
+//   console.log(formattedString);
+//   return saveFile(
+//     formattedString,
+//     onError,
+//     'graphml',
+//     ['graphml'],
+//     `${filePrefix}.graphml`,
+//     'text/xml',
+//     { message: 'Your network canvas graphml file.', subject: 'network canvas export' },
+//   );
+// };

@@ -160,7 +160,6 @@ class FileExportManager {
    */
   exportSessions(sessions, protocols, destinationPath) {
 
-    console.log('exportsessions', sessions, protocols);
     // Reject if required parameters aren't provided
     if (
       (!sessions && !isEmpty(sessions))
@@ -223,7 +222,6 @@ class FileExportManager {
               // => [ [[n1.matrix.knows.csv, n1.matrix.likes.csv], [n1.attrs.csv]],
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
               partitionByEdgeType(session, format).map((partitionedNetwork) => {
-                console.log(partitionedNetwork);
                 const protocol = protocols[session.sessionVariables[protocolProperty]];
 
                 // Strip illegal characters from caseID
