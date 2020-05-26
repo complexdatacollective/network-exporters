@@ -1,6 +1,6 @@
 import { merge, isEmpty } from 'lodash';
 import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook, resequenceIds, partitionByEdgeType } from './formatters/network';
-import { sessionProperty, caseProperty, protocolProperty } from './utils/reservedAttributes';
+import { sessionProperty, caseProperty, ncProtocolProperty } from './utils/reservedAttributes';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
 import EgoListFormatter from './formatters/csv/ego-list';
@@ -222,12 +222,12 @@ class FileExportManager {
               // => [ [[n1.matrix.knows.csv, n1.matrix.likes.csv], [n1.attrs.csv]],
               //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
               partitionByEdgeType(session, format).map((partitionedNetwork) => {
-                const protocol = protocols[session.sessionVariables[protocolProperty]];
+                const protocol = protocols[session.sessionVariables[ncProtocolProperty]];
 
                 // Strip illegal characters from caseID
                 const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
 
-                const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : protocol.name;
+                const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : sanitizeFilename(protocol.name);
                 // gather one promise for each exported file
                 return exportFile(
                   prefix,

@@ -8,7 +8,17 @@ import {
   VariableType,
   formatXml,
 } from './helpers';
-import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty, sessionProperty, remoteProtocolProperty } from '../../utils/reservedAttributes';
+import {
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  caseProperty,
+  sessionProperty,
+  remoteProtocolProperty,
+  sessionExportTimeProperty,
+  sessionFinishTimeProperty,
+  sessionStartTimeProperty,
+  ncProtocolName,
+} from '../../utils/reservedAttributes';
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
@@ -27,24 +37,29 @@ if (typeof window !== 'undefined' && window.DOMParser && window.XMLSerializer) {
 
 const eol = '\n';
 
-const getNCMetaAttributes = (sessionVariables) => {
-  const attributesToMap = [
-    caseProperty,
-    sessionProperty,
-    remoteProtocolProperty,
-  ];
-
-  return attributesToMap.map(attribute => (`nc:${attribute}="${sessionVariables[attribute]}"${eol}`)).join('');
-}
-
+// If includeNCMeta is true, include our custom XML schema
 const getXmlHeader = (exportOptions, sessionVariables) => {
+  if (!exportOptions.exportGraphML.includeNCMeta) {
+    return `<?xml version="1.0" encoding="UTF-8"?>
+    <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
+             http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
+  }
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-  <graphml
-    xmlns="http://graphml.graphdrawing.org/xmlns"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
-    xmlns:nc="http://schema.networkcanvas.com/xmlns"
-    ${ exportOptions.exportGraphML.includeNCMeta ? getNCMetaAttributes(sessionVariables) : '' }>${eol}`;
+    <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
+             xmlns:nc="http://schema.networkcanvas.com/xmlns"
+             nc:caseID="${sessionVariables[caseProperty]}"
+             nc:sessionUUID="${sessionVariables[sessionProperty]}"
+             nc:protocolName="${sessionVariables[ncProtocolName]}"
+             nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+             nc:sessionStartTime="${sessionVariables[sessionStartTimeProperty]}"
+             nc:sessionFinishTime="${sessionVariables[sessionFinishTimeProperty]}"
+             nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"
+             >${eol}`;
 }
 
 
