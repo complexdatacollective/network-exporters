@@ -41,25 +41,26 @@ const eol = '\n';
 const getXmlHeader = (exportOptions, sessionVariables) => {
   if (!exportOptions.exportGraphML.includeNCMeta) {
     return `<?xml version="1.0" encoding="UTF-8"?>
-    <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
-             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
-             http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
+  <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
+    http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-    <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
-             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
-             xmlns:nc="http://schema.networkcanvas.com/xmlns"
-             nc:caseID="${sessionVariables[caseProperty]}"
-             nc:sessionUUID="${sessionVariables[sessionProperty]}"
-             nc:protocolName="${sessionVariables[ncProtocolName]}"
-             nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
-             nc:sessionStartTime="${sessionVariables[sessionStartTimeProperty]}"
-             nc:sessionFinishTime="${sessionVariables[sessionFinishTimeProperty]}"
-             nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"
-             >${eol}`;
+  <graphml
+    xmlns="http://graphml.graphdrawing.org/xmlns"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
+    xmlns:nc="http://schema.networkcanvas.com/xmlns"
+    nc:caseID="${sessionVariables[caseProperty]}"
+    nc:sessionUUID="${sessionVariables[sessionProperty]}"
+    nc:protocolName="${sessionVariables[ncProtocolName]}"
+    nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+    nc:sessionStartTime="${sessionVariables[sessionStartTimeProperty]}"
+    nc:sessionFinishTime="${sessionVariables[sessionFinishTimeProperty]}"
+    nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"
+  >${eol}`;
 }
 
 
