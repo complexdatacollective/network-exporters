@@ -235,7 +235,7 @@ class FileExportManager {
                   format,
                   tmpDir,
                   partitionedNetwork,
-                  transposedCodebook(protocol.codebook),
+                  protocol.codebook,
                   this.exportOptions,
                 );
               }));

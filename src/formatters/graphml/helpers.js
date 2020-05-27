@@ -30,7 +30,11 @@ export const VariableType = Object.freeze({
 
 export const VariableTypeValues = Object.freeze(Object.values(VariableType));
 
-// returns a graphml type
+/**
+ * For a given key, return a valid Graphml data 'type' for encoding
+ * @param {*} data
+ * @param {*} key
+ */
 export const getGraphMLTypeForKey = (data, key) => (
   data.reduce((result, value) => {
     const attrs = getEntityAttributes(value);
@@ -52,21 +56,44 @@ export const getGraphMLTypeForKey = (data, key) => (
     return 'string';
   }, ''));
 
-export const getVariableInfo = (codebook, type, element, key) => (
+/**
+ * Given a codebook, an entity type, an entity, and an attribute key:
+ * retrieve the key value from the entity, via the codebook.
+ * @param {*} codebook
+ * @param {*} type
+ * @param {*} entity
+ * @param {*} key
+ */
+export const getVariableInfo = (codebook, type, entity, key) => (
   codebook[type]
-  && codebook[type][element.type]
-  && codebook[type][element.type].variables
-  && codebook[type][element.type].variables[key]
+  && codebook[type][entity.type]
+  && codebook[type][entity.type].variables
+  && codebook[type][entity.type].variables[key]
 );
 
+/**
+ * Determine if a given variable is one of the valid NC vattribute types
+ * @param {*} codebook
+ * @param {*} type
+ * @param {*} element
+ * @param {*} key
+ */
 export const codebookExists = (codebook, type, element, key) => {
   const variableInfo = getVariableInfo(codebook, type, element, key);
   return variableInfo && variableInfo.type && VariableTypeValues.includes(variableInfo.type);
 };
 
-export const getTypeFromCodebook = (codebook, type, element, key, variableAttribute = 'type') => {
+/**
+ * Get the 'type' of a given variable from the codebook
+ * @param {*} codebook
+ * @param {*} type
+ * @param {*} element
+ * @param {*} key
+ * @param {*} variableAttribute
+ */
+export const getAttributePropertyFromCodebook = (codebook, type, element, key, attributeProperty = 'type') => {
   const variableInfo = getVariableInfo(codebook, type, element, key);
-  return variableInfo && variableInfo[variableAttribute];
+  return variableInfo && variableInfo[attributeProperty];
 };
 
 export const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
@@ -80,5 +107,6 @@ export const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
   return element;
 };
 
-export const createDataElement = (xmlDoc, key, text) =>
-  createElement(xmlDoc, 'data', { key }, xmlDoc.createTextNode(text));
+export const createDataElement = (xmlDoc, attributes, text) => {
+  return createElement(xmlDoc, 'data', attributes, xmlDoc.createTextNode(text));
+}

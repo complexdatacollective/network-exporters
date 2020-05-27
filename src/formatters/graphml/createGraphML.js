@@ -4,7 +4,7 @@ import {
   getEntityAttributes,
   createDataElement,
   getGraphMLTypeForKey,
-  getTypeFromCodebook,
+  getAttributePropertyFromCodebook,
   VariableType,
   formatXml,
 } from './helpers';
@@ -92,66 +92,77 @@ const generateKeyElements = (
   serialize, // serialize function
 ) => {
   let fragment = '';
+  console.log('generate key elements', entities, type, codebook, layoutVariable);
 
-  // generate keys for attributes
+  // Create an array to track variables we have already created <key>s for
   const done = [];
 
-  // add keys for gephi positions
-  if (layoutVariable) {
-    const xElement = document.createElement('key');
-    xElement.setAttribute('id', 'x');
-    xElement.setAttribute('attr.name', 'x');
-    xElement.setAttribute('attr.type', 'double');
-    xElement.setAttribute('for', type);
-    fragment += `${serialize(xElement)}`;
-    const yElement = document.createElement('key');
-    yElement.setAttribute('id', 'y');
-    yElement.setAttribute('attr.name', 'y');
-    yElement.setAttribute('attr.type', 'double');
-    yElement.setAttribute('for', type);
-    fragment += `${serialize(yElement)}`;
+  /**
+   * REMOVED LAYOUT KEY CREATION:
+   * We used to create a Gephi readable layout <key> here, but
+   * it has been removed because (1) Gephi is unstable and presently not well
+   * maintained, and (2) its implementation is nonstandard.
+   */
+
+  /**
+   * REMOVED LABEL KEY CREATION:
+   * We used to create a Gephi readable LABEL <key> here, but
+   * it has been removed because (1) Gephi is unstable and presently not well
+   * maintained, and (2) its implementation is nonstandard.
+   */
+
+  /**
+   * REMOVED `networkCanvas{entity}Type CREATION:
+   * We used to create a key to store the network canvas entity type here, but
+   * it has been removed because GraphML parsing is incomplete and undeveloped
+   * in most software.
+   */
+
+  if (done.indexOf('label') === -1 && !excludeList.includes('label')) {
+    // Create <key> for label
+    const labelDataElement = document.createElement('key');
+    labelDataElement.setAttribute('id', 'label');
+    labelDataElement.setAttribute('attr.name', 'label');
+    labelDataElement.setAttribute('attr.type', 'string');
+    labelDataElement.setAttribute('for', 'all');
+    fragment += `${serialize(labelDataElement)}`;
+    done.push('label');
   }
 
-  if (type === 'edge') {
-    const label = document.createElement('key');
-    label.setAttribute('id', 'label');
-    label.setAttribute('attr.name', 'label');
-    label.setAttribute('attr.type', 'string');
-    label.setAttribute('for', type);
-    fragment += `${serialize(label)}`;
+  if (done.indexOf('type') === -1 && !excludeList.includes('type')) {
+    // Create <key> for type
+    const typeDataElement = document.createElement('key');
+    typeDataElement.setAttribute('id', 'type');
+    typeDataElement.setAttribute('attr.name', 'type');
+    typeDataElement.setAttribute('attr.type', 'string');
+    typeDataElement.setAttribute('for', 'all');
+    fragment += `${serialize(typeDataElement)}`;
+    done.push('type');
   }
 
-  // add type
-  if (type === 'edge') {
-    const edgeType = document.createElement('key');
-    edgeType.setAttribute('id', 'networkCanvasEdgeType');
-    edgeType.setAttribute('attr.name', 'networkCanvasEdgeType');
-    edgeType.setAttribute('attr.type', 'string');
-    edgeType.setAttribute('for', type);
-    fragment += `${serialize(edgeType)}`;
-  } else {
-    const nodeType = document.createElement('key');
-    nodeType.setAttribute('id', 'networkCanvasNodeType');
-    nodeType.setAttribute('attr.name', 'networkCanvasNodeType');
-    nodeType.setAttribute('attr.type', 'string');
-    nodeType.setAttribute('for', type);
-    fragment += `${serialize(nodeType)}`;
-  }
-
+  // Main loop over entities
   entities.forEach((element) => {
-    let iterableElement = element;
-    iterableElement = getEntityAttributes(element);
-    // Entity data model attributes are now stored under a specific property
+    // Get element attributes
+    const elementAttributes = getEntityAttributes(element);
 
-    Object.keys(iterableElement).forEach((key) => {
+    // Loop over attributes
+    Object.keys(elementAttributes).forEach((key) => {
       // transpose ids to names based on codebook; fall back to the raw key
-      const keyName = getTypeFromCodebook(codebook, type, element, key, 'name') || key;
+      const keyName = getAttributePropertyFromCodebook(codebook, type, element, key, 'name') || key;
+
+      // Test if we have already created a key for this variable, and that it
+      // isn't on our exclude list.
       if (done.indexOf(keyName) === -1 && !excludeList.includes(keyName)) {
         const keyElement = document.createElement('key');
-        keyElement.setAttribute('id', keyName);
+
+        // id must be xs:NMTOKEN: http://books.xmlschemata.org/relaxng/ch19-77231.html
+        keyElement.setAttribute('id', key);
+
+        // Use human readable variable name for the attr.name attribute
         keyElement.setAttribute('attr.name', keyName);
 
-        const variableType = getTypeFromCodebook(codebook, type, element, key);
+        // Determine attribute type, to decide
+        const variableType = getAttributePropertyFromCodebook(codebook, type, element, key);
         switch (variableType) {
           case VariableType.boolean:
             keyElement.setAttribute('attr.type', variableType);
@@ -163,28 +174,42 @@ const generateKeyElements = (
             break;
           }
           case VariableType.layout: {
-            // special handling for layout variables
-            keyElement.setAttribute('attr.name', `${keyName}Y`);
-            keyElement.setAttribute('id', `${keyName}Y`);
+            /**
+             * special handling for layout variables: split the variable into
+             * two <key> elements - one for X and one for Y.
+             */
+            keyElement.setAttribute('attr.name', `${keyName}_Y`);
+            keyElement.setAttribute('id', `${key}_Y`);
             keyElement.setAttribute('attr.type', 'double');
+
+            // Create a second element to model the <key> for
+            // the X value
             const keyElement2 = document.createElement('key');
-            keyElement2.setAttribute('id', `${keyName}X`);
-            keyElement2.setAttribute('attr.name', `${keyName}X`);
+            keyElement2.setAttribute('id', `${key}_X`);
+            keyElement2.setAttribute('attr.name', `${keyName}_X`);
             keyElement2.setAttribute('attr.type', 'double');
             keyElement2.setAttribute('for', type);
             fragment += `${serialize(keyElement2)}`;
             break;
           }
           case VariableType.categorical: {
-            const options = getTypeFromCodebook(codebook, type, element, key, 'options');
+            /**
+             * Special handling for categorical variables:
+             * Because categorical variables can have multiple membership, we
+             * split them out into several boolean variables
+             */
+
+            // fetch options property for this variable
+            const options = getAttributePropertyFromCodebook(codebook, type, element, key, 'options');
+
             options.forEach((option, index) => {
               if (index === options.length - 1) {
-                keyElement.setAttribute('id', `${keyName}_${option.value}`);
+                keyElement.setAttribute('id', `${key}_${option.value}`);
                 keyElement.setAttribute('attr.name', `${keyName}_${option.value}`);
                 keyElement.setAttribute('attr.type', 'boolean');
               } else {
                 const keyElement2 = document.createElement('key');
-                keyElement2.setAttribute('id', `${keyName}_${option.value}`);
+                keyElement2.setAttribute('id', `${key}_${option.value}`);
                 keyElement2.setAttribute('attr.name', `${keyName}_${option.value}`);
                 keyElement2.setAttribute('attr.type', 'boolean');
                 keyElement2.setAttribute('for', type);
@@ -195,12 +220,12 @@ const generateKeyElements = (
           }
           case VariableType.text:
           case VariableType.datetime:
-          case VariableType.location: // TODO: special handling?
+          case VariableType.location: // TODO: remove all references to location variable type
           default:
             keyElement.setAttribute('attr.type', 'string');
         }
+
         keyElement.setAttribute('for', type);
-        console.log('key element is:', keyElement);
         fragment += `${serialize(keyElement)}`;
         done.push(keyName);
       }
@@ -212,7 +237,7 @@ const generateKeyElements = (
 // @return {DocumentFragment} a fragment containing all XML elements for the supplied dataList
 const generateDataElements = (
   document, // the XML ownerDocument
-  dataList, // List of nodes or edges
+  entities, // List of nodes or edges
   type, // Element type to be created. "node" or "egde"
   excludeList, // Attributes to exclude lookup of in codebook
   codebook, // Copy of codebook
@@ -220,81 +245,102 @@ const generateDataElements = (
   serialize, // serialize function
 ) => {
   let fragment = '';
+  console.log('generate data elements', entities, type, codebook, layoutVariable, excludeList);
 
-  dataList.forEach((dataElement) => {
+  // Iterate entities
+  entities.forEach((entity) => {
+    // Create an element representing the entity (<node> or <edge>)
     const domElement = document.createElement(type);
-    const nodeAttrs = getEntityAttributes(dataElement);
 
-    if (dataElement[entityPrimaryKeyProperty]) {
-      domElement.setAttribute('id', dataElement[entityPrimaryKeyProperty]);
+    // Create a variable containing the entity's attributes
+    const entityAttributes = getEntityAttributes(entity);
+
+    // Set the id of the entity element to the primary key property,
+    // or generate a new UUID
+    if (entity[entityPrimaryKeyProperty]) {
+      domElement.setAttribute('id', entity[entityPrimaryKeyProperty]);
     } else {
       domElement.setAttribute('id', uuid());
     }
 
+    // Store the human readable name in a <data> element
+    const entityTypeName = codebook[type][entity.type].name || entity.type;
+    domElement.appendChild(createDataElement(document, { key: 'type' }, entityTypeName));
+
+    // Main edge handling
     if (type === 'edge') {
-      domElement.setAttribute('source', dataElement.from);
-      domElement.setAttribute('target', dataElement.to);
-    }
 
-    if (type === 'edge') {
-      const label = codebook && codebook[type]
-        && codebook[type][dataElement.type] && (codebook[type][dataElement.type].name
-          || codebook[type][dataElement.type].label);
+      // If this is an edge, add source and target properties and map
+      // them to the from and to attributes
+      domElement.setAttribute('source', entity.from);
+      domElement.setAttribute('target', entity.to);
 
-      domElement.appendChild(createDataElement(document, 'label', label));
-      domElement.appendChild(createDataElement(document, 'networkCanvasEdgeType', dataElement.type));
-
-      Object.keys(dataElement).forEach((key) => {
-        const keyName = getTypeFromCodebook(codebook, type, dataElement, key, 'name') || key;
+      // Iterate
+      Object.keys(entity).forEach((key) => {
+        console.log('DEBUG ITERATING EDGE', entity, key);
+        const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
         if (!excludeList.includes(keyName)) {
-          if (typeof dataElement[key] !== 'object') {
-            domElement.appendChild(createDataElement(document, keyName, dataElement[key]));
-          } else if (getTypeFromCodebook(codebook, type, dataElement, key) === 'layout') {
-            domElement.appendChild(createDataElement(document, `${keyName}X`, dataElement[key].x));
-            domElement.appendChild(createDataElement(document, `${keyName}Y`, dataElement[key].y));
+          if (typeof entity[key] !== 'object') {
+            domElement.appendChild(createDataElement(document, { key }, entity[key]));
+          } else if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'layout') {
+            domElement.appendChild(createDataElement(document, { key: `${key}_X` }, entity[key].x));
+            domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, entity[key].y));
           } else {
             domElement.appendChild(
-              createDataElement(document, keyName, JSON.stringify(dataElement[key])),
+              createDataElement(document, { key: keyName }, JSON.stringify(entity[key])),
             );
           }
         }
       });
     } else {
-      domElement.appendChild(createDataElement(document, 'networkCanvasNodeType', dataElement.type));
+
+      // For nodes, add <data> for label
+      const entityLabel = () => {
+        const variableCalledName = findKey(codebook[type][entity.type].variables, variable => variable.name.toLowerCase() === 'name');
+
+        if (variableCalledName && entity[entityAttributesProperty][variableCalledName]) {
+          return entity[entityAttributesProperty][variableCalledName];
+        }
+
+        return "Node"
+      }
+
+      domElement.appendChild(createDataElement(document, { key: 'label' }, entityLabel()));
     }
 
     // Add entity attributes
-    Object.keys(nodeAttrs).forEach((key) => {
-      const keyName = getTypeFromCodebook(codebook, type, dataElement, key, 'name') || key;
-      if (!excludeList.includes(keyName) && !!nodeAttrs[key]) {
-        if (getTypeFromCodebook(codebook, type, dataElement, key) === 'categorical') {
-          const options = getTypeFromCodebook(codebook, type, dataElement, key, 'options');
+    Object.keys(entityAttributes).forEach((key) => {
+      console.log('DEBUG ITERATING EDGE 2', entity, key);
+      const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
+      if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
+        if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'categorical') {
+          const options = getAttributePropertyFromCodebook(codebook, type, entity, key, 'options');
           options.forEach((option) => {
-            const optionKey = `${keyName}_${option.value}`;
+            const optionKey = `${key}_${option.value}`;
             domElement.appendChild(createDataElement(
-              document, optionKey, !!nodeAttrs[key] && includes(nodeAttrs[key], option.value),
+              document, { key: optionKey }, !!entityAttributes[key] && includes(entityAttributes[key], option.value),
             ));
           });
-        } else if (typeof nodeAttrs[key] !== 'object') {
-          domElement.appendChild(createDataElement(document, keyName, nodeAttrs[key]));
-        } else if (getTypeFromCodebook(codebook, type, dataElement, key) === 'layout') {
-          domElement.appendChild(createDataElement(document, `${keyName}X`, nodeAttrs[key].x));
-          domElement.appendChild(createDataElement(document, `${keyName}Y`, nodeAttrs[key].y));
+        } else if (typeof entityAttributes[key] !== 'object') {
+          domElement.appendChild(createDataElement(document, { key }, entityAttributes[key]));
+        } else if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'layout') {
+          domElement.appendChild(createDataElement(document, { key: `${key}_X` }, entityAttributes[key].x));
+          domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, entityAttributes[key].y));
         } else {
           domElement.appendChild(
-            createDataElement(document, keyName, JSON.stringify(nodeAttrs[key])),
+            createDataElement(document, { key }, JSON.stringify(entityAttributes[key])),
           );
         }
       }
     });
 
-    // Add positions for gephi layout. Use window dimensions for scaling if available.
-    if (layoutVariable && nodeAttrs[layoutVariable]) {
-      const canvasWidth = globalContext.innerWidth || 1024;
-      const canvasHeight = globalContext.innerHeight || 768;
-      domElement.appendChild(createDataElement(document, 'x', nodeAttrs[layoutVariable].x * canvasWidth));
-      domElement.appendChild(createDataElement(document, 'y', (1.0 - nodeAttrs[layoutVariable].y) * canvasHeight));
-    }
+    // TODO: Use code below to convert all layout variable data values to screen space coordinates ?
+    // if (layoutVariable && entityAttributes[layoutVariable]) {
+    //   const canvasWidth = globalContext.innerWidth || 1024;
+    //   const canvasHeight = globalContext.innerHeight || 768;
+    //   domElement.appendChild(createDataElement(document, 'x', entityAttributes[layoutVariable].x * canvasWidth));
+    //   domElement.appendChild(createDataElement(document, 'y', (1.0 - entityAttributes[layoutVariable].y) * canvasHeight));
+    // }
 
     fragment += `${formatXml(serialize(domElement))}`;
   });
@@ -309,6 +355,7 @@ const generateDataElements = (
  * @param {*} exportOptions
  */
 export function* graphMLGenerator(network, codebook, exportOptions) {
+  // todo move serialize up so it doesnt need to be passed
   const serializer = new globalContext.XMLSerializer();
   const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
   yield getXmlHeader(exportOptions, network.sessionVariables);
@@ -351,7 +398,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     edges,
     'edge',
-    [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type'],
+    [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type', '_from', '_to', '_id', '_egoID'],
     codebook,
     null,
     serialize,

@@ -137,30 +137,68 @@ export const resequenceIds = (sessions) => {
   return resequencedEntities;
 };
 
-export const transposedCodebookVariables = (sectionCodebook, definition) => {
-  if (!definition.variables) { // not required for edges
-    sectionCodebook[definition.name] = definition; // eslint-disable-line no-param-reassign
-    return sectionCodebook;
-  }
 
-  const variables = Object.values(definition.variables).reduce((acc, variable) => {
-    acc[variable.name] = variable;
-    return acc;
-  }, {});
-  sectionCodebook[definition.name] = { // eslint-disable-line no-param-reassign
-    ...definition,
-    variables,
-  };
-  return sectionCodebook;
-};
+// Removed so we can accept
+// export const transposedCodebookVariables = (sectionCodebook, definition) => {
+//   if (!definition.variables) { // not required for edges
+//     sectionCodebook[definition.name] = definition; // eslint-disable-line no-param-reassign
+//     return sectionCodebook;
+//   }
 
-export const transposedCodebookSection = (section = {}) =>
-  Object.values(section).reduce((sectionCodebook, definition) => (
-    transposedCodebookVariables(sectionCodebook, definition)
-  ), {});
+//   const variables = Object.values(definition.variables).reduce((acc, variable) => {
+//     acc[variable.name] = variable;
+//     return acc;
+//   }, {});
+//   sectionCodebook[definition.name] = { // eslint-disable-line no-param-reassign
+//     ...definition,
+//     variables,
+//   };
+//   return sectionCodebook;
+// };
 
-export const transposedCodebook = (codebook = {}) => ({
-  edge: transposedCodebookSection(codebook.edge),
-  node: transposedCodebookSection(codebook.node),
-  ego: transposedCodebookVariables({}, { ...codebook.ego, name: 'ego' }).ego,
+// export const transposedCodebookSection = (section = {}) =>
+//   Object.values(section).reduce((sectionCodebook, definition) => (
+//     transposedCodebookVariables(sectionCodebook, definition)
+//   ), {});
+
+// export const transposedCodebook = (codebook = {}) => ({
+//   edge: transposedCodebookSection(codebook.edge),
+//   node: transposedCodebookSection(codebook.node),
+//   ego: transposedCodebookVariables({}, { ...codebook.ego, name: 'ego' }).ego,
+// });
+
+
+/// Moved from NC
+
+export const ncCodebookTranspose = (sessionId, session, codebook, protocol) => {
+  const { network: { nodes = [], edges = [], ego = {} } } = session;
+  const { node: nodeRegistry = {}, edge: edgeRegistry = {}, ego: egoRegistry = {} } = codebook;
+
+  return ({
+    nodes: nodes.map(node => asExportableNode(node, nodeRegistry[node.type])),
+    edges: edges.map(edge => asExportableEdge(edge, edgeRegistry[edge.type])),
+    ego: asExportableEgo(ego, egoRegistry),
+    sessionVariables,
+  });
+}
+
+/**
+ * Transposes attribute and type IDs to names for export.
+ * Unlike `asWorkerAgentEntity()`, this does not flatten attributes.
+ */
+export const asExportableNode = (node, nodeTypeDefinition) => ({
+  ...node,
+  type: nodeTypeDefinition.name,
+  attributes: getEntityAttributesWithNamesResolved(node, (nodeTypeDefinition || {}).variables),
+});
+
+export const asExportableEdge = (edge, edgeTypeDefinition) => ({
+  ...edge,
+  type: edgeTypeDefinition && edgeTypeDefinition.name,
+  attributes: getEntityAttributesWithNamesResolved(edge, (edgeTypeDefinition || {}).variables),
+});
+
+export const asExportableEgo = (ego, egoDefinition) => ({
+  ...ego,
+  attributes: getEntityAttributesWithNamesResolved(ego, (egoDefinition || {}).variables),
 });
