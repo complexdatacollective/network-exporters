@@ -1,5 +1,5 @@
 /* eslint-disable no-underscore-dangle */
-import { entityPrimaryKeyProperty, egoProperty, sessionProperty, exportIDProperty } from '../utils/reservedAttributes';
+import { entityPrimaryKeyProperty, egoProperty, sessionProperty, exportIDProperty, exportFromProperty, exportToProperty } from '../utils/reservedAttributes';
 import { getEntityAttributes } from './utils';
 
 const { includes } = require('lodash');
@@ -113,7 +113,8 @@ export const resequenceIds = (sessions) => {
     nodes: session.nodes.map(
       (node) => {
         resequencedId += 1;
-        IDLookupMap[node.entityPrimaryKeyProperty] = resequencedId;
+        console.log(node);
+        IDLookupMap[node[entityPrimaryKeyProperty]] = resequencedId;
         return {
           [exportIDProperty]: resequencedId,
           ...node,
@@ -123,17 +124,18 @@ export const resequenceIds = (sessions) => {
     edges: session.edges.map(
       (edge) => {
         resequencedId += 1;
-        IDLookupMap[edge.entityPrimaryKeyProperty] = resequencedId;
+        IDLookupMap[edge[entityPrimaryKeyProperty]] = resequencedId;
         return {
-          [exportIDProperty]: resequencedId,
-          _from: IDLookupMap[edge.from],
-          _to: IDLookupMap[edge.to],
           ...edge,
+          [exportIDProperty]: resequencedId,
+          [exportFromProperty]: IDLookupMap[edge.from],
+          [exportToProperty]: IDLookupMap[edge.to],
         };
       },
     ),
   }));
 
+  console.log('reseq', sessions, IDLookupMap, resequencedEntities);
   return resequencedEntities;
 };
 

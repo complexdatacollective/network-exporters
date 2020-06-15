@@ -25,13 +25,20 @@ export const VariableType = Object.freeze({
   ordinal: 'ordinal',
   categorical: 'categorical',
   layout: 'layout',
-  location: 'location',
 });
 
 export const VariableTypeValues = Object.freeze(Object.values(VariableType));
 
 /**
  * For a given key, return a valid Graphml data 'type' for encoding
+ * Graphml types are extended from xs:NMTOKEN:
+ *   - boolean
+ *   - int
+ *   - long
+ *   - float
+ *   - double
+ *   - string
+ *
  * @param {*} data
  * @param {*} key
  */

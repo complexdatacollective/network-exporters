@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { findKey, forInRight, includes } from 'lodash';
+import { findKey, includes } from 'lodash';
 import {
   getEntityAttributes,
   createDataElement,
@@ -18,6 +18,10 @@ import {
   sessionFinishTimeProperty,
   sessionStartTimeProperty,
   ncProtocolName,
+  exportIDProperty,
+  egoProperty,
+  exportFromProperty,
+  exportToProperty,
 } from '../../utils/reservedAttributes';
 
 // In a browser process, window provides a globalContext;
@@ -37,6 +41,10 @@ if (typeof window !== 'undefined' && window.DOMParser && window.XMLSerializer) {
 
 const eol = '\n';
 
+// Create a serializer for reuse below.
+const serializer = new globalContext.XMLSerializer();
+const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
+
 // If includeNCMeta is true, include our custom XML schema
 const getXmlHeader = (exportOptions, sessionVariables) => {
   if (!exportOptions.exportGraphML.includeNCMeta) {
@@ -53,7 +61,7 @@ const getXmlHeader = (exportOptions, sessionVariables) => {
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
     xmlns:nc="http://schema.networkcanvas.com/xmlns"
-    nc:caseID="${sessionVariables[caseProperty]}"
+    nc:caseId="${sessionVariables[caseProperty]}"
     nc:sessionUUID="${sessionVariables[sessionProperty]}"
     nc:protocolName="${sessionVariables[ncProtocolName]}"
     nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
@@ -88,11 +96,10 @@ const generateKeyElements = (
   type, // 'node' or 'edge'
   excludeList, // Variables to exlcude
   codebook, // codebook
-  layoutVariable, // boolean value uses for edges?
-  serialize, // serialize function
+  exportOptions, // export options object
 ) => {
   let fragment = '';
-  console.log('generate key elements', entities, type, codebook, layoutVariable);
+  console.log('generate key elements', entities, type, codebook);
 
   // Create an array to track variables we have already created <key>s for
   const done = [];
@@ -104,22 +111,11 @@ const generateKeyElements = (
    * maintained, and (2) its implementation is nonstandard.
    */
 
-  /**
-   * REMOVED LABEL KEY CREATION:
-   * We used to create a Gephi readable LABEL <key> here, but
-   * it has been removed because (1) Gephi is unstable and presently not well
-   * maintained, and (2) its implementation is nonstandard.
-   */
+  // Create <key> for a 'label' variable allowed on all elements.
+  // This is used by gephi to label nodes/edges.
+  // Only create once!
+  if (type === 'node' && done.indexOf('label') === -1 && !excludeList.includes('label')) {
 
-  /**
-   * REMOVED `networkCanvas{entity}Type CREATION:
-   * We used to create a key to store the network canvas entity type here, but
-   * it has been removed because GraphML parsing is incomplete and undeveloped
-   * in most software.
-   */
-
-  if (done.indexOf('label') === -1 && !excludeList.includes('label')) {
-    // Create <key> for label
     const labelDataElement = document.createElement('key');
     labelDataElement.setAttribute('id', 'label');
     labelDataElement.setAttribute('attr.name', 'label');
@@ -129,15 +125,48 @@ const generateKeyElements = (
     done.push('label');
   }
 
-  if (done.indexOf('type') === -1 && !excludeList.includes('type')) {
+  // Create a <key> for the network canvas entity type.
+  if (type === 'node' && done.indexOf('type') === -1 && !excludeList.includes('type')) {
     // Create <key> for type
     const typeDataElement = document.createElement('key');
-    typeDataElement.setAttribute('id', 'type');
-    typeDataElement.setAttribute('attr.name', 'type');
+    typeDataElement.setAttribute('id', 'networkCanvasType');
+    typeDataElement.setAttribute('attr.name', 'networkCanvasType');
     typeDataElement.setAttribute('attr.type', 'string');
     typeDataElement.setAttribute('for', 'all');
     fragment += `${serialize(typeDataElement)}`;
     done.push('type');
+  }
+
+  // Create a <key> for network canvas UUID.
+  if (type === 'node' && done.indexOf('uuid') === -1 && !excludeList.includes('uuid')) {
+    // Create <key> for type
+    const typeDataElement = document.createElement('key');
+    typeDataElement.setAttribute('id', 'networkCanvasUUID');
+    typeDataElement.setAttribute('attr.name', 'networkCanvasUUID');
+    typeDataElement.setAttribute('attr.type', 'string');
+    typeDataElement.setAttribute('for', 'all');
+    fragment += `${serialize(typeDataElement)}`;
+    done.push('uuid');
+  }
+
+  // Create a <key> for from and to properties that reference network canvas UUIDs.
+  if (type === 'edge' && done.indexOf('originalEdgeSource') === -1) {
+    // Create <key> for type
+    const typeDataElement = document.createElement('key');
+    typeDataElement.setAttribute('id', 'networkCanvasToUUID');
+    typeDataElement.setAttribute('attr.name', 'networkCanvasToUUID');
+    typeDataElement.setAttribute('attr.type', 'string');
+    typeDataElement.setAttribute('for', 'edge');
+    fragment += `${serialize(typeDataElement)}`;
+
+    const typeDataElement2 = document.createElement('key');
+    typeDataElement2.setAttribute('id', 'networkCanvasFromUUID');
+    typeDataElement2.setAttribute('attr.name', 'networkCanvasFromUUID');
+    typeDataElement2.setAttribute('attr.type', 'string');
+    typeDataElement2.setAttribute('for', 'edge');
+    fragment += `${serialize(typeDataElement2)}`;
+
+    done.push('originalEdgeSource');
   }
 
   // Main loop over entities
@@ -156,12 +185,13 @@ const generateKeyElements = (
         const keyElement = document.createElement('key');
 
         // id must be xs:NMTOKEN: http://books.xmlschemata.org/relaxng/ch19-77231.html
+        // do not be tempted to change this to the variable 'name' for this reason!
         keyElement.setAttribute('id', key);
 
         // Use human readable variable name for the attr.name attribute
         keyElement.setAttribute('attr.name', keyName);
 
-        // Determine attribute type, to decide
+        // Determine attribute type to decide how to encode
         const variableType = getAttributePropertyFromCodebook(codebook, type, element, key);
         switch (variableType) {
           case VariableType.boolean:
@@ -178,6 +208,8 @@ const generateKeyElements = (
              * special handling for layout variables: split the variable into
              * two <key> elements - one for X and one for Y.
              */
+
+
             keyElement.setAttribute('attr.name', `${keyName}_Y`);
             keyElement.setAttribute('id', `${key}_Y`);
             keyElement.setAttribute('attr.type', 'double');
@@ -241,11 +273,10 @@ const generateDataElements = (
   type, // Element type to be created. "node" or "egde"
   excludeList, // Attributes to exclude lookup of in codebook
   codebook, // Copy of codebook
-  layoutVariable, // Primary layout variable. Null for edges
-  serialize, // serialize function
+  exportOptions, // Export options object
 ) => {
   let fragment = '';
-  console.log('generate data elements', entities, type, codebook, layoutVariable, excludeList);
+  console.log('generate data elements', entities, type, codebook, excludeList);
 
   // Iterate entities
   entities.forEach((entity) => {
@@ -255,36 +286,41 @@ const generateDataElements = (
     // Create a variable containing the entity's attributes
     const entityAttributes = getEntityAttributes(entity);
 
-    // Set the id of the entity element to the primary key property,
+    // Set the id of the entity element to the export ID property,
     // or generate a new UUID
     if (entity[entityPrimaryKeyProperty]) {
-      domElement.setAttribute('id', entity[entityPrimaryKeyProperty]);
+      domElement.setAttribute('id', entity[exportIDProperty]);
     } else {
+      console.warn('no export ID found on entity. Generating random UUID...');
       domElement.setAttribute('id', uuid());
     }
 
-    // Store the human readable name in a <data> element
-    const entityTypeName = codebook[type][entity.type].name || entity.type;
-    domElement.appendChild(createDataElement(document, { key: 'type' }, entityTypeName));
+    // Create data element for entity UUID
+    domElement.appendChild(createDataElement(document, { key: 'networkCanvasUUID' }, entity[entityPrimaryKeyProperty]));
 
-    // Main edge handling
+    // Create data element for entity type
+    const entityTypeName = codebook[type][entity.type].name || entity.type;
+    domElement.appendChild(createDataElement(document, { key: 'networkCanvasType' }, entityTypeName));
+
+    // Special handling for model variables and variables unique to entity type
     if (type === 'edge') {
 
-      // If this is an edge, add source and target properties and map
-      // them to the from and to attributes
-      domElement.setAttribute('source', entity.from);
-      domElement.setAttribute('target', entity.to);
+      // Add source and target properties and map
+      // them to the _from and _to attributes
+      domElement.setAttribute('source', entity[exportFromProperty]);
+      domElement.setAttribute('target', entity[exportToProperty]);
+
+      // Insert the nc UUID versions of 'to' and 'from' under special properties
+      domElement.appendChild(createDataElement(document, { key: 'networkCanvasFromUUID' }, entity['from']));
+      domElement.appendChild(createDataElement(document, { key: 'networkCanvasToUUID' }, entity['to']));
 
       // Iterate
       Object.keys(entity).forEach((key) => {
-        console.log('DEBUG ITERATING EDGE', entity, key);
+
         const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
         if (!excludeList.includes(keyName)) {
           if (typeof entity[key] !== 'object') {
             domElement.appendChild(createDataElement(document, { key }, entity[key]));
-          } else if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'layout') {
-            domElement.appendChild(createDataElement(document, { key: `${key}_X` }, entity[key].x));
-            domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, entity[key].y));
           } else {
             domElement.appendChild(
               createDataElement(document, { key: keyName }, JSON.stringify(entity[key])),
@@ -295,6 +331,7 @@ const generateDataElements = (
     } else {
 
       // For nodes, add <data> for label
+      // If there is no name property, fall back to labelling as "Node"
       const entityLabel = () => {
         const variableCalledName = findKey(codebook[type][entity.type].variables, variable => variable.name.toLowerCase() === 'name');
 
@@ -310,7 +347,6 @@ const generateDataElements = (
 
     // Add entity attributes
     Object.keys(entityAttributes).forEach((key) => {
-      console.log('DEBUG ITERATING EDGE 2', entity, key);
       const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
       if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
         if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'categorical') {
@@ -324,8 +360,20 @@ const generateDataElements = (
         } else if (typeof entityAttributes[key] !== 'object') {
           domElement.appendChild(createDataElement(document, { key }, entityAttributes[key]));
         } else if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'layout') {
-          domElement.appendChild(createDataElement(document, { key: `${key}_X` }, entityAttributes[key].x));
-          domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, entityAttributes[key].y));
+          // Determine if we should use the normalized or the "screen space" value
+          let xCoord;
+          let yCoord;
+          if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+            xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+            yCoord = ((1.0 - entityAttributes[key].y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+          } else {
+            xCoord = entityAttributes[key].x;
+            yCoord = entityAttributes[key].y;
+          }
+
+          domElement.appendChild(createDataElement(document, { key: `${key}_X` }, xCoord));
+          domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, yCoord));
+
         } else {
           domElement.appendChild(
             createDataElement(document, { key }, JSON.stringify(entityAttributes[key])),
@@ -333,14 +381,6 @@ const generateDataElements = (
         }
       }
     });
-
-    // TODO: Use code below to convert all layout variable data values to screen space coordinates ?
-    // if (layoutVariable && entityAttributes[layoutVariable]) {
-    //   const canvasWidth = globalContext.innerWidth || 1024;
-    //   const canvasHeight = globalContext.innerHeight || 768;
-    //   domElement.appendChild(createDataElement(document, 'x', entityAttributes[layoutVariable].x * canvasWidth));
-    //   domElement.appendChild(createDataElement(document, 'y', (1.0 - entityAttributes[layoutVariable].y) * canvasHeight));
-    // }
 
     fragment += `${formatXml(serialize(domElement))}`;
   });
@@ -355,17 +395,9 @@ const generateDataElements = (
  * @param {*} exportOptions
  */
 export function* graphMLGenerator(network, codebook, exportOptions) {
-  // todo move serialize up so it doesnt need to be passed
-  const serializer = new globalContext.XMLSerializer();
-  const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
   yield getXmlHeader(exportOptions, network.sessionVariables);
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
-  // find the first variable of type layout
-  let layoutVariable;
-  forInRight(codebook.node, (value) => {
-    layoutVariable = findKey(value.variables, { type: 'layout' });
-  });
 
   const generateNodeKeys = nodes => generateKeyElements(
     xmlDoc,
@@ -373,17 +405,15 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     'node',
     [entityPrimaryKeyProperty],
     codebook,
-    layoutVariable,
-    serialize,
+    exportOptions,
   );
   const generateEdgeKeys = edges => generateKeyElements(
     xmlDoc,
     edges,
     'edge',
-    [entityPrimaryKeyProperty, 'from', 'to', 'type'],
+    [entityPrimaryKeyProperty, 'from', 'to', 'itemType'],
     codebook,
-    null,
-    serialize,
+    exportOptions,
   );
   const generateNodeElements = nodes => generateDataElements(
     xmlDoc,
@@ -391,17 +421,15 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     'node',
     [entityPrimaryKeyProperty, entityAttributesProperty],
     codebook,
-    layoutVariable,
-    serialize,
+    exportOptions,
   );
   const generateEdgeElements = edges => generateDataElements(
     xmlDoc,
     edges,
     'edge',
-    [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type', '_from', '_to', '_id', '_egoID'],
+    [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type', 'itemType', exportToProperty, exportFromProperty, exportIDProperty, egoProperty],
     codebook,
-    null,
-    serialize,
+    exportOptions,
   );
 
   // generate keys for nodes
@@ -423,36 +451,3 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
   yield xmlFooter;
 }
-
-// /**
-//  * Network Canvas interface for ExportData
-//  * @param  {Object} network network from redux state
-//  * @param  {Object} codebook from protocol in redux state
-//  * @param  {Function} onError
-//  * @param  {Function} saveFile injected SaveFile dependency (called with the xml contents)
-//  * @param  {String} filePrefix to use for file name (defaults to 'networkcanvas')
-//  * @return {} the return value from saveFile
-//  */
-// export const createGraphML = (network, codebook, onError, saveFile, filePrefix = 'networkcanvas') => {
-//   let xmlString = '';
-//   try {
-//     for (const chunk of graphMLGenerator(network, codebook)) { // eslint-disable-line
-//       xmlString += chunk;
-//     }
-//   } catch (err) {
-//     onError(err);
-//     return null;
-//   }
-
-//   const formattedString = formatXml(xmlString);
-//   console.log(formattedString);
-//   return saveFile(
-//     formattedString,
-//     onError,
-//     'graphml',
-//     ['graphml'],
-//     `${filePrefix}.graphml`,
-//     'text/xml',
-//     { message: 'Your network canvas graphml file.', subject: 'network canvas export' },
-//   );
-// };

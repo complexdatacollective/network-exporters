@@ -139,6 +139,9 @@ class FileExportManager {
       globalOptions: {
         unifyNetworks: false, // TODO
         useDirectedEdges: false, // TODO
+        useScreenLayoutCoordinates: true,
+        screenLayoutHeight: 1080,
+        screenLayoutWidth: 1920,
       },
     };
 
@@ -170,7 +173,8 @@ class FileExportManager {
     }
 
     // TODO: reject if sessions contains protocol not supplied in protocols
-    // Reject if export options arent valid
+
+    // Todo: Reject if export options arent valid
     // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
     //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
     // }
@@ -224,7 +228,7 @@ class FileExportManager {
               partitionByEdgeType(session, format).map((partitionedNetwork) => {
                 const protocol = protocols[session.sessionVariables[ncProtocolProperty]];
 
-                // Strip illegal characters from caseID
+                // Strip illegal characters from caseId
                 const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
 
                 const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : sanitizeFilename(protocol.name);

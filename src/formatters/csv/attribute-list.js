@@ -39,13 +39,13 @@ const attributeHeaders = (nodes) => {
 const getPrintableAttribute = (attribute) => {
   switch (attribute) {
     case exportIDProperty:
-      return 'ID';
+      return 'id';
     case egoProperty:
       return 'networkCanvasEgoID';
     case entityPrimaryKeyProperty:
       return 'networkCanvasAlterID';
     case entityTypeProperty:
-      return 'networkCanvasNodeType';
+      return 'networkCanvasType';
     default:
       return attribute;
   }

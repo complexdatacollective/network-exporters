@@ -10,6 +10,7 @@ class GraphMLFormatter {
    * @param {Object} exportOptions - global export options object from FileExportManager.
    */
   constructor(network, codebook, exportOptions) {
+    console.log('NETWORK', network);
     this.network = network;
     this.codebook = codebook;
     this.exportOptions = exportOptions;
