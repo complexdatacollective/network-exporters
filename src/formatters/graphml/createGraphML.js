@@ -92,8 +92,8 @@ const setUpXml = (exportOptions, sessionVariables) => {
 //                  codebook: `{ fragment: <DocumentFragment> }`.
 const generateKeyElements = (
   document, // the XML ownerDocument
-  entities, // network.nodes or edges
-  type, // 'node' or 'edge'
+  entities, // network.nodes or edges, or ego
+  type, // 'node' or 'edge' or 'ego'
   excludeList, // Variables to exlcude
   codebook, // codebook
   exportOptions, // export options object
@@ -266,10 +266,72 @@ const generateKeyElements = (
   return fragment;
 };
 
+const serializeFragment = element => {
+  return formatXml(serialize(element));
+}
+
+const generateEgoDataElements = (
+  document, // the XML ownerDocument
+  ego, // List of nodes or edges or an object representing ego
+  excludeList, // Attributes to exclude lookup of in codebook
+  codebook, // Copy of codebook
+  exportOptions, // Export options object
+) => {
+  let fragment = '';
+  console.log('generate data elements', document, ego, codebook, excludeList, exportOptions);
+
+  /**
+   * Ego is a special case
+   * Ego data elements are attached directly to the <graph> element
+   */
+
+  // Get the ego's attributes for looping over later
+  const entityAttributes = getEntityAttributes(ego);
+
+  // Add entity attributes
+  Object.keys(entityAttributes).forEach((key) => {
+    const keyName = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'name') || key;
+    if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
+      if (getAttributePropertyFromCodebook(codebook, 'ego', null, key) === 'categorical') {
+        const options = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'options');
+        options.forEach((option) => {
+          const optionKey = `${key}_${option.value}`;
+          fragment += serializeFragment(createDataElement(
+            document, { key: optionKey }, !!entityAttributes[key] && includes(entityAttributes[key], option.value),
+          ));
+        });
+      } else if (typeof entityAttributes[key] !== 'object') {
+        fragment += serializeFragment(createDataElement(document, { key }, entityAttributes[key]));
+      } else if (getAttributePropertyFromCodebook(codebook, 'ego', null, key) === 'layout') {
+        // Determine if we should use the normalized or the "screen space" value
+        let xCoord;
+        let yCoord;
+        if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+          xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+          yCoord = ((1.0 - entityAttributes[key].y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+        } else {
+          xCoord = entityAttributes[key].x;
+          yCoord = entityAttributes[key].y;
+        }
+
+        fragment += serializeFragment(createDataElement(document, { key: `${key}_X` }, xCoord));
+        fragment += serializeFragment(createDataElement(document, { key: `${key}_Y` }, yCoord));
+
+      } else {
+        fragment += serializeFragment(
+          createDataElement(document, { key }, JSON.stringify(entityAttributes[key])),
+        );
+      }
+    }
+  });
+
+  return fragment;
+}
+
 // @return {DocumentFragment} a fragment containing all XML elements for the supplied dataList
 const generateDataElements = (
   document, // the XML ownerDocument
-  entities, // List of nodes or edges
+  entities, // List of nodes or edges or an object representing ego
   type, // Element type to be created. "node" or "egde"
   excludeList, // Attributes to exclude lookup of in codebook
   codebook, // Copy of codebook
@@ -283,11 +345,11 @@ const generateDataElements = (
     // Create an element representing the entity (<node> or <edge>)
     const domElement = document.createElement(type);
 
-    // Create a variable containing the entity's attributes
+    // Get the entity's attributes for looping over later
     const entityAttributes = getEntityAttributes(entity);
 
     // Set the id of the entity element to the export ID property,
-    // or generate a new UUID
+    // or generate a new UUID if needed
     if (entity[entityPrimaryKeyProperty]) {
       domElement.setAttribute('id', entity[exportIDProperty]);
     } else {
@@ -314,20 +376,21 @@ const generateDataElements = (
       domElement.appendChild(createDataElement(document, { key: 'networkCanvasFromUUID' }, entity['from']));
       domElement.appendChild(createDataElement(document, { key: 'networkCanvasToUUID' }, entity['to']));
 
-      // Iterate
-      Object.keys(entity).forEach((key) => {
+      // TODO: why does edge have its own attribute iteration?
 
-        const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
-        if (!excludeList.includes(keyName)) {
-          if (typeof entity[key] !== 'object') {
-            domElement.appendChild(createDataElement(document, { key }, entity[key]));
-          } else {
-            domElement.appendChild(
-              createDataElement(document, { key: keyName }, JSON.stringify(entity[key])),
-            );
-          }
-        }
-      });
+      // Object.keys(entity).forEach((key) => {
+
+      //   const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
+      //   if (!excludeList.includes(keyName)) {
+      //     if (typeof entity[key] !== 'object') {
+      //       domElement.appendChild(createDataElement(document, { key }, entity[key]));
+      //     } else {
+      //       domElement.appendChild(
+      //         createDataElement(document, { key: keyName }, JSON.stringify(entity[key])),
+      //       );
+      //     }
+      //   }
+      // });
     } else {
 
       // For nodes, add <data> for label
@@ -399,6 +462,15 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
 
+  const generateEgoKeys = ego => generateKeyElements(
+    xmlDoc,
+    ego,
+    'ego',
+    [entityPrimaryKeyProperty],
+    codebook,
+    exportOptions,
+  );
+
   const generateNodeKeys = nodes => generateKeyElements(
     xmlDoc,
     nodes,
@@ -432,13 +504,27 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     exportOptions,
   );
 
+  const generateEgoElements = ego => generateEgoDataElements(
+    xmlDoc,
+    ego,
+    [entityPrimaryKeyProperty, entityAttributesProperty],
+    codebook,
+    exportOptions,
+  );
+
+  // generate keys for ego
+  yield generateEgoKeys([network.ego]);
+
   // generate keys for nodes
   yield generateNodeKeys(network.nodes);
 
-  // generate keys for edges and add to keys for nodes
+  // generate keys for edges
   yield generateEdgeKeys(network.edges);
 
   yield getGraphHeader(exportOptions);
+
+  // Add ego to graph
+  yield generateEgoElements(network.ego);
 
   // add nodes and edges to graph
   for (let i = 0; i < network.nodes.length; i += 100) {

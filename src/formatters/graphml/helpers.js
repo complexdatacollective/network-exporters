@@ -79,6 +79,18 @@ export const getVariableInfo = (codebook, type, entity, key) => (
 );
 
 /**
+ * Ego version of getVariableInfo
+ * @param {*} codebook
+ * @param {*} type
+ * @param {*} key
+ */
+export const getEgoVariableInfo = (codebook, key) => (
+  codebook.ego
+  && codebook.ego.variables
+  && codebook.ego.variables[key]
+);
+
+/**
  * Determine if a given variable is one of the valid NC vattribute types
  * @param {*} codebook
  * @param {*} type
@@ -93,12 +105,16 @@ export const codebookExists = (codebook, type, element, key) => {
 /**
  * Get the 'type' of a given variable from the codebook
  * @param {*} codebook
- * @param {*} type
- * @param {*} element
- * @param {*} key
- * @param {*} variableAttribute
+ * @param {*} type // node, edge, or ego
+ * @param {*} element // entity 'type' (person, place, friend, etc.). not used for ego
+ * @param {*} key // key within element to select
+ * @param {*} variableAttribute // property of key to return
  */
 export const getAttributePropertyFromCodebook = (codebook, type, element, key, attributeProperty = 'type') => {
+  if (type === 'ego') {
+      const variableInfo = getEgoVariableInfo(codebook, key);
+      return variableInfo && variableInfo[attributeProperty];
+  }
   const variableInfo = getVariableInfo(codebook, type, element, key);
   return variableInfo && variableInfo[attributeProperty];
 };
