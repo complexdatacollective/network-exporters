@@ -24,6 +24,8 @@ import {
   exportToProperty,
 } from '../../utils/reservedAttributes';
 
+const jsSHA = require('jssha/dist/sha1');
+
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
 let globalContext;
@@ -44,6 +46,18 @@ const eol = '\n';
 // Create a serializer for reuse below.
 const serializer = new globalContext.XMLSerializer();
 const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
+
+// Utility function for indenting and serializing XML element
+const formatAndSerialize = element => {
+  return formatXml(serialize(element));
+}
+
+// Utility sha1 function that returns hashed text
+const sha1 = (text) => {
+  const shaInstance = new jsSHA("SHA-1", "TEXT", { encoding: "UTF8" });
+  shaInstance.update(text);
+  return shaInstance.getHash("HEX");
+}
 
 // If includeNCMeta is true, include our custom XML schema
 const getXmlHeader = (exportOptions, sessionVariables) => {
@@ -99,7 +113,6 @@ const generateKeyElements = (
   exportOptions, // export options object
 ) => {
   let fragment = '';
-  console.log('generate key elements', entities, type, codebook);
 
   // Create an array to track variables we have already created <key>s for
   const done = [];
@@ -171,28 +184,38 @@ const generateKeyElements = (
 
   // Main loop over entities
   entities.forEach((element) => {
-    // Get element attributes
     const elementAttributes = getEntityAttributes(element);
+    let keyTarget = type === 'ego' ? 'graph' : type; // nodes and edges set for="node|edge" but ego has for="graph"
 
     // Loop over attributes
     Object.keys(elementAttributes).forEach((key) => {
       // transpose ids to names based on codebook; fall back to the raw key
-      const keyName = getAttributePropertyFromCodebook(codebook, type, element, key, 'name') || key;
+      let keyName = getAttributePropertyFromCodebook(codebook, type, element, key, 'name') || key;
+
 
       // Test if we have already created a key for this variable, and that it
       // isn't on our exclude list.
       if (done.indexOf(keyName) === -1 && !excludeList.includes(keyName)) {
         const keyElement = document.createElement('key');
 
-        // id must be xs:NMTOKEN: http://books.xmlschemata.org/relaxng/ch19-77231.html
+        // Determine attribute type to decide how to encode
+        const variableType = getAttributePropertyFromCodebook(codebook, type, element, key);
+
+        // <key> id must be xs:NMTOKEN: http://books.xmlschemata.org/relaxng/ch19-77231.html
         // do not be tempted to change this to the variable 'name' for this reason!
-        keyElement.setAttribute('id', key);
+        // If variableType is undefined, variable wasn't in the codebook (could be external data).
+        // This means that key might not be a UUID, so update the key ID to be SHA1 of variable
+        // name to ensure it is xs:NMTOKEN compliant
+        if (variableType) {
+          keyElement.setAttribute('id', key);
+        } else {
+          const hashedKeyName = sha1(key);
+          keyElement.setAttribute('id', hashedKeyName);
+        }
 
         // Use human readable variable name for the attr.name attribute
         keyElement.setAttribute('attr.name', keyName);
 
-        // Determine attribute type to decide how to encode
-        const variableType = getAttributePropertyFromCodebook(codebook, type, element, key);
         switch (variableType) {
           case VariableType.boolean:
             keyElement.setAttribute('attr.type', variableType);
@@ -204,12 +227,8 @@ const generateKeyElements = (
             break;
           }
           case VariableType.layout: {
-            /**
-             * special handling for layout variables: split the variable into
-             * two <key> elements - one for X and one for Y.
-             */
-
-
+            // special handling for layout variables: split the variable into
+            //two <key> elements - one for X and one for Y.
             keyElement.setAttribute('attr.name', `${keyName}_Y`);
             keyElement.setAttribute('id', `${key}_Y`);
             keyElement.setAttribute('attr.type', 'double');
@@ -220,7 +239,7 @@ const generateKeyElements = (
             keyElement2.setAttribute('id', `${key}_X`);
             keyElement2.setAttribute('attr.name', `${keyName}_X`);
             keyElement2.setAttribute('attr.type', 'double');
-            keyElement2.setAttribute('for', type);
+            keyElement2.setAttribute('for', keyTarget);
             fragment += `${serialize(keyElement2)}`;
             break;
           }
@@ -229,22 +248,26 @@ const generateKeyElements = (
              * Special handling for categorical variables:
              * Because categorical variables can have multiple membership, we
              * split them out into several boolean variables
+             *
+             * Because key id must be an xs:NMTOKEN, we hash the option value.
              */
 
             // fetch options property for this variable
             const options = getAttributePropertyFromCodebook(codebook, type, element, key, 'options');
 
             options.forEach((option, index) => {
+              const hashedOptionValue = sha1(option.value);
+
               if (index === options.length - 1) {
-                keyElement.setAttribute('id', `${key}_${option.value}`);
-                keyElement.setAttribute('attr.name', `${keyName}_${option.value}`);
+                keyElement.setAttribute('id', `${key}_${hashedOptionValue}`);
+                keyElement.setAttribute('attr.name', `${keyName} (${option.value})`);
                 keyElement.setAttribute('attr.type', 'boolean');
               } else {
                 const keyElement2 = document.createElement('key');
-                keyElement2.setAttribute('id', `${key}_${option.value}`);
-                keyElement2.setAttribute('attr.name', `${keyName}_${option.value}`);
+                keyElement2.setAttribute('id', `${key}_${hashedOptionValue}`);
+                keyElement2.setAttribute('attr.name', `${keyName} (${option.value})`);
                 keyElement2.setAttribute('attr.type', 'boolean');
-                keyElement2.setAttribute('for', type);
+                keyElement2.setAttribute('for', keyTarget);
                 fragment += `${serialize(keyElement2)}`;
               }
             });
@@ -257,7 +280,7 @@ const generateKeyElements = (
             keyElement.setAttribute('attr.type', 'string');
         }
 
-        keyElement.setAttribute('for', type);
+        keyElement.setAttribute('for', keyTarget);
         fragment += `${serialize(keyElement)}`;
         done.push(keyName);
       }
@@ -265,10 +288,6 @@ const generateKeyElements = (
   });
   return fragment;
 };
-
-const serializeFragment = element => {
-  return formatXml(serialize(element));
-}
 
 const generateEgoDataElements = (
   document, // the XML ownerDocument
@@ -278,7 +297,6 @@ const generateEgoDataElements = (
   exportOptions, // Export options object
 ) => {
   let fragment = '';
-  console.log('generate data elements', document, ego, codebook, excludeList, exportOptions);
 
   /**
    * Ego is a special case
@@ -290,19 +308,28 @@ const generateEgoDataElements = (
 
   // Add entity attributes
   Object.keys(entityAttributes).forEach((key) => {
-    const keyName = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'name') || key;
+    const keyName = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'name');
+    const keyType = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'type');
+
+    // Generate sha1 of keyname if it wasn't found in the codebook
+    if (!keyName) {
+      keyName = sha1(key);
+    }
+
+
     if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
-      if (getAttributePropertyFromCodebook(codebook, 'ego', null, key) === 'categorical') {
+      if (keyType === 'categorical') {
         const options = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'options');
         options.forEach((option) => {
-          const optionKey = `${key}_${option.value}`;
-          fragment += serializeFragment(createDataElement(
+          const hashedOptionValue = sha1(option.value);
+          const optionKey = `${key}_${hashedOptionValue}`;
+          fragment += formatAndSerialize(createDataElement(
             document, { key: optionKey }, !!entityAttributes[key] && includes(entityAttributes[key], option.value),
           ));
         });
-      } else if (typeof entityAttributes[key] !== 'object') {
-        fragment += serializeFragment(createDataElement(document, { key }, entityAttributes[key]));
-      } else if (getAttributePropertyFromCodebook(codebook, 'ego', null, key) === 'layout') {
+      } else if (keyType && typeof entityAttributes[key] !== 'object') {
+        fragment += formatAndSerialize(createDataElement(document, { key }, entityAttributes[key]));
+      } else if (keyType === 'layout') {
         // Determine if we should use the normalized or the "screen space" value
         let xCoord;
         let yCoord;
@@ -314,12 +341,12 @@ const generateEgoDataElements = (
           yCoord = entityAttributes[key].y;
         }
 
-        fragment += serializeFragment(createDataElement(document, { key: `${key}_X` }, xCoord));
-        fragment += serializeFragment(createDataElement(document, { key: `${key}_Y` }, yCoord));
+        fragment += formatAndSerialize(createDataElement(document, { key: `${key}_X` }, xCoord));
+        fragment += formatAndSerialize(createDataElement(document, { key: `${key}_Y` }, yCoord));
 
       } else {
-        fragment += serializeFragment(
-          createDataElement(document, { key }, JSON.stringify(entityAttributes[key])),
+        fragment += formatAndSerialize(
+          createDataElement(document, { key: keyName }, entityAttributes[key]),
         );
       }
     }
@@ -338,7 +365,6 @@ const generateDataElements = (
   exportOptions, // Export options object
 ) => {
   let fragment = '';
-  console.log('generate data elements', entities, type, codebook, excludeList);
 
   // Iterate entities
   entities.forEach((entity) => {
@@ -366,7 +392,6 @@ const generateDataElements = (
 
     // Special handling for model variables and variables unique to entity type
     if (type === 'edge') {
-
       // Add source and target properties and map
       // them to the _from and _to attributes
       domElement.setAttribute('source', entity[exportFromProperty]);
@@ -375,24 +400,7 @@ const generateDataElements = (
       // Insert the nc UUID versions of 'to' and 'from' under special properties
       domElement.appendChild(createDataElement(document, { key: 'networkCanvasFromUUID' }, entity['from']));
       domElement.appendChild(createDataElement(document, { key: 'networkCanvasToUUID' }, entity['to']));
-
-      // TODO: why does edge have its own attribute iteration?
-
-      // Object.keys(entity).forEach((key) => {
-
-      //   const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
-      //   if (!excludeList.includes(keyName)) {
-      //     if (typeof entity[key] !== 'object') {
-      //       domElement.appendChild(createDataElement(document, { key }, entity[key]));
-      //     } else {
-      //       domElement.appendChild(
-      //         createDataElement(document, { key: keyName }, JSON.stringify(entity[key])),
-      //       );
-      //     }
-      //   }
-      // });
     } else {
-
       // For nodes, add <data> for label
       // If there is no name property, fall back to labelling as "Node"
       const entityLabel = () => {
@@ -410,19 +418,31 @@ const generateDataElements = (
 
     // Add entity attributes
     Object.keys(entityAttributes).forEach((key) => {
-      const keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name') || key;
+      let keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name');
+      const keyType = getAttributePropertyFromCodebook(codebook, type, entity, key, 'type');
+
+      // Generate sha1 of keyname if it wasn't found in the codebook
+      if (!keyName) {
+        keyName = sha1(key);
+      }
+
+
       if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
-        if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'categorical') {
+        // Handle categorical variables
+        if (keyType === 'categorical') {
           const options = getAttributePropertyFromCodebook(codebook, type, entity, key, 'options');
           options.forEach((option) => {
-            const optionKey = `${key}_${option.value}`;
+            const hashedOptionValue = sha1(option.value);
+            const optionKey = `${key}_${hashedOptionValue}`;
             domElement.appendChild(createDataElement(
               document, { key: optionKey }, !!entityAttributes[key] && includes(entityAttributes[key], option.value),
             ));
           });
-        } else if (typeof entityAttributes[key] !== 'object') {
+        // Handle all codebook variables apart from layout variables
+        } else if (keyType && typeof entityAttributes[key] !== 'object') {
           domElement.appendChild(createDataElement(document, { key }, entityAttributes[key]));
-        } else if (getAttributePropertyFromCodebook(codebook, type, entity, key) === 'layout') {
+        // Handle layout variables
+        } else if (keyType === 'layout') {
           // Determine if we should use the normalized or the "screen space" value
           let xCoord;
           let yCoord;
@@ -437,15 +457,18 @@ const generateDataElements = (
           domElement.appendChild(createDataElement(document, { key: `${key}_X` }, xCoord));
           domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, yCoord));
 
+        // Handle non-codebook variables
         } else {
+          // If we reach this point, we could not detect the attribute type by looking in the codebook.
+          // We assume it is not in the codebook, and therefore use the SHA1 hash of the name as the key
           domElement.appendChild(
-            createDataElement(document, { key }, JSON.stringify(entityAttributes[key])),
+            createDataElement(document, { key: keyName }, entityAttributes[key]),
           );
         }
       }
     });
 
-    fragment += `${formatXml(serialize(domElement))}`;
+    fragment += `${formatAndSerialize(domElement)}`;
   });
 
   return fragment;
@@ -475,7 +498,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     nodes,
     'node',
-    [entityPrimaryKeyProperty],
+    [entityPrimaryKeyProperty, 'itemType'],
     codebook,
     exportOptions,
   );
@@ -491,7 +514,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     nodes,
     'node',
-    [entityPrimaryKeyProperty, entityAttributesProperty],
+    [entityPrimaryKeyProperty, entityAttributesProperty, 'itemType'],
     codebook,
     exportOptions,
   );

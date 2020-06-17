@@ -5,7 +5,6 @@ export const getEntityAttributes = node => (node && node[entityAttributesPropert
 
 // Gephi does not support long lines in graphML, meaning we need to "beautify" the output
 export const formatXml = (xml, tab) => { // tab = optional indent value, default is tab (\t)
-  console.log('formatXML');
   var formatted = '', indent= '';
   tab = tab || '\t';
   xml.split(/>\s*</).forEach(function(node) {

@@ -113,7 +113,6 @@ export const resequenceIds = (sessions) => {
     nodes: session.nodes.map(
       (node) => {
         resequencedId += 1;
-        console.log(node);
         IDLookupMap[node[entityPrimaryKeyProperty]] = resequencedId;
         return {
           [exportIDProperty]: resequencedId,
@@ -135,7 +134,6 @@ export const resequenceIds = (sessions) => {
     ),
   }));
 
-  console.log('reseq', sessions, IDLookupMap, resequencedEntities);
   return resequencedEntities;
 };
 
