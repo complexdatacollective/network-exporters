@@ -1,4 +1,5 @@
 import { isNil } from 'lodash';
+import { VariableType } from '../../utils/protocol-consts';
 import { entityAttributesProperty } from '../../utils/reservedAttributes';
 
 export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
@@ -14,17 +15,6 @@ export const formatXml = (xml, tab) => { // tab = optional indent value, default
   });
   return formatted.substring(1, formatted.length-3);
 }
-
-// TODO: VariableType[Values] is shared with 'protocol-consts' in NC
-export const VariableType = Object.freeze({
-  boolean: 'boolean',
-  text: 'text',
-  number: 'number',
-  datetime: 'datetime',
-  ordinal: 'ordinal',
-  categorical: 'categorical',
-  layout: 'layout',
-});
 
 export const VariableTypeValues = Object.freeze(Object.values(VariableType));
 

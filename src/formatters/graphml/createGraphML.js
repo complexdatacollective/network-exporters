@@ -5,9 +5,9 @@ import {
   createDataElement,
   getGraphMLTypeForKey,
   getAttributePropertyFromCodebook,
-  VariableType,
   formatXml,
 } from './helpers';
+import { VariableType } from '../../utils/protocol-consts';
 import {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -195,7 +195,7 @@ const generateKeyElements = (
 
       // Test if we have already created a key for this variable, and that it
       // isn't on our exclude list.
-      if (done.indexOf(keyName) === -1 && !excludeList.includes(keyName)) {
+      if (done.indexOf(key) === -1 && !excludeList.includes(keyName)) {
         const keyElement = document.createElement('key');
 
         // Determine attribute type to decide how to encode
@@ -260,12 +260,12 @@ const generateKeyElements = (
 
               if (index === options.length - 1) {
                 keyElement.setAttribute('id', `${key}_${hashedOptionValue}`);
-                keyElement.setAttribute('attr.name', `${keyName} (${option.value})`);
+                keyElement.setAttribute('attr.name', `${keyName}_${option.value}`);
                 keyElement.setAttribute('attr.type', 'boolean');
               } else {
                 const keyElement2 = document.createElement('key');
                 keyElement2.setAttribute('id', `${key}_${hashedOptionValue}`);
-                keyElement2.setAttribute('attr.name', `${keyName} (${option.value})`);
+                keyElement2.setAttribute('attr.name', `${keyName}_${option.value}`);
                 keyElement2.setAttribute('attr.type', 'boolean');
                 keyElement2.setAttribute('for', keyTarget);
                 fragment += `${serialize(keyElement2)}`;
@@ -273,16 +273,18 @@ const generateKeyElements = (
             });
             break;
           }
+          case VariableType.scalar:
+            keyElement.setAttribute('attr.type', 'float');
+            break;
           case VariableType.text:
           case VariableType.datetime:
-          case VariableType.location: // TODO: remove all references to location variable type
           default:
             keyElement.setAttribute('attr.type', 'string');
         }
 
         keyElement.setAttribute('for', keyTarget);
         fragment += `${serialize(keyElement)}`;
-        done.push(keyName);
+        done.push(key);
       }
     });
   });
