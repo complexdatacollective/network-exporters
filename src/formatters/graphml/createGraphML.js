@@ -63,10 +63,25 @@ const sha1 = (text) => {
 const getXmlHeader = (exportOptions, sessionVariables) => {
   if (!exportOptions.exportGraphML.includeNCMeta) {
     return `<?xml version="1.0" encoding="UTF-8"?>
-  <graphml xmlns="http://graphml.graphdrawing.org/xmlns"
+  <graphml
+    xmlns="http://graphml.graphdrawing.org/xmlns"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
     http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
+  }
+
+  let metaAttributes = `nc:caseId="${sessionVariables[caseProperty]}"
+    nc:sessionUUID="${sessionVariables[sessionProperty]}"
+    nc:protocolName="${sessionVariables[ncProtocolName]}"
+    nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+    nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"`;
+
+  if (sessionVariables[sessionStartTimeProperty]) {
+    metaAttributes += `${eol}    nc:sessionStartTime="${sessionVariables[sessionStartTimeProperty]}"`;
+  }
+
+  if (sessionVariables[sessionFinishTimeProperty]) {
+    metaAttributes += `${eol}    nc:sessionFinishTime="${sessionVariables[sessionFinishTimeProperty]}"`;
   }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -75,13 +90,7 @@ const getXmlHeader = (exportOptions, sessionVariables) => {
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
     xmlns:nc="http://schema.networkcanvas.com/xmlns"
-    nc:caseId="${sessionVariables[caseProperty]}"
-    nc:sessionUUID="${sessionVariables[sessionProperty]}"
-    nc:protocolName="${sessionVariables[ncProtocolName]}"
-    nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
-    nc:sessionStartTime="${sessionVariables[sessionStartTimeProperty]}"
-    nc:sessionFinishTime="${sessionVariables[sessionFinishTimeProperty]}"
-    nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"
+    ${metaAttributes}
   >${eol}`;
 }
 
@@ -308,6 +317,10 @@ const generateEgoDataElements = (
   // Get the ego's attributes for looping over later
   const entityAttributes = getEntityAttributes(ego);
 
+  // Create data element for Ego UUID
+  fragment += formatAndSerialize(createDataElement(document, { key: 'networkCanvasUUID' }, ego[entityPrimaryKeyProperty]));
+
+
   // Add entity attributes
   Object.keys(entityAttributes).forEach((key) => {
     const keyName = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'name');
@@ -491,7 +504,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     ego,
     'ego',
-    [entityPrimaryKeyProperty],
+    [],
     codebook,
     exportOptions,
   );
@@ -500,7 +513,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     nodes,
     'node',
-    [entityPrimaryKeyProperty, 'itemType'],
+    [],
     codebook,
     exportOptions,
   );
@@ -508,7 +521,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     edges,
     'edge',
-    [entityPrimaryKeyProperty, 'from', 'to', 'itemType'],
+    [],
     codebook,
     exportOptions,
   );
@@ -516,7 +529,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     nodes,
     'node',
-    [entityPrimaryKeyProperty, entityAttributesProperty, 'itemType'],
+    [],
     codebook,
     exportOptions,
   );
@@ -524,7 +537,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     xmlDoc,
     edges,
     'edge',
-    [entityPrimaryKeyProperty, entityAttributesProperty, 'from', 'to', 'type', 'itemType', exportToProperty, exportFromProperty, exportIDProperty, egoProperty],
+    [],
     codebook,
     exportOptions,
   );
@@ -532,7 +545,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
   const generateEgoElements = ego => generateEgoDataElements(
     xmlDoc,
     ego,
-    [entityPrimaryKeyProperty, entityAttributesProperty],
+    [],
     codebook,
     exportOptions,
   );

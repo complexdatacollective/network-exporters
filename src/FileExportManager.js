@@ -1,6 +1,15 @@
 import { merge, isEmpty } from 'lodash';
-import { insertEgoIntoSessionNetworks, unionOfNetworks, transposedCodebook, resequenceIds, partitionByEdgeType } from './formatters/network';
-import { sessionProperty, caseProperty, ncProtocolProperty } from './utils/reservedAttributes';
+import {
+  caseProperty,
+  sessionProperty,
+  remoteProtocolProperty,
+  sessionExportTimeProperty,
+  sessionFinishTimeProperty,
+  sessionStartTimeProperty,
+  ncProtocolName,
+  ncProtocolProperty,
+} from './utils/reservedAttributes';
+import { insertEgoIntoSessionNetworks, unionOfNetworks, resequenceIds, partitionByEdgeType } from './formatters/network';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
 import EgoListFormatter from './formatters/csv/ego-list';
@@ -172,7 +181,28 @@ class FileExportManager {
       return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
     }
 
-    // TODO: reject if sessions contains protocol not supplied in protocols
+    // Reject if sessions dont have required sessionVariables
+    // Should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
+    Object.keys(sessions).forEach((session) => {
+      const sessionVariables = sessions[session].sessionVariables;
+      console.log('checking session...', sessionVariables, sessions[session]);
+      if (
+        !sessionVariables[caseProperty] ||
+        !sessionVariables[sessionProperty] ||
+        !sessionVariables[remoteProtocolProperty] ||
+        !sessionVariables[sessionExportTimeProperty]
+      ) {
+        return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
+      }
+    });
+
+    // Reject if sessions contains protocol not supplied in protocols
+    Object.keys(sessions).forEach((session) => {
+      const sessionVariables = sessions[session].sessionVariables;
+      if (!protocols[sessionVariables[ncProtocolProperty]]) {
+        return Promise.reject(new RequestError(ErrorMessages.MissingProtocolFile));
+      };
+    });
 
     // Todo: Reject if export options arent valid
     // if (!formatsAreValid(exportFormats) || !exportFormats.length) {

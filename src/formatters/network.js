@@ -53,8 +53,6 @@ export const insertNetworkEgo = session => (
     edges: session.edges.map(edge => (
       { [egoProperty]: session.ego[entityPrimaryKeyProperty], ...edge }
     )),
-    // Spread session vars over ego so they can be encoded in file
-    ego: { ...session.sessionVariables, ...session.ego },
   }
 );
 
