@@ -13,6 +13,7 @@ import {
 } from '../utils/reservedAttributes';
 import { getEntityAttributes } from './utils';
 import { getEntityAttributesWithNamesResolved } from '../../../networkFormat';
+import { getAttributePropertyFromCodebook } from './graphml/helpers';
 
 const { includes } = require('lodash');
 
@@ -26,14 +27,19 @@ export const unionOfNetworks = sessions =>
 
 
 // Determine which variables to include
-export const processEntityVariables = (entity, variables) => ({
+export const processEntityVariables = (entity, entityType, codebook) => ({
   ...entity,
   attributes: Object.keys(getEntityAttributes(entity)).reduce(
-    (accumulatedAttributes, attributeName) => {
-      const attributeData = getEntityAttributes(entity)[attributeName];
-      if (variables[attributeName] && variables[attributeName].type === 'categorical') {
-        const optionNames = variables[attributeName].options || [];
-        const optionData = optionNames.reduce((accumulatedOptions, optionName) => (
+    (accumulatedAttributes, attributeUUID) => {
+      const attributeName = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'name');
+      const attributeType = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'type');
+      const attributeData = getEntityAttributes(entity)[attributeUUID];
+
+      console.log('attr', attributeName, codebook, entityType, entity.type, attributeUUID);
+
+      if (attributeType === 'categorical') {
+        const attributeOptions = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'options') || [];
+        const optionData = attributeOptions.reduce((accumulatedOptions, optionName) => (
           {
             ...accumulatedOptions,
             [`${attributeName}_${optionName.value}`]: !!attributeData && includes(attributeData, optionName.value),
@@ -42,14 +48,19 @@ export const processEntityVariables = (entity, variables) => ({
         return { ...accumulatedAttributes, ...optionData };
       }
 
-      if (variables[attributeName] && variables[attributeName].type === 'layout') {
+      if (attributeType === 'layout') {
         const layoutAttrs = {
           [`${attributeName}_x`]: attributeData && attributeData.x,
           [`${attributeName}_y`]: attributeData && attributeData.y,
         };
         return { ...accumulatedAttributes, ...layoutAttrs };
       }
-      return { ...accumulatedAttributes, [attributeName]: attributeData };
+
+      if (attributeName) {
+        return { ...accumulatedAttributes, [attributeName]: attributeData };
+      }
+
+      return { ...accumulatedAttributes, [attributeUUID]: attributeData };
     }, {},
   ),
 });
@@ -173,38 +184,3 @@ export const resequenceIds = (sessions) => {
 
   return resequencedEntities;
 };
-
-// Transpose network entity variables to their human readable
-// names using the protocol codebook.
-export const ncCodebookTranspose = (network, codebook) => {
-  const { nodes = [], edges = [], ego = {}, sessionVariables } = network;
-  const { node: nodeRegistry = {}, edge: edgeRegistry = {}, ego: egoRegistry = {} } = codebook;
-
-  return ({
-    nodes: nodes.map(node => asExportableNode(node, nodeRegistry[node.type])),
-    edges: edges.map(edge => asExportableEdge(edge, edgeRegistry[edge.type])),
-    ego: asExportableEgo(ego, egoRegistry),
-    sessionVariables,
-  });
-}
-
-/**
- * Transposes attribute and type IDs to names for export.
- * Unlike `asWorkerAgentEntity()`, this does not flatten attributes.
- */
-export const asExportableNode = (node, nodeTypeDefinition) => ({
-  ...node,
-  type: nodeTypeDefinition.name,
-  attributes: getEntityAttributesWithNamesResolved(node, (nodeTypeDefinition || {}).variables),
-});
-
-export const asExportableEdge = (edge, edgeTypeDefinition) => ({
-  ...edge,
-  type: edgeTypeDefinition && edgeTypeDefinition.name,
-  attributes: getEntityAttributesWithNamesResolved(edge, (edgeTypeDefinition || {}).variables),
-});
-
-export const asExportableEgo = (ego, egoDefinition) => ({
-  ...ego,
-  attributes: getEntityAttributesWithNamesResolved(ego, (egoDefinition || {}).variables),
-});

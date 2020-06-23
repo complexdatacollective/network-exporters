@@ -28,9 +28,7 @@ const { cellValue, csvEOL } = require('./csv');
  */
 const asEdgeList = (network, codebook, directed) => {
   const processedEdges = (network.edges || []).map((edge) => {
-    const variables = codebook && codebook.edge[edge.type]
-      ? codebook.edge[edge.type].variables : {};
-    return processEntityVariables(edge, variables);
+    return processEntityVariables(edge, 'edge', codebook);
   });
 
   // This code block duplicated the edges when directed mode was off.

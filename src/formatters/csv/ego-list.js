@@ -7,8 +7,7 @@ const { cellValue, csvEOL } = require('./csv');
 
 const asEgoList = (network, codebook) => {
   const egoList = Array.isArray(network.ego) ? network.ego : [network.ego];
-  const variables = codebook && codebook.ego ? codebook.ego.variables : {};
-  const processedEgo = egoList.map(ego => (processEntityVariables(ego, variables)));
+  const processedEgo = egoList.map(ego => (processEntityVariables(ego, 'ego', codebook)));
   return processedEgo;
 };
 

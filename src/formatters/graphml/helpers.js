@@ -94,10 +94,10 @@ export const codebookExists = (codebook, type, element, key) => {
 /**
  * Get the 'type' of a given variable from the codebook
  * @param {*} codebook
- * @param {*} type // node, edge, or ego
- * @param {*} element // entity 'type' (person, place, friend, etc.). not used for ego
- * @param {*} key // key within element to select
- * @param {*} variableAttribute // property of key to return
+ * @param {*} type node, edge, or ego
+ * @param {*} element entity 'type' (person, place, friend, etc.). not used for ego
+ * @param {*} key key within element to select
+ * @param {*} variableAttribute property of key to return
  */
 export const getAttributePropertyFromCodebook = (codebook, type, element, key, attributeProperty = 'type') => {
   if (type === 'ego') {

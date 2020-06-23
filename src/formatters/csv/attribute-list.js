@@ -6,8 +6,7 @@ import {
   ncUUIDProperty
 } from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
-import { processEntityVariables, ncCodebookTranspose } from '../network';
-import { transform } from '@babel/core';
+import { processEntityVariables } from '../network';
 
 const { Readable } = require('stream');
 
@@ -16,7 +15,7 @@ const { cellValue, csvEOL } = require('./csv');
 const asAttributeList = (network, codebook) => {
   const processedNodes = (network.nodes || []).map((node) => {
     if (codebook && codebook.node[node.type]) {
-      return processEntityVariables(node, codebook.node[node.type].variables);
+      return processEntityVariables(node, 'node', codebook);
     }
     return node;
   });
@@ -105,8 +104,7 @@ const toCSVStream = (nodes, outStream) => {
 class AttributeListFormatter {
   constructor(data, codebook) {
     console.log('atrtibute list formatter~', data, codebook);
-    const transformedData = ncCodebookTranspose(data, codebook);
-    this.list = asAttributeList(transformedData, codebook) || [];
+    this.list = asAttributeList(data, codebook) || [];
   }
 
   writeToStream(outStream) {

@@ -3,7 +3,7 @@ import { entityAttributesProperty } from '../utils/reservedAttributes';
 /**
  * @module ExportUtils
  */
-export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
+export const getEntityAttributes = entity => (entity && entity[entityAttributesProperty]) || {};
 
 // This conversion is required because the Ego R package depends on numerical node IDs:
 // https://github.com/codaco/Server/pull/237#issuecomment-479141519
