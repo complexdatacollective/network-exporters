@@ -1,6 +1,13 @@
-import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty, exportIDProperty } from '../../utils/reservedAttributes';
+import {
+  entityAttributesProperty,
+  egoProperty,
+  entityPrimaryKeyProperty,
+  exportIDProperty,
+  ncUUIDProperty
+} from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
-import { processEntityVariables } from '../network';
+import { processEntityVariables, ncCodebookTranspose } from '../network';
+import { transform } from '@babel/core';
 
 const { Readable } = require('stream');
 
@@ -25,7 +32,6 @@ const attributeHeaders = (nodes) => {
   initialHeaderSet.add(exportIDProperty);
   initialHeaderSet.add(egoProperty);
   initialHeaderSet.add(entityPrimaryKeyProperty);
-  initialHeaderSet.add(entityTypeProperty);
 
   const headerSet = nodes.reduce((headers, node) => {
     Object.keys(node[entityAttributesProperty] || []).forEach((key) => {
@@ -38,14 +44,8 @@ const attributeHeaders = (nodes) => {
 
 const getPrintableAttribute = (attribute) => {
   switch (attribute) {
-    case exportIDProperty:
-      return 'id';
-    case egoProperty:
-      return 'networkCanvasEgoID';
     case entityPrimaryKeyProperty:
-      return 'networkCanvasAlterID';
-    case entityTypeProperty:
-      return 'networkCanvasType';
+      return ncUUIDProperty;
     default:
       return attribute;
   }
@@ -78,7 +78,7 @@ const toCSVStream = (nodes, outStream) => {
             || attrName === exportIDProperty
           ) {
             value = convertUuidToDecimal(node[attrName]);
-          } else if (attrName === entityTypeProperty) {
+          } else if (attrName === 'type') {
             value = node.type;
           } else {
             value = node[entityAttributesProperty][attrName];
@@ -104,7 +104,9 @@ const toCSVStream = (nodes, outStream) => {
 
 class AttributeListFormatter {
   constructor(data, codebook) {
-    this.list = asAttributeList(data, codebook) || [];
+    console.log('atrtibute list formatter~', data, codebook);
+    const transformedData = ncCodebookTranspose(data, codebook);
+    this.list = asAttributeList(transformedData, codebook) || [];
   }
 
   writeToStream(outStream) {

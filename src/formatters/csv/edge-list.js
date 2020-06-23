@@ -1,4 +1,4 @@
-import { entityAttributesProperty, entityTypeProperty, egoProperty, entityPrimaryKeyProperty, exportIDProperty } from '../../utils/reservedAttributes';
+import { entityAttributesProperty, egoProperty, entityPrimaryKeyProperty, exportIDProperty, ncSourceUUID, ncTargetUUID, ncTypeProperty, ncUUIDProperty } from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
 import { processEntityVariables } from '../network';
 
@@ -55,13 +55,12 @@ const asEdgeList = (network, codebook, directed) => {
 const attributeHeaders = (edges) => {
   const initialHeaderSet = new Set([]);
   initialHeaderSet.add(exportIDProperty);
-  initialHeaderSet.add(egoProperty);
-  initialHeaderSet.add(entityPrimaryKeyProperty);
-  initialHeaderSet.add(entityTypeProperty);
-  initialHeaderSet.add('_from');
-  initialHeaderSet.add('_to');
   initialHeaderSet.add('from');
   initialHeaderSet.add('to');
+  initialHeaderSet.add(egoProperty);
+  initialHeaderSet.add(entityPrimaryKeyProperty);
+  initialHeaderSet.add(ncSourceUUID);
+  initialHeaderSet.add(ncTargetUUID);
 
   const headerSet = edges.reduce((headers, edge) => {
     Object.keys(edge[entityAttributesProperty] || []).forEach((key) => {
@@ -74,22 +73,10 @@ const attributeHeaders = (edges) => {
 
 const getPrintableAttribute = (attribute) => {
   switch (attribute) {
-    case exportIDProperty:
-      return 'ID';
     case egoProperty:
-      return 'networkCanvasEgoID';
+      return egoProperty;
     case entityPrimaryKeyProperty:
-      return 'networkCanvasEdgeID';
-    case 'from':
-      return 'networkCanvasSourceID';
-    case 'to':
-      return 'networkCanvasTargetID';
-    case '_from':
-      return 'from';
-    case '_to':
-      return 'to';
-    case entityTypeProperty:
-      return 'networkCanvasEdgeType';
+      return ncUUIDProperty;
     default:
       return attribute;
   }
@@ -131,10 +118,10 @@ const toCSVStream = (edges, outStream) => {
             || attrName === exportIDProperty
             || attrName === egoProperty
             || attrName === 'to' || attrName === 'from'
-            || attrName === '_to' || attrName === '_from'
+            || attrName === ncSourceUUID || attrName === ncTargetUUID
           ) {
             value = convertUuidToDecimal(edge[attrName]);
-          } else if (attrName === entityTypeProperty) {
+          } else if (attrName === 'type') {
             value = edge.type;
           } else {
             value = edge[entityAttributesProperty][attrName];

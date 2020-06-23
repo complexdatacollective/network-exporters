@@ -5,7 +5,6 @@ import { entityAttributesProperty } from '../utils/reservedAttributes';
  */
 export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
-
 // This conversion is required because the Ego R package depends on numerical node IDs:
 // https://github.com/codaco/Server/pull/237#issuecomment-479141519
 // export const convertUuidToDecimal = uuid => (

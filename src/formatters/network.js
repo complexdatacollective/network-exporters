@@ -1,6 +1,18 @@
 /* eslint-disable no-underscore-dangle */
-import { entityPrimaryKeyProperty, egoProperty, sessionProperty, exportIDProperty, exportFromProperty, exportToProperty } from '../utils/reservedAttributes';
+import {
+  entityPrimaryKeyProperty,
+  egoProperty,
+  sessionProperty,
+  exportIDProperty,
+  exportFromProperty,
+  exportToProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+  edgeSourceProperty,
+  edgeTargetProperty,
+} from '../utils/reservedAttributes';
 import { getEntityAttributes } from './utils';
+import { getEntityAttributesWithNamesResolved } from '../../../networkFormat';
 
 const { includes } = require('lodash');
 
@@ -65,34 +77,59 @@ export const insertEgoIntoSessionNetworks = sessions => (
  * Each network contains a reference to the original nodes, with a subset of edges
  * based on the type.
  *
- * @param  {Array} network in NC format
+ * @param  {Object} codebook
+ * @param  {Array} session in NC format
  * @param  {string} format one of `formats`
  * @return {Array} An array of networks, partitioned by edge type. Each network object is decorated
  *                 with an additional `edgeType` prop to facilitate format naming.
  */
-export const partitionByEdgeType = (network, format) => {
+export const partitionNetworkByType = (codebook, session, format) => {
+  console.log(
+    'entered function',
+    format,
+    session,
+  )
+
+  const getEntityName = (uuid, type) => codebook[type][uuid].name || null;
+
   switch (format) {
     case 'graphml':
-    case 'ego':
-    case 'attributeList':
-      return [network];
-    case 'edgeList':
-    case 'adjacencyMatrix': {
-      if (!network.edges.length) {
-        return [network];
+    case 'ego': {
+      return [session];
+    }
+    case 'attributeList': {
+      if (!session.nodes.length) {
+        return [session];
       }
 
-      const { nodes } = network;
-      const partitionedEdgeMap = network.edges.reduce((edgeMap, edge) => {
+      const partitionedNodeMap = session.nodes.reduce((nodeMap, node) => {
+        nodeMap[node.type] = nodeMap[node.type] || []; // eslint-disable-line no-param-reassign
+        nodeMap[node.type].push(node);
+        return nodeMap;
+      }, {});
+
+      return Object.entries(partitionedNodeMap).map(([nodeType, nodes]) => ({
+        ...session,
+        nodes,
+        partitionEntity: getEntityName(nodeType, 'node'),
+      }));
+    }
+    case 'edgeList':
+    case 'adjacencyMatrix': {
+      if (!session.edges.length) {
+        return [session];
+      }
+
+      const partitionedEdgeMap = session.edges.reduce((edgeMap, edge) => {
         edgeMap[edge.type] = edgeMap[edge.type] || []; // eslint-disable-line no-param-reassign
         edgeMap[edge.type].push(edge);
         return edgeMap;
       }, {});
 
       return Object.entries(partitionedEdgeMap).map(([edgeType, edges]) => ({
-        nodes,
+        ...session,
         edges,
-        edgeType,
+        partitionEntity: getEntityName(edgeType, 'edge'),
       }));
     }
     default:
@@ -124,9 +161,11 @@ export const resequenceIds = (sessions) => {
         IDLookupMap[edge[entityPrimaryKeyProperty]] = resequencedId;
         return {
           ...edge,
+          [ncSourceUUID]: edge[edgeSourceProperty],
+          [ncTargetUUID]: edge[edgeTargetProperty],
           [exportIDProperty]: resequencedId,
-          [exportFromProperty]: IDLookupMap[edge.from],
-          [exportToProperty]: IDLookupMap[edge.to],
+          from: IDLookupMap[edge[edgeSourceProperty]],
+          to: IDLookupMap[edge[edgeTargetProperty]],
         };
       },
     ),
@@ -135,41 +174,10 @@ export const resequenceIds = (sessions) => {
   return resequencedEntities;
 };
 
-
-// Removed so we can accept
-// export const transposedCodebookVariables = (sectionCodebook, definition) => {
-//   if (!definition.variables) { // not required for edges
-//     sectionCodebook[definition.name] = definition; // eslint-disable-line no-param-reassign
-//     return sectionCodebook;
-//   }
-
-//   const variables = Object.values(definition.variables).reduce((acc, variable) => {
-//     acc[variable.name] = variable;
-//     return acc;
-//   }, {});
-//   sectionCodebook[definition.name] = { // eslint-disable-line no-param-reassign
-//     ...definition,
-//     variables,
-//   };
-//   return sectionCodebook;
-// };
-
-// export const transposedCodebookSection = (section = {}) =>
-//   Object.values(section).reduce((sectionCodebook, definition) => (
-//     transposedCodebookVariables(sectionCodebook, definition)
-//   ), {});
-
-// export const transposedCodebook = (codebook = {}) => ({
-//   edge: transposedCodebookSection(codebook.edge),
-//   node: transposedCodebookSection(codebook.node),
-//   ego: transposedCodebookVariables({}, { ...codebook.ego, name: 'ego' }).ego,
-// });
-
-
-/// Moved from NC
-
-export const ncCodebookTranspose = (sessionId, session, codebook, protocol) => {
-  const { network: { nodes = [], edges = [], ego = {} } } = session;
+// Transpose network entity variables to their human readable
+// names using the protocol codebook.
+export const ncCodebookTranspose = (network, codebook) => {
+  const { nodes = [], edges = [], ego = {}, sessionVariables } = network;
   const { node: nodeRegistry = {}, edge: edgeRegistry = {}, ego: egoRegistry = {} } = codebook;
 
   return ({

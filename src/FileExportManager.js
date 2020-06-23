@@ -4,12 +4,9 @@ import {
   sessionProperty,
   remoteProtocolProperty,
   sessionExportTimeProperty,
-  sessionFinishTimeProperty,
-  sessionStartTimeProperty,
-  ncProtocolName,
   ncProtocolProperty,
 } from './utils/reservedAttributes';
-import { insertEgoIntoSessionNetworks, unionOfNetworks, resequenceIds, partitionByEdgeType } from './formatters/network';
+import { insertEgoIntoSessionNetworks, unionOfNetworks, resequenceIds, partitionNetworkByType } from './formatters/network';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
 import EgoListFormatter from './formatters/csv/ego-list';
@@ -29,14 +26,14 @@ const { getFileExtension } = require('./formatters/utils');
 
 const escapeFilePart = part => part.replace(/\W/g, '');
 
-const makeFilename = (prefix, edgeType, exportFormat, extension) => {
+const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
   if (extension !== `.${exportFormat}`) {
     name += name ? '_' : '';
     name += exportFormat;
   }
-  if (edgeType) {
-    name += `_${escapeFilePart(edgeType)}`;
+  if (entityType) {
+    name += `_${escapeFilePart(entityType)}`;
   }
   return `${name}${extension}`;
 };
@@ -66,7 +63,7 @@ const getFormatterClass = (formatterType) => {
 /**
  * Export a single (CSV or graphml) file
  * @param  {string} namePrefix used to construct the filename
- * @param  {string} edgeType an edge type - used by CSV formatters
+ * @param  {string} partitionedEntityName an entity name used by CSV formatters
  * @param  {formats} exportFormat a special config object that specifies the formatter class
  * @param  {string} outDir directory where we should write the file
  * @param  {object} network NC-formatted network `({ nodes, edges, ego })`
@@ -78,7 +75,7 @@ const getFormatterClass = (formatterType) => {
  */
 const exportFile = (
   namePrefix,
-  edgeType,
+  partitonedEntityName,
   exportFormat,
   outDir,
   network,
@@ -94,13 +91,14 @@ const exportFile = (
   }
 
   // Establish variables to hold the stream controller (needed to handle abort method)
-  // and the strem itself.
+  // and the stream itself.
   let streamController;
   let writeStream;
 
   const pathPromise = new Promise((resolve, reject) => {
+    console.log('pathpromise', network);
     const formatter = new Formatter(network, codebook, exportOptions);
-    const outputName = makeFilename(namePrefix, edgeType, exportFormat, extension);
+    const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
     const filepath = path.join(outDir, outputName);
     writeStream = fs.createWriteStream(filepath);
     writeStream.on('finish', () => {
@@ -181,29 +179,6 @@ class FileExportManager {
       return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
     }
 
-    // Reject if sessions dont have required sessionVariables
-    // Should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
-    Object.keys(sessions).forEach((session) => {
-      const sessionVariables = sessions[session].sessionVariables;
-      console.log('checking session...', sessionVariables, sessions[session]);
-      if (
-        !sessionVariables[caseProperty] ||
-        !sessionVariables[sessionProperty] ||
-        !sessionVariables[remoteProtocolProperty] ||
-        !sessionVariables[sessionExportTimeProperty]
-      ) {
-        return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
-      }
-    });
-
-    // Reject if sessions contains protocol not supplied in protocols
-    Object.keys(sessions).forEach((session) => {
-      const sessionVariables = sessions[session].sessionVariables;
-      if (!protocols[sessionVariables[ncProtocolProperty]]) {
-        return Promise.reject(new RequestError(ErrorMessages.MissingProtocolFile));
-      };
-    });
-
     // Todo: Reject if export options arent valid
     // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
     //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
@@ -239,6 +214,30 @@ class FileExportManager {
           // => [n1, n2]
           sessionsWithUnion.map((session) => {
 
+            // Reject if no protocol for this session
+            if (!protocols[session.sessionVariables[ncProtocolProperty]]) {
+              return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
+            };
+
+            // Reject if sessions dont have required sessionVariables
+            // Should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
+            const sessionVariables = session.sessionVariables;
+            if (
+              !sessionVariables[caseProperty] ||
+              !sessionVariables[sessionProperty] ||
+              !sessionVariables[remoteProtocolProperty] ||
+              !sessionVariables[sessionExportTimeProperty]
+            ) {
+              return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
+            }
+
+            const protocol = protocols[session.sessionVariables[ncProtocolProperty]];
+
+            // Strip illegal characters from caseId
+            const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
+            const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : sanitizeFilename(protocol.name);
+
+
             // Translate our new configuration object back into the old syntax
             // TODO: update this to use the new configuration object directly.
             const exportFormats = [
@@ -248,24 +247,21 @@ class FileExportManager {
               ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
               ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
             ];
-
+            console.log('unpartitioned', session);
             // ...in every file format requested
             // => [[n1.matrix.csv, n1.attrs.csv], [n2.matrix.csv, n2.attrs.csv]]
             return exportFormats.map(format =>
-              // ...partitioning matrix & edge-list output based on edge type
-              // => [ [[n1.matrix.knows.csv, n1.matrix.likes.csv], [n1.attrs.csv]],
-              //      [[n2.matrix.knows.csv, n2.matrix.likes.csv], [n2.attrs.csv]]]
-              partitionByEdgeType(session, format).map((partitionedNetwork) => {
-                const protocol = protocols[session.sessionVariables[ncProtocolProperty]];
+              // partitioning network based on node and edge type so we can create
+              // an individual export file for each type
+              partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
+                console.log('partitionedNetwork', format, partitionedNetwork);
 
-                // Strip illegal characters from caseId
-                const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
+                const partitionedEntity = partitionedNetwork.partitionEntity;
 
-                const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : sanitizeFilename(protocol.name);
                 // gather one promise for each exported file
                 return exportFile(
                   prefix,
-                  partitionedNetwork.edgeType,
+                  partitionedEntity,
                   format,
                   tmpDir,
                   partitionedNetwork,

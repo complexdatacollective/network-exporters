@@ -20,8 +20,12 @@ import {
   ncProtocolName,
   exportIDProperty,
   egoProperty,
-  exportFromProperty,
-  exportToProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+  edgeSourceProperty,
+  edgeTargetProperty,
+  ncTypeProperty,
+  ncUUIDProperty,
 } from '../../utils/reservedAttributes';
 
 const jsSHA = require('jssha/dist/sha1');
@@ -151,8 +155,8 @@ const generateKeyElements = (
   if (type === 'node' && done.indexOf('type') === -1 && !excludeList.includes('type')) {
     // Create <key> for type
     const typeDataElement = document.createElement('key');
-    typeDataElement.setAttribute('id', 'networkCanvasType');
-    typeDataElement.setAttribute('attr.name', 'networkCanvasType');
+    typeDataElement.setAttribute('id', ncTypeProperty);
+    typeDataElement.setAttribute('attr.name', ncTypeProperty);
     typeDataElement.setAttribute('attr.type', 'string');
     typeDataElement.setAttribute('for', 'all');
     fragment += `${serialize(typeDataElement)}`;
@@ -163,8 +167,8 @@ const generateKeyElements = (
   if (type === 'node' && done.indexOf('uuid') === -1 && !excludeList.includes('uuid')) {
     // Create <key> for type
     const typeDataElement = document.createElement('key');
-    typeDataElement.setAttribute('id', 'networkCanvasUUID');
-    typeDataElement.setAttribute('attr.name', 'networkCanvasUUID');
+    typeDataElement.setAttribute('id', ncUUIDProperty);
+    typeDataElement.setAttribute('attr.name', ncUUIDProperty);
     typeDataElement.setAttribute('attr.type', 'string');
     typeDataElement.setAttribute('for', 'all');
     fragment += `${serialize(typeDataElement)}`;
@@ -175,15 +179,15 @@ const generateKeyElements = (
   if (type === 'edge' && done.indexOf('originalEdgeSource') === -1) {
     // Create <key> for type
     const typeDataElement = document.createElement('key');
-    typeDataElement.setAttribute('id', 'networkCanvasToUUID');
-    typeDataElement.setAttribute('attr.name', 'networkCanvasToUUID');
+    typeDataElement.setAttribute('id', ncTargetUUID);
+    typeDataElement.setAttribute('attr.name', ncTargetUUID);
     typeDataElement.setAttribute('attr.type', 'string');
     typeDataElement.setAttribute('for', 'edge');
     fragment += `${serialize(typeDataElement)}`;
 
     const typeDataElement2 = document.createElement('key');
-    typeDataElement2.setAttribute('id', 'networkCanvasFromUUID');
-    typeDataElement2.setAttribute('attr.name', 'networkCanvasFromUUID');
+    typeDataElement2.setAttribute('id', ncSourceUUID);
+    typeDataElement2.setAttribute('attr.name', ncSourceUUID);
     typeDataElement2.setAttribute('attr.type', 'string');
     typeDataElement2.setAttribute('for', 'edge');
     fragment += `${serialize(typeDataElement2)}`;
@@ -318,7 +322,7 @@ const generateEgoDataElements = (
   const entityAttributes = getEntityAttributes(ego);
 
   // Create data element for Ego UUID
-  fragment += formatAndSerialize(createDataElement(document, { key: 'networkCanvasUUID' }, ego[entityPrimaryKeyProperty]));
+  fragment += formatAndSerialize(createDataElement(document, { key: ncUUIDProperty }, ego[entityPrimaryKeyProperty]));
 
 
   // Add entity attributes
@@ -399,22 +403,22 @@ const generateDataElements = (
     }
 
     // Create data element for entity UUID
-    domElement.appendChild(createDataElement(document, { key: 'networkCanvasUUID' }, entity[entityPrimaryKeyProperty]));
+    domElement.appendChild(createDataElement(document, { key: ncUUIDProperty }, entity[entityPrimaryKeyProperty]));
 
     // Create data element for entity type
     const entityTypeName = codebook[type][entity.type].name || entity.type;
-    domElement.appendChild(createDataElement(document, { key: 'networkCanvasType' }, entityTypeName));
+    domElement.appendChild(createDataElement(document, { key: ncTypeProperty }, entityTypeName));
 
     // Special handling for model variables and variables unique to entity type
     if (type === 'edge') {
       // Add source and target properties and map
       // them to the _from and _to attributes
-      domElement.setAttribute('source', entity[exportFromProperty]);
-      domElement.setAttribute('target', entity[exportToProperty]);
+      domElement.setAttribute('source', entity[edgeSourceProperty]);
+      domElement.setAttribute('target', entity[edgeTargetProperty]);
 
       // Insert the nc UUID versions of 'to' and 'from' under special properties
-      domElement.appendChild(createDataElement(document, { key: 'networkCanvasFromUUID' }, entity['from']));
-      domElement.appendChild(createDataElement(document, { key: 'networkCanvasToUUID' }, entity['to']));
+      domElement.appendChild(createDataElement(document, { key: ncSourceUUID }, entity[ncSourceUUID]));
+      domElement.appendChild(createDataElement(document, { key: ncTargetUUID }, entity[ncTargetUUID]));
     } else {
       // For nodes, add <data> for label
       // If there is no name property, fall back to labelling as "Node"
@@ -496,6 +500,7 @@ const generateDataElements = (
  * @param {*} exportOptions
  */
 export function* graphMLGenerator(network, codebook, exportOptions) {
+  console.log('SESSIONVARS', network.sessionVariables);
   yield getXmlHeader(exportOptions, network.sessionVariables);
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);

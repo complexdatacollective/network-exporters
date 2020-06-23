@@ -1,4 +1,4 @@
-import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty } from '../../utils/reservedAttributes';
+import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty, egoProperty } from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
 import { processEntityVariables } from '../network';
 
@@ -35,7 +35,7 @@ const getPrintableAttribute = (attribute) => {
     case caseProperty:
       return 'networkCanvasCaseID';
     case entityPrimaryKeyProperty:
-      return 'networkCanvasEgoID';
+      return egoProperty;
     default:
       return attribute;
   }
