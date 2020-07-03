@@ -570,7 +570,6 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     network.nodes = groupBy(network.nodes, sessionProperty);
     network.edges = groupBy(network.edges, sessionProperty);
 
-    // yield Object.keys(network.nodes).forEach(function *(sessionID, sessionIndex) {
     for (let sessionID in network.sessionVariables) {
       console.log('iterating sessionIDs:', sessionID);
       yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
@@ -599,6 +598,28 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
   } else {
     console.log('not unifying');
+
+    yield getGraphHeader(exportOptions, network.sessionVariables);
+
+    // Add ego to graph
+    if (network.ego) {
+      yield generateEgoElements(network.ego);
+    }
+
+    // add nodes and edges to graph
+    if (network.nodes) {
+      for (let i = 0; i < network.nodes.length; i += 100) {
+        yield generateNodeElements(network.nodes.slice(i, i + 100));
+      }
+    }
+
+    if (network.edges) {
+      for (let i = 0; i < network.edges.length; i += 100) {
+        yield generateEdgeElements(network.edges.slice(i, i + 100));
+      }
+    }
+
+    yield getGraphFooter;
   }
 
   yield xmlFooter;
