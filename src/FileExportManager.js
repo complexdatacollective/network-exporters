@@ -1,12 +1,11 @@
-import { merge, isEmpty } from 'lodash';
+import { merge, isEmpty, groupBy } from 'lodash';
 import {
   caseProperty,
   sessionProperty,
   remoteProtocolProperty,
   sessionExportTimeProperty,
-  ncProtocolProperty,
 } from './utils/reservedAttributes';
-import { insertEgoIntoSessionNetworks, unionOfNetworks, resequenceIds, partitionNetworkByType } from './formatters/network';
+import { insertEgoIntoSessionNetworks, resequenceIds, partitionNetworkByType } from './formatters/network';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
 import EgoListFormatter from './formatters/csv/ego-list';
@@ -96,7 +95,6 @@ const exportFile = (
   let writeStream;
 
   const pathPromise = new Promise((resolve, reject) => {
-    console.log('pathpromise', network);
     const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
     const filepath = path.join(outDir, outputName);
@@ -126,11 +124,11 @@ const exportFile = (
 /**
  * Interface for all data exports
  */
-
 class FileExportManager {
+
   constructor(exportOptions = {}) {
     const defaultGraphMLOptions = {
-      includeNCMeta: true,
+      // includeNCMeta: true,
     };
 
     const defaultCSVOptions = {
@@ -144,7 +142,7 @@ class FileExportManager {
       exportGraphML: defaultGraphMLOptions,
       exportCSV: defaultCSVOptions,
       globalOptions: {
-        unifyNetworks: false, // TODO
+        unifyNetworks: false,
         useDirectedEdges: false, // TODO
         useScreenLayoutCoordinates: true,
         screenLayoutHeight: 1080,
@@ -169,7 +167,6 @@ class FileExportManager {
    * @param {*} destinationPath path to write the resulting files to
    */
   exportSessions(sessions, protocols, destinationPath) {
-
     // Reject if required parameters aren't provided
     if (
       (!sessions && !isEmpty(sessions))
@@ -201,80 +198,135 @@ class FileExportManager {
       .then(() => insertEgoIntoSessionNetworks(sessions))
       // Then, resequence IDs for this export
       .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
-      // Then, process the union option: conflate into one massive network if enabled.
-      // TODO: this needs to happen PER PROTOCOL so that meta data can be maintained
-      .then(sessionsWithResequencedIDs =>
-        (this.exportOptions.unifyNetworks
-          ? [unionOfNetworks(sessionsWithResequencedIDs)] : sessionsWithResequencedIDs))
-      // Then, encode each network in each format specified, using the options for each.
-      // Write the resulting file to the temp directory
-      .then((sessionsWithUnion) => {
+      // Group sessions by protocol UUID
+      .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, 'sessionVariables.protocolUID'))
+      // Then, process the union option
+      .then(sessionsByProtocol => {
+        console.log('sessionsbyprotocol', sessionsByProtocol);
+        if (this.exportOptions.globalOptions.unifyNetworks) {
+          // Result is a SINGLE session, with MULTIPLE ego and sessionVariables
+          // We add the sessionID to each entity so that we can groupBy on it within
+          // the exporter to reconstruct the sessions.
+          return Object.keys(sessionsByProtocol)
+          .reduce((sessions, protocolUUID) => {
+              const protocolSessions = sessionsByProtocol[protocolUUID]
+                  .reduce((union, session) => ({
+                      // Merge node list when union option is selected
+                      nodes: [...union.nodes, ...session.nodes.map(node => ({
+                        ...node,
+                        [sessionProperty]: session.sessionVariables[sessionProperty],
+                      }))],
+                      edges: [...union.edges, ...session.edges.map(edge => ({
+                        ...edge,
+                        [sessionProperty]: session.sessionVariables[sessionProperty],
+                      }))],
+                      ego: {
+                        ...union.ego,
+                        [session.sessionVariables[sessionProperty]]: session.ego,
+                      },
+                      sessionVariables: {
+                        ...union.sessionVariables,
+                        [session.sessionVariables[sessionProperty]]: session.sessionVariables,
+                      } ,
+                  }), { nodes: [], edges: [], ego: {}, sessionVariables: {} });
+              return {
+                  ...sessions,
+                  [protocolUUID]: Array(protocolSessions),
+              }
+          }, {});
+        }
+        return sessionsByProtocol;
+      })
+      // From this point on, ego and sessionVariables are collections.
+      // Encode each network in each format specified
+      .then((unifiedSessions) => {
+        console.log('unifiedSessoins', unifiedSessions);
         promisedExports = flattenDeep(
           // Export every network
           // => [n1, n2]
-          sessionsWithUnion.map((session) => {
-
-            // Reject if no protocol for this session
-            if (!protocols[session.sessionVariables[ncProtocolProperty]]) {
+          Object.keys(unifiedSessions).map(protocolUUID => {
+            // Reject if no protocol was provided for this session
+            if (!protocols[protocolUUID]) {
               return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
             };
 
-            // Reject if sessions dont have required sessionVariables
-            // Should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
-            const sessionVariables = session.sessionVariables;
-            if (
-              !sessionVariables[caseProperty] ||
-              !sessionVariables[sessionProperty] ||
-              !sessionVariables[remoteProtocolProperty] ||
-              !sessionVariables[sessionExportTimeProperty]
-            ) {
-              return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
-            }
+            return unifiedSessions[protocolUUID].map(session => {
+              console.log('mapping unifiedSessions', session);
 
-            const protocol = protocols[session.sessionVariables[ncProtocolProperty]];
+              // todo: move out of this loop to network utils
+              const verifySessionVariables = (sessionVariables) => {
+                if (
+                  !sessionVariables[caseProperty] ||
+                  !sessionVariables[sessionProperty] ||
+                  !sessionVariables[remoteProtocolProperty] ||
+                  !sessionVariables[sessionExportTimeProperty]
+                ) {
+                  return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
+                }
+              }
 
-            // Strip illegal characters from caseId
-            const sanitizedCaseID = sanitizeFilename(session.sessionVariables[caseProperty]);
-            const prefix = session.sessionVariables[sessionProperty] ? `${sanitizedCaseID}_${session.sessionVariables[sessionProperty]}` : sanitizeFilename(protocol.name);
+              // Reject if sessions don't have required sessionVariables
+              // Should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
+              if (this.exportOptions.globalOptions.unifyNetworks) {
+                Object.values(session.sessionVariables).forEach(sessionVariables => {
+                  verifySessionVariables(sessionVariables);
+                })
+              } else {
+                verifySessionVariables(session.sessionVariables);
+              }
 
 
-            // Translate our new configuration object back into the old syntax
-            // TODO: update this to use the new configuration object directly.
-            const exportFormats = [
-              'ego',
-              ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-              ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
-              ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
-              ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
-            ];
-            console.log('unpartitioned', session);
-            // ...in every file format requested
-            // => [[n1.matrix.csv, n1.attrs.csv], [n2.matrix.csv, n2.attrs.csv]]
-            return exportFormats.map(format =>
-              // partitioning network based on node and edge type so we can create
-              // an individual export file for each type
-              partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
-                console.log('partitionedNetwork', format, partitionedNetwork);
+              const protocol = protocols[protocolUUID];
+              let prefix;
 
-                const partitionedEntity = partitionedNetwork.partitionEntity;
+              // Determine filename prefix based on if we are exporting a single session
+              // or a unified network
+              if (this.exportOptions.globalOptions.unifyNetworks) {
+                prefix = sanitizeFilename(protocol.name);
+              } else {
+                prefix = `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
+              }
 
-                // gather one promise for each exported file
-                return exportFile(
-                  prefix,
-                  partitionedEntity,
-                  format,
-                  tmpDir,
-                  partitionedNetwork,
-                  protocol.codebook,
-                  this.exportOptions,
-                );
-              }));
+              // Translate our new configuration object back into the old syntax
+              // TODO: update this to use the new configuration object directly.
+              const exportFormats = [
+                ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
+                ...(this.exportOptions.exportCSV ? ['ego'] : []),
+                ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
+                ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
+                ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
+              ];
+              console.log('exportFormats', exportFormats);
+              // ...in every file format requested
+              // => [[n1.matrix.csv, n1.attrs.csv], [n2.matrix.csv, n2.attrs.csv]]
+              return exportFormats.map(format =>
+                // partitioning network based on node and edge type so we can create
+                // an individual export file for each type
+
+                // partitionNetworkByType returns array:
+                //
+                partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
+                  const partitionedEntity = partitionedNetwork.partitionEntity;
+                  console.log('partitioned network', format, partitionedNetwork, partitionedEntity, session);
+                  // gather one promise for each exported file
+                  return exportFile(
+                    prefix,
+                    partitionedEntity,
+                    format,
+                    tmpDir,
+                    partitionedNetwork,
+                    protocol.codebook,
+                    this.exportOptions,
+                  );
+                })
+              );
+            })
           }),
         );
+
         return Promise.all(promisedExports);
       })
       // Then, Zip the result.
-      // TODO: Determine if zipping is required based on number of files.
       .then((exportedPaths) => {
         if (exportedPaths.length === 0) {
           throw new RequestError(ErrorMessages.NothingToExport);

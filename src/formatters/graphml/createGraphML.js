@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { findKey, includes } from 'lodash';
+import { findKey, includes, groupBy } from 'lodash';
 import {
   getEntityAttributes,
   createDataElement,
@@ -64,21 +64,26 @@ const sha1 = (text) => {
 }
 
 // If includeNCMeta is true, include our custom XML schema
-const getXmlHeader = (exportOptions, sessionVariables) => {
-  if (!exportOptions.exportGraphML.includeNCMeta) {
+const getXmlHeader = () => {
     return `<?xml version="1.0" encoding="UTF-8"?>
   <graphml
     xmlns="http://graphml.graphdrawing.org/xmlns"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
-    http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">${eol}`;
-  }
+    http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"
+    xmlns:nc="http://schema.networkcanvas.com/xmlns">${eol}`;
+}
+
+// Use exportOptions.defaultOptions from FileExportManager to determine parameters
+// for edge direction.
+const getGraphHeader = ({ globalOptions: { useDirectedEdges, } }, sessionVariables) => {
+  const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
 
   let metaAttributes = `nc:caseId="${sessionVariables[caseProperty]}"
-    nc:sessionUUID="${sessionVariables[sessionProperty]}"
-    nc:protocolName="${sessionVariables[ncProtocolName]}"
-    nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
-    nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"`;
+  nc:sessionUUID="${sessionVariables[sessionProperty]}"
+  nc:protocolName="${sessionVariables[ncProtocolName]}"
+  nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+  nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"`;
 
   if (sessionVariables[sessionStartTimeProperty]) {
     metaAttributes += `${eol}    nc:sessionStartTime="${sessionVariables[sessionStartTimeProperty]}"`;
@@ -87,30 +92,19 @@ const getXmlHeader = (exportOptions, sessionVariables) => {
   if (sessionVariables[sessionFinishTimeProperty]) {
     metaAttributes += `${eol}    nc:sessionFinishTime="${sessionVariables[sessionFinishTimeProperty]}"`;
   }
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-  <graphml
-    xmlns="http://graphml.graphdrawing.org/xmlns"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://schema.networkcanvas.com/xmlns http://schema.networkcanvas.com/xmlns/1.0/graphml+netcanvas.xsd"
-    xmlns:nc="http://schema.networkcanvas.com/xmlns"
-    ${metaAttributes}
-  >${eol}`;
-}
-
-
-// Use exportOptions.defaultOptions from FileExportManager to determine parameters
-// for edge direction.
-const getGraphHeader = ({ globalOptions: { useDirectedEdges } }) => {
-  const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
-  return `<graph edgedefault="${edgeDefault}">${eol}`;
+  return `<graph
+  edgedefault="${edgeDefault}"
+  ${metaAttributes}
+>${eol}`;
 };
 
-const xmlFooter = `</graph>${eol}</graphml>${eol}`;
+const getGraphFooter = `</graph>${eol}`
+
+const xmlFooter = `</graphml>${eol}`;
 
 // Use exportOptions from FileExportManager to determine XML properties
 const setUpXml = (exportOptions, sessionVariables) => {
-  const graphMLOutline = `${getXmlHeader(exportOptions, sessionVariables)}${getGraphHeader(exportOptions)}${xmlFooter}`;
+  const graphMLOutline = `${getXmlHeader()}${getGraphHeader(exportOptions, sessionVariables)}${xmlFooter}`;
   return (new globalContext.DOMParser()).parseFromString(graphMLOutline, 'text/xml');
 };
 
@@ -123,7 +117,6 @@ const generateKeyElements = (
   type, // 'node' or 'edge' or 'ego'
   excludeList, // Variables to exlcude
   codebook, // codebook
-  exportOptions, // export options object
 ) => {
   let fragment = '';
 
@@ -198,6 +191,7 @@ const generateKeyElements = (
   // Main loop over entities
   entities.forEach((element) => {
     const elementAttributes = getEntityAttributes(element);
+    console.log('iterating entities', type, entities, element, elementAttributes);
     let keyTarget = type === 'ego' ? 'graph' : type; // nodes and edges set for="node|edge" but ego has for="graph"
 
     // Loop over attributes
@@ -317,7 +311,6 @@ const generateEgoDataElements = (
    * Ego is a special case
    * Ego data elements are attached directly to the <graph> element
    */
-
   // Get the ego's attributes for looping over later
   const entityAttributes = getEntityAttributes(ego);
 
@@ -500,18 +493,19 @@ const generateDataElements = (
  * @param {*} exportOptions
  */
 export function* graphMLGenerator(network, codebook, exportOptions) {
-  console.log('SESSIONVARS', network.sessionVariables);
-  yield getXmlHeader(exportOptions, network.sessionVariables);
+  console.log('entering generator', network);
+  debugger;
+
+  yield getXmlHeader();
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
 
   const generateEgoKeys = ego => generateKeyElements(
     xmlDoc,
-    ego,
+    [ego], // TODO: refactor key generation function to not need collection.
     'ego',
     [],
     codebook,
-    exportOptions,
   );
 
   const generateNodeKeys = nodes => generateKeyElements(
@@ -520,15 +514,14 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     'node',
     [],
     codebook,
-    exportOptions,
   );
+
   const generateEdgeKeys = edges => generateKeyElements(
     xmlDoc,
     edges,
     'edge',
     [],
     codebook,
-    exportOptions,
   );
   const generateNodeElements = nodes => generateDataElements(
     xmlDoc,
@@ -538,6 +531,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     codebook,
     exportOptions,
   );
+
   const generateEdgeElements = edges => generateDataElements(
     xmlDoc,
     edges,
@@ -556,7 +550,14 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
   );
 
   // generate keys for ego
-  yield generateEgoKeys([network.ego]);
+  if (exportOptions.globalOptions.unifyNetworks) {
+    const combinedEgos = Object.values(network.ego).reduce((union, ego) => {
+      return { [entityAttributesProperty]: { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] } };
+    }, { [entityAttributesProperty]: {} });
+    yield generateEgoKeys(combinedEgos);
+  } else {
+    yield generateEgoKeys(network.ego);
+  }
 
   // generate keys for nodes
   yield generateNodeKeys(network.nodes);
@@ -564,18 +565,40 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
   // generate keys for edges
   yield generateEdgeKeys(network.edges);
 
-  yield getGraphHeader(exportOptions);
+  if (exportOptions.globalOptions.unifyNetworks) {
+    // Group nodes and edges by sessionProperty, and then map.
+    network.nodes = groupBy(network.nodes, sessionProperty);
+    network.edges = groupBy(network.edges, sessionProperty);
 
-  // Add ego to graph
-  yield generateEgoElements(network.ego);
+    // yield Object.keys(network.nodes).forEach(function *(sessionID, sessionIndex) {
+    for (let sessionID in network.sessionVariables) {
+      console.log('iterating sessionIDs:', sessionID);
+      yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
 
-  // add nodes and edges to graph
-  for (let i = 0; i < network.nodes.length; i += 100) {
-    yield generateNodeElements(network.nodes.slice(i, i + 100));
-  }
+      // Add ego to graph
+      if (network.ego[sessionID]) {
+        yield generateEgoElements(network.ego[sessionID]);
+      }
 
-  for (let i = 0; i < network.edges.length; i += 100) {
-    yield generateEdgeElements(network.edges.slice(i, i + 100));
+      // add nodes and edges to graph
+      if (network.nodes[sessionID]) {
+        for (let i = 0; i < network.nodes[sessionID].length; i += 100) {
+          yield generateNodeElements(network.nodes[sessionID].slice(i, i + 100));
+        }
+      }
+
+      if (network.edges[sessionID]) {
+        for (let i = 0; i < network.edges[sessionID].length; i += 100) {
+          yield generateEdgeElements(network.edges[sessionID].slice(i, i + 100));
+        }
+      }
+
+      yield getGraphFooter;
+    }
+
+
+  } else {
+    console.log('not unifying');
   }
 
   yield xmlFooter;

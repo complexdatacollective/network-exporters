@@ -1,9 +1,16 @@
-import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty, egoProperty } from '../../utils/reservedAttributes';
+import { entityAttributesProperty, entityPrimaryKeyProperty, caseProperty, egoProperty, sessionProperty, ncProtocolName, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty } from '../../utils/reservedAttributes';
 import { convertUuidToDecimal } from '../utils';
 import { processEntityVariables } from '../network';
 
 const { Readable } = require('stream');
 const { cellValue, csvEOL } = require('./csv');
+
+// the CSV ego list also contains some session variables,
+// so merge them here.
+const wittMergedSessionVariables = network => {
+  const egoList = Array.isArray(network.ego) ? network.ego : [network.ego];
+  return egoList.map(ego )
+}
 
 const asEgoList = (network, codebook) => {
   const egoList = Array.isArray(network.ego) ? network.ego : [network.ego];
@@ -19,6 +26,11 @@ const attributeHeaders = (egos) => {
   const initialHeaderSet = new Set([]);
   initialHeaderSet.add(entityPrimaryKeyProperty);
   initialHeaderSet.add(caseProperty);
+  initialHeaderSet.add(sessionProperty);
+  initialHeaderSet.add(ncProtocolName);
+  initialHeaderSet.add(sessionStartTimeProperty);
+  initialHeaderSet.add(sessionFinishTimeProperty);
+  initialHeaderSet.add(sessionExportTimeProperty);
 
   const headerSet = egos.reduce((headers, ego) => {
     Object.keys((ego && ego[entityAttributesProperty]) || {}).forEach((key) => {
@@ -93,7 +105,6 @@ class EgoListFormatter {
   }
 
   writeToStream(outStream) {
-    // TODO not a list here...somewhere else needs to compile the egos
     return toCSVStream(this.list, outStream);
   }
 }

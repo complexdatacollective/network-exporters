@@ -1,4 +1,5 @@
 /* eslint-disable no-underscore-dangle */
+import { groupBy, includes } from 'lodash';
 import {
   entityPrimaryKeyProperty,
   egoProperty,
@@ -12,19 +13,7 @@ import {
   edgeTargetProperty,
 } from '../utils/reservedAttributes';
 import { getEntityAttributes } from './utils';
-import { getEntityAttributesWithNamesResolved } from '../../../networkFormat';
 import { getAttributePropertyFromCodebook } from './graphml/helpers';
-
-const { includes } = require('lodash');
-
-export const unionOfNetworks = sessions =>
-  sessions.reduce((union, session) => {
-    union.nodes.push(...session.nodes);
-    union.edges.push(...session.edges);
-    union.ego.push(session.ego);
-    return union;
-  }, { nodes: [], edges: [], ego: [], [sessionProperty]: '' }); // Reset session ID
-
 
 // Determine which variables to include
 export const processEntityVariables = (entity, entityType, codebook) => ({
@@ -34,8 +23,6 @@ export const processEntityVariables = (entity, entityType, codebook) => ({
       const attributeName = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'name');
       const attributeType = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'type');
       const attributeData = getEntityAttributes(entity)[attributeUUID];
-
-      console.log('attr', attributeName, codebook, entityType, entity.type, attributeUUID);
 
       if (attributeType === 'categorical') {
         const attributeOptions = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'options') || [];
@@ -91,21 +78,16 @@ export const insertEgoIntoSessionNetworks = sessions => (
  * @param  {Object} codebook
  * @param  {Array} session in NC format
  * @param  {string} format one of `formats`
- * @return {Array} An array of networks, partitioned by edge type. Each network object is decorated
- *                 with an additional `edgeType` prop to facilitate format naming.
+ * @return {Array} An array of networks, partitioned by type. Each network object is decorated
+ *                 with an additional `partitionEntity` prop to facilitate format naming.
  */
 export const partitionNetworkByType = (codebook, session, format) => {
-  console.log(
-    'entered function',
-    format,
-    session,
-  )
-
-  const getEntityName = (uuid, type) => codebook[type][uuid].name || null;
+  const getEntityName = (uuid, type) => codebook[type][uuid].name;
 
   switch (format) {
     case 'graphml':
     case 'ego': {
+      console.log('ego or graphml', session);
       return [session];
     }
     case 'attributeList': {
@@ -114,6 +96,7 @@ export const partitionNetworkByType = (codebook, session, format) => {
       }
 
       const partitionedNodeMap = session.nodes.reduce((nodeMap, node) => {
+        console.log('partitionedNodeMap', node, node.type, nodeMap);
         nodeMap[node.type] = nodeMap[node.type] || []; // eslint-disable-line no-param-reassign
         nodeMap[node.type].push(node);
         return nodeMap;

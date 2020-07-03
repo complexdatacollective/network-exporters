@@ -103,7 +103,6 @@ const toCSVStream = (nodes, outStream) => {
 
 class AttributeListFormatter {
   constructor(data, codebook) {
-    console.log('atrtibute list formatter~', data, codebook);
     this.list = asAttributeList(data, codebook) || [];
   }
 
