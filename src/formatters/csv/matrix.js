@@ -1,7 +1,6 @@
 /* eslint-disable no-bitwise */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
-import { entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
-import { convertUuidToDecimal } from '../utils';
+import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from '../../utils/reservedAttributes';
 
 const { Readable } = require('stream');
 
@@ -98,17 +97,17 @@ class AdjacencyMatrix {
   /**
    * @param  {Boolean} directed true if edges are directed; default is false.
    */
-  calculateEdges(directed = false) {
+  calculateEdges(directed) {
     // Allow fast lookup of index for each node
     this.indexMap = this.uniqueNodeIds.reduce((acc, uid, index) => {
       acc[uid] = index;
       return acc;
     }, {});
 
-    (this.network.edges || []).forEach(({ from, to }) => {
-      this.setAdjacent(from, to);
+    (this.network.edges).forEach((edge) => {
+      this.setAdjacent(edge[ncSourceUUID], edge[ncTargetUUID]);
       if (directed === false) {
-        this.setAdjacent(to, from);
+        this.setAdjacent(edge[ncTargetUUID], edge[ncSourceUUID]);
       }
     });
   }
@@ -126,7 +125,7 @@ class AdjacencyMatrix {
     // cannot be used directly to index into arrayViews.
     let matrixIndex = 0;
 
-    const decimals = uniqueNodeIds.map(id => convertUuidToDecimal(id));
+    const decimals = uniqueNodeIds.map(id => id);
     const headerRowContent = `,${decimals.join(',')}${csvEOL}`;
 
     // TODO: escape headerLabels (if not already) & quote
@@ -185,7 +184,7 @@ class AdjacencyMatrix {
           this.push(headerRowContent);
           headerWritten = true;
         } else if (rowNum < dataColumnCount) {
-          row = dataRowContent(convertUuidToDecimal(uniqueNodeIds[rowNum]), truncatingView);
+          row = dataRowContent(uniqueNodeIds[rowNum], truncatingView);
           this.push(row);
           rowNum += 1;
 
@@ -237,15 +236,15 @@ class AdjacencyMatrix {
   }
 }
 
-const asAdjacencyMatrix = (network, directed = false) => {
+const asAdjacencyMatrix = (network, useDirectedEdges) => {
   const adjacencyMatrix = new AdjacencyMatrix(network);
-  adjacencyMatrix.calculateEdges(directed);
+  adjacencyMatrix.calculateEdges(useDirectedEdges);
   return adjacencyMatrix;
 };
 
 class AdjacencyMatrixFormatter {
-  constructor(data, directed = false) {
-    this.matrix = asAdjacencyMatrix(data, directed);
+  constructor(data, codebook, { globalOptions: { useDirectedEdges, } }) {
+    this.matrix = asAdjacencyMatrix(data, useDirectedEdges);
   }
 
   writeToStream(outStream) {

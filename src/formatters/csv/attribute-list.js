@@ -5,17 +5,15 @@ import {
   exportIDProperty,
   ncUUIDProperty
 } from '../../utils/reservedAttributes';
-import { convertUuidToDecimal } from '../utils';
 import { processEntityVariables } from '../network';
 
 const { Readable } = require('stream');
+const { sanitizedCellValue, csvEOL } = require('./csv');
 
-const { cellValue, csvEOL } = require('./csv');
-
-const asAttributeList = (network, codebook) => {
-  const processedNodes = (network.nodes || []).map((node) => {
+const asAttributeList = (network, codebook, exportOptions) => {
+  const processedNodes = (network.nodes).map((node) => {
     if (codebook && codebook.node[node.type]) {
-      return processEntityVariables(node, 'node', codebook);
+      return processEntityVariables(node, 'node', codebook, exportOptions);
     }
     return node;
   });
@@ -33,7 +31,7 @@ const attributeHeaders = (nodes) => {
   initialHeaderSet.add(entityPrimaryKeyProperty);
 
   const headerSet = nodes.reduce((headers, node) => {
-    Object.keys(node[entityAttributesProperty] || []).forEach((key) => {
+    Object.keys(node[entityAttributesProperty]).forEach((key) => {
       headers.add(key);
     });
     return headers;
@@ -64,7 +62,7 @@ const toCSVStream = (nodes, outStream) => {
   const inStream = new Readable({
     read(/* size */) {
       if (!headerWritten) {
-        this.push(`${attrNames.map(attr => cellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
+        this.push(`${attrNames.map(attr => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
         headerWritten = true;
       } else if (rowIndex < totalRows) {
         node = nodes[rowIndex];
@@ -72,17 +70,15 @@ const toCSVStream = (nodes, outStream) => {
           // The primary key and ego id exist at the top-level; all others inside `.attributes`
           let value;
           if (
-            attrName === entityPrimaryKeyProperty
-            || attrName === egoProperty
-            || attrName === exportIDProperty
+            attrName === entityPrimaryKeyProperty ||
+            attrName === egoProperty ||
+            attrName === exportIDProperty
           ) {
-            value = convertUuidToDecimal(node[attrName]);
-          } else if (attrName === 'type') {
-            value = node.type;
+            value = node[attrName];
           } else {
             value = node[entityAttributesProperty][attrName];
           }
-          return cellValue(value);
+          return sanitizedCellValue(value);
         });
         rowContent = `${values.join(',')}${csvEOL}`;
         this.push(rowContent);
@@ -102,8 +98,8 @@ const toCSVStream = (nodes, outStream) => {
 };
 
 class AttributeListFormatter {
-  constructor(data, codebook) {
-    this.list = asAttributeList(data, codebook) || [];
+  constructor(data, codebook, exportOptions) {
+    this.list = asAttributeList(data, codebook, exportOptions);
   }
 
   writeToStream(outStream) {

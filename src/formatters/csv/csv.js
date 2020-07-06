@@ -36,7 +36,7 @@ const quoteValue = value => `"${value.replace(/"/g, '""')}"`;
  *              this will attempt to JSON.stringify, and fall back to
  * @return {string}
  */
-const cellValue = (value) => {
+const sanitizedCellValue = (value) => {
   if (value && typeof value === 'object') {
     let serialized;
     try {
@@ -60,5 +60,5 @@ const cellValue = (value) => {
 module.exports = {
   csvEOL,
   quoteValue,
-  cellValue,
+  sanitizedCellValue,
 };

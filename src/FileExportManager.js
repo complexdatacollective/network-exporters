@@ -4,6 +4,7 @@ import {
   sessionProperty,
   remoteProtocolProperty,
   sessionExportTimeProperty,
+  protocolProperty,
 } from './utils/reservedAttributes';
 import { insertEgoIntoSessionNetworks, resequenceIds, partitionNetworkByType } from './formatters/network';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
@@ -199,7 +200,7 @@ class FileExportManager {
       // Then, resequence IDs for this export
       .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
       // Group sessions by protocol UUID
-      .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, 'sessionVariables.protocolUID'))
+      .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
       // Then, process the union option
       .then(sessionsByProtocol => {
         console.log('sessionsbyprotocol', sessionsByProtocol);
@@ -240,7 +241,6 @@ class FileExportManager {
       // From this point on, ego and sessionVariables are collections.
       // Encode each network in each format specified
       .then((unifiedSessions) => {
-        console.log('unifiedSessoins', unifiedSessions);
         promisedExports = flattenDeep(
           // Export every network
           // => [n1, n2]
@@ -251,7 +251,6 @@ class FileExportManager {
             };
 
             return unifiedSessions[protocolUUID].map(session => {
-              console.log('mapping unifiedSessions', session);
 
               // todo: move out of this loop to network utils
               const verifySessionVariables = (sessionVariables) => {
@@ -296,7 +295,6 @@ class FileExportManager {
                 ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
                 ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
               ];
-              console.log('exportFormats', exportFormats);
               // ...in every file format requested
               // => [[n1.matrix.csv, n1.attrs.csv], [n2.matrix.csv, n2.attrs.csv]]
               return exportFormats.map(format =>
@@ -307,7 +305,6 @@ class FileExportManager {
                 //
                 partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
                   const partitionedEntity = partitionedNetwork.partitionEntity;
-                  console.log('partitioned network', format, partitionedNetwork, partitionedEntity, session);
                   // gather one promise for each exported file
                   return exportFile(
                     prefix,

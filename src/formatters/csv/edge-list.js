@@ -1,10 +1,18 @@
-import { entityAttributesProperty, egoProperty, entityPrimaryKeyProperty, exportIDProperty, ncSourceUUID, ncTargetUUID, ncTypeProperty, ncUUIDProperty } from '../../utils/reservedAttributes';
-import { convertUuidToDecimal } from '../utils';
+import {
+  entityAttributesProperty,
+  egoProperty,
+  entityPrimaryKeyProperty,
+  exportIDProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+  ncTypeProperty,
+  ncUUIDProperty
+} from '../../utils/reservedAttributes';
 import { processEntityVariables } from '../network';
 
 const { Readable } = require('stream');
 
-const { cellValue, csvEOL } = require('./csv');
+const { sanitizedCellValue, csvEOL } = require('./csv');
 
 /**
  * Builds an edge list for a network, based only on its edges (it need
@@ -26,9 +34,10 @@ const { cellValue, csvEOL } = require('./csv');
  *                            default: false
  * @return {Array} the edges list
  */
-const asEdgeList = (network, codebook, directed) => {
+const asEdgeList = (network, codebook, exportOptions) => {
+  const directed = exportOptions.globalOptions.useDirectedEdges;
   const processedEdges = (network.edges || []).map((edge) => {
-    return processEntityVariables(edge, 'edge', codebook);
+    return processEntityVariables(edge, 'edge', codebook, exportOptions);
   });
 
   // This code block duplicated the edges when directed mode was off.
@@ -104,7 +113,7 @@ const toCSVStream = (edges, outStream) => {
   const inStream = new Readable({
     read(/* size */) {
       if (!headerWritten) {
-        this.push(`${attrNames.map(attr => cellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
+        this.push(`${attrNames.map(attr => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
         headerWritten = true;
       } else if (chunkIndex < totalChunks) {
         edge = edges[chunkIndex];
@@ -112,19 +121,19 @@ const toCSVStream = (edges, outStream) => {
           // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
           let value;
           if (
-            attrName === entityPrimaryKeyProperty
-            || attrName === exportIDProperty
-            || attrName === egoProperty
-            || attrName === 'to' || attrName === 'from'
-            || attrName === ncSourceUUID || attrName === ncTargetUUID
+            attrName === entityPrimaryKeyProperty ||
+            attrName === exportIDProperty ||
+            attrName === egoProperty ||
+            attrName === 'to' ||
+            attrName === 'from' ||
+            attrName === ncSourceUUID ||
+            attrName === ncTargetUUID
           ) {
-            value = convertUuidToDecimal(edge[attrName]);
-          } else if (attrName === 'type') {
-            value = edge.type;
+            value = edge[attrName];
           } else {
             value = edge[entityAttributesProperty][attrName];
           }
-          return cellValue(value);
+          return sanitizedCellValue(value);
         });
         chunkContent = `${values.join(',')}${csvEOL}`;
         this.push(chunkContent);
@@ -145,8 +154,7 @@ const toCSVStream = (edges, outStream) => {
 
 class EdgeListFormatter {
   constructor(data, codebook, exportOptions) {
-    const directed = exportOptions.globalOptions.useDirectedEdges;
-    this.list = asEdgeList(data, codebook, directed);
+    this.list = asEdgeList(data, codebook, exportOptions);
   }
 
   writeToStream(outStream) {

@@ -1,12 +1,9 @@
 /* eslint-disable no-underscore-dangle */
-import { groupBy, includes } from 'lodash';
+import { includes } from 'lodash';
 import {
   entityPrimaryKeyProperty,
   egoProperty,
-  sessionProperty,
   exportIDProperty,
-  exportFromProperty,
-  exportToProperty,
   ncSourceUUID,
   ncTargetUUID,
   edgeSourceProperty,
@@ -16,7 +13,8 @@ import { getEntityAttributes } from './utils';
 import { getAttributePropertyFromCodebook } from './graphml/helpers';
 
 // Determine which variables to include
-export const processEntityVariables = (entity, entityType, codebook) => ({
+// TODO: Move this to CSV formatter, since only CSV uses it
+export const processEntityVariables = (entity, entityType, codebook, exportOptions) => ({
   ...entity,
   attributes: Object.keys(getEntityAttributes(entity)).reduce(
     (accumulatedAttributes, attributeUUID) => {
@@ -36,9 +34,20 @@ export const processEntityVariables = (entity, entityType, codebook) => ({
       }
 
       if (attributeType === 'layout') {
+        // Process screenLayoutCoordinates option
+        let xCoord;
+        let yCoord;
+        if (attributeData && exportOptions.globalOptions.useScreenLayoutCoordinates) {
+          xCoord = (attributeData.x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+          yCoord = ((1.0 - attributeData.y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+        } else {
+          xCoord = attributeData && attributeData.x;
+          yCoord = attributeData && attributeData.y;
+        }
+
         const layoutAttrs = {
-          [`${attributeName}_x`]: attributeData && attributeData.x,
-          [`${attributeName}_y`]: attributeData && attributeData.y,
+          [`${attributeName}_x`]: xCoord,
+          [`${attributeName}_y`]: yCoord,
         };
         return { ...accumulatedAttributes, ...layoutAttrs };
       }
@@ -87,7 +96,6 @@ export const partitionNetworkByType = (codebook, session, format) => {
   switch (format) {
     case 'graphml':
     case 'ego': {
-      console.log('ego or graphml', session);
       return [session];
     }
     case 'attributeList': {
@@ -96,7 +104,6 @@ export const partitionNetworkByType = (codebook, session, format) => {
       }
 
       const partitionedNodeMap = session.nodes.reduce((nodeMap, node) => {
-        console.log('partitionedNodeMap', node, node.type, nodeMap);
         nodeMap[node.type] = nodeMap[node.type] || []; // eslint-disable-line no-param-reassign
         nodeMap[node.type].push(node);
         return nodeMap;
