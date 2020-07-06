@@ -3,7 +3,6 @@
 import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from '../../utils/reservedAttributes';
 
 const { Readable } = require('stream');
-
 const { csvEOL } = require('./csv');
 
 /**
@@ -91,20 +90,20 @@ class AdjacencyMatrix {
     const byteIndex = ~~(elementIndex / 8);
     const bitIndex = elementIndex % 8;
     const adjacencyBitmask = 1 << (7 - bitIndex); // cells are ordered left->right
-    this.arrayView[byteIndex] = this.arrayView[byteIndex] || adjacencyBitmask;
+    this.arrayView[byteIndex] = this.arrayView[byteIndex] | adjacencyBitmask;
   }
 
   /**
    * @param  {Boolean} directed true if edges are directed; default is false.
    */
-  calculateEdges(directed) {
+  calculateEdges(directed = false) {
     // Allow fast lookup of index for each node
     this.indexMap = this.uniqueNodeIds.reduce((acc, uid, index) => {
       acc[uid] = index;
       return acc;
     }, {});
 
-    (this.network.edges).forEach((edge) => {
+    (this.network.edges || []).forEach((edge) => {
       this.setAdjacent(edge[ncSourceUUID], edge[ncTargetUUID]);
       if (directed === false) {
         this.setAdjacent(edge[ncTargetUUID], edge[ncSourceUUID]);
@@ -117,7 +116,7 @@ class AdjacencyMatrix {
    * @return {Object} an abort controller; call the attached abort() method as needed.
    */
   toCSVStream(outStream) {
-    const { uniqueNodeIds } = this;
+    const uniqueNodeIds = this.uniqueNodeIds;
     const dataColumnCount = uniqueNodeIds.length;
     const matrixCellCount = dataColumnCount * dataColumnCount;
 
@@ -236,17 +235,16 @@ class AdjacencyMatrix {
   }
 }
 
-const asAdjacencyMatrix = (network, useDirectedEdges) => {
+export const asAdjacencyMatrix = (network, directed = false) => {
   const adjacencyMatrix = new AdjacencyMatrix(network);
-  adjacencyMatrix.calculateEdges(useDirectedEdges);
+  adjacencyMatrix.calculateEdges(directed);
   return adjacencyMatrix;
 };
 
-class AdjacencyMatrixFormatter {
-  constructor(data, codebook, { globalOptions: { useDirectedEdges, } }) {
+export class AdjacencyMatrixFormatter {
+  constructor(data, codebook, { globalOptions: { useDirectedEdges } }) {
     this.matrix = asAdjacencyMatrix(data, useDirectedEdges);
   }
-
   writeToStream(outStream) {
     return this.matrix.toCSVStream(outStream);
   }
