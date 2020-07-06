@@ -83,9 +83,6 @@ const getPrintableAttribute = (attribute) => {
 const toCSVStream = (egos, outStream) => {
   const totalRows = egos.length;
   const attrNames = attributeHeaders(egos);
-  console.log(
-    'tocsvstream', egos, 'attrnames', attrNames
-  )
   let headerWritten = false;
   let rowIndex = 0;
   let rowContent;
@@ -136,7 +133,6 @@ const toCSVStream = (egos, outStream) => {
 class EgoListFormatter {
   constructor(network, codebook, exportOptions) {
     this.list = asEgoAndSessionVariablesList(network, codebook, exportOptions) || [];
-    console.log('this list', this.list);
   }
 
   writeToStream(outStream) {

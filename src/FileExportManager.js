@@ -128,19 +128,15 @@ const exportFile = (
 class FileExportManager {
 
   constructor(exportOptions = {}) {
-    const defaultGraphMLOptions = {
-      // includeNCMeta: true,
-    };
-
     const defaultCSVOptions = {
-      adjacencyMatrix: true,
+      adjacencyMatrix: false,
       attributeList: true,
       edgeList: true,
       egoAttributeList: true,
     };
 
     const defaultExportOptions = {
-      exportGraphML: defaultGraphMLOptions,
+      exportGraphML: true,
       exportCSV: defaultCSVOptions,
       globalOptions: {
         unifyNetworks: false,

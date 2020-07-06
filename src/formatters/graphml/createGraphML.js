@@ -191,7 +191,6 @@ const generateKeyElements = (
   // Main loop over entities
   entities.forEach((element) => {
     const elementAttributes = getEntityAttributes(element);
-    console.log('iterating entities', type, entities, element, elementAttributes);
     let keyTarget = type === 'ego' ? 'graph' : type; // nodes and edges set for="node|edge" but ego has for="graph"
 
     // Loop over attributes
@@ -493,9 +492,6 @@ const generateDataElements = (
  * @param {*} exportOptions
  */
 export function* graphMLGenerator(network, codebook, exportOptions) {
-  console.log('entering generator', network);
-  debugger;
-
   yield getXmlHeader();
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
@@ -571,7 +567,6 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
     network.edges = groupBy(network.edges, sessionProperty);
 
     for (let sessionID in network.sessionVariables) {
-      console.log('iterating sessionIDs:', sessionID);
       yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
 
       // Add ego to graph
@@ -597,8 +592,7 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
 
   } else {
-    console.log('not unifying');
-
+    // TODO: reduce duplication with this code
     yield getGraphHeader(exportOptions, network.sessionVariables);
 
     // Add ego to graph
