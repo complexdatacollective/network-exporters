@@ -150,7 +150,6 @@ class FileExportManager {
     // Allow shorthand 'true' to accept default export options for a given type
     this.exportOptions = {
       ...merge(defaultExportOptions, exportOptions),
-      ...(exportOptions.exportGraphML === true ? { exportGraphML: defaultGraphMLOptions } : {}),
       ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
     };
   }
