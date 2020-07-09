@@ -6,7 +6,7 @@ import {
   sessionExportTimeProperty,
   protocolProperty,
 } from './utils/reservedAttributes';
-import { createWriteStream } from '../../filesystem';
+import { createWriteStream, getFileNativePath, rename, removeDirectory } from '../../filesystem';
 import { insertEgoIntoSessionNetworks, resequenceIds, partitionNetworkByType } from './formatters/network';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
@@ -21,7 +21,7 @@ const logger = require('electron-log');
 const sanitizeFilename = require('sanitize-filename');
 
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
-const { makeTempDir, removeTempDir } = require('./formatters/dir');
+const { makeTempDir } = require('./formatters/dir');
 const { getFileExtension } = require('./formatters/utils');
 
 const escapeFilePart = part => part.replace(/\W/g, '');
@@ -101,7 +101,6 @@ const exportFile = (
 
     const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
-    console.log('path promise:', outDir, outputName);
     if (isElectron()) {
       filePath = path.join(outDir, outputName);
     }
@@ -135,7 +134,6 @@ const exportFile = (
     }
   };
 
-  console.log('pathPromise', pathPromise);
   return pathPromise;
 };
 
@@ -196,7 +194,10 @@ class FileExportManager {
     }
 
     let tmpDir;
-    const cleanUp = () => removeTempDir(tmpDir);
+
+    const cleanUp = () => {
+      removeDirectory(tmpDir)
+    };
 
     let promisedExports;
 
@@ -212,6 +213,7 @@ class FileExportManager {
         } else {
           tmpDir = dir;
         }
+        console.log('temp', tmpDir);
       })
       // Then, insert a reference to the ego ID in to all nodes and edges
       .then(() => insertEgoIntoSessionNetworks(sessions))
@@ -322,8 +324,7 @@ class FileExportManager {
                 //
                 partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
                   const partitionedEntity = partitionedNetwork.partitionEntity;
-
-                  console.log('reached exportfile', tmpDir);
+                  console.log('partition temp', tmpDir);
                   // gather one promise for each exported file
                   return exportFile(
                     prefix,
@@ -348,20 +349,66 @@ class FileExportManager {
           throw new RequestError(ErrorMessages.NothingToExport);
         }
 
-        console.log('about to return archive', exportedPaths);
         return archive(exportedPaths, tmpDir);
+      })
+      .then((zipLocation) => {
+        return new Promise((resolve, reject) => {
+          console.log('zip tmp dir', tmpDir);
+          if (isElectron()) {
+            // Open saveas dialog
+            const { dialog } = window.require('electron').remote;
+
+            dialog.showSaveDialog({
+              filters: [{ name: 'zip', extensions: ['zip'] }],
+              defaultPath: 'networkCanvasExport.zip',
+            })
+            .then(({
+              canceled,
+              filePath
+            }) => {
+              if (canceled) {
+                console.log('cancelled dialog');
+                resolve();
+              }
+              // we have a filepath. copy from temp location to this location.
+              rename(zipLocation, filePath)
+              .then(() => {
+                const { shell } = window.require('electron');
+                shell.showItemInFolder(filePath);
+                resolve();
+              })
+              .catch(reject)
+            })
+          }
+
+          if (isCordova()) {
+            // Use social sharing plugin to copy.
+            getFileNativePath(zipLocation)
+            .then(nativePath => {
+              window.plugins.socialsharing.shareWithOptions({
+                message: 'Your zipped network canvas data.', // not supported on some apps
+                subject: 'network canvas export',
+                files: [nativePath],
+                chooserTitle: 'Share zip file via', // Android only
+              }, resolve, reject);
+            });
+          }
+        });
       })
       .catch((err) => {
         cleanUp();
         logger.error(err);
         throw err;
       })
-      .then(cleanUp);
+      .then(() => {
+        cleanUp();
+      });
 
     exportPromise.abort = () => {
       if (promisedExports) {
         promisedExports.forEach(promise => promise.abort());
       }
+
       cleanUp();
     };
 
