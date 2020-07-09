@@ -39,7 +39,6 @@ const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
  * and all model data (inside the `attributes` property)
  */
 const attributeHeaders = (egos) => {
-  console.log('attributetheaders', egos);
   const initialHeaderSet = new Set([]);
 
   // Create initial headers for non-attribute (model) variables such as sessionID

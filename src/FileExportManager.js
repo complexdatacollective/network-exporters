@@ -1,4 +1,4 @@
-import { merge, isEmpty, groupBy } from 'lodash';
+import { merge, isEmpty, groupBy, flattenDeep } from 'lodash';
 import {
   caseProperty,
   sessionProperty,
@@ -6,20 +6,20 @@ import {
   sessionExportTimeProperty,
   protocolProperty,
 } from './utils/reservedAttributes';
+import { createWriteStream } from '../../filesystem';
 import { insertEgoIntoSessionNetworks, resequenceIds, partitionNetworkByType } from './formatters/network';
 import AdjacencyMatrixFormatter from './formatters/csv/matrix';
 import AttributeListFormatter from './formatters/csv/attribute-list';
 import EgoListFormatter from './formatters/csv/ego-list';
 import EdgeListFormatter from './formatters/csv/edge-list';
 import GraphMLFormatter from './formatters/graphml/GraphMLFormatter';
+import { isCordova, isElectron } from '../../Environment';
+import archive from './utils/archive';
 
-const fs = require('fs');
 const path = require('path');
 const logger = require('electron-log');
-const { flattenDeep } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 
-const { archive } = require('./utils/archive');
 const { RequestError, ErrorMessages } = require('./errors/RequestError');
 const { makeTempDir, removeTempDir } = require('./formatters/dir');
 const { getFileExtension } = require('./formatters/utils');
@@ -95,21 +95,37 @@ const exportFile = (
   let streamController;
   let writeStream;
 
+  // Create a promise
   const pathPromise = new Promise((resolve, reject) => {
+    let filePath;
+
     const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
-    const filepath = path.join(outDir, outputName);
-    writeStream = fs.createWriteStream(filepath);
-    writeStream.on('finish', () => {
-      resolve(filepath);
-    });
-    writeStream.on('error', (err) => {
-      reject(err);
-    });
+    console.log('path promise:', outDir, outputName);
+    if (isElectron()) {
+      filePath = path.join(outDir, outputName);
+    }
 
-    streamController = formatter.writeToStream(writeStream);
+    if (isCordova()) {
+      filePath = `${outDir}${outputName}`;
+    }
+
+    createWriteStream(filePath)
+    .then((ws) => {
+      writeStream = ws;
+      writeStream.on('finish', () => {
+        resolve(filePath);
+      });
+      writeStream.on('error', (err) => {
+        reject(err);
+      });
+
+      streamController = formatter.writeToStream(writeStream);
+    });
   });
 
+  // Decorate the promise with an abort method that also tears down the
+  // streamController and the writeStream
   pathPromise.abort = () => {
     if (streamController) {
       streamController.abort();
@@ -119,6 +135,7 @@ const exportFile = (
     }
   };
 
+  console.log('pathPromise', pathPromise);
   return pathPromise;
 };
 
@@ -128,6 +145,12 @@ const exportFile = (
 class FileExportManager {
 
   constructor(exportOptions = {}) {
+
+    // Todo: Reject if export options arent valid
+    // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
+    //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
+    // }
+
     const defaultCSVOptions = {
       adjacencyMatrix: false,
       attributeList: true,
@@ -152,6 +175,7 @@ class FileExportManager {
       ...merge(defaultExportOptions, exportOptions),
       ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
     };
+
   }
 
   /**
@@ -162,20 +186,14 @@ class FileExportManager {
    *                            mentioned in sessions collection.
    * @param {*} destinationPath path to write the resulting files to
    */
-  exportSessions(sessions, protocols, destinationPath) {
+  exportSessions(sessions, protocols) {
     // Reject if required parameters aren't provided
     if (
       (!sessions && !isEmpty(sessions))
       || (!protocols && !isEmpty(protocols))
-      || !destinationPath
     ) {
       return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
     }
-
-    // Todo: Reject if export options arent valid
-    // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
-    //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
-    // }
 
     let tmpDir;
     const cleanUp = () => removeTempDir(tmpDir);
@@ -185,9 +203,14 @@ class FileExportManager {
     // First, create a temporary working directory somewhere on the FS.
     const exportPromise = makeTempDir()
       .then((dir) => {
-        tmpDir = dir;
-        if (!tmpDir) {
+        if (!dir) {
           throw new Error('Temporary directory unavailable');
+        }
+
+        if (isCordova()) {
+          tmpDir = dir.toInternalURL();
+        } else {
+          tmpDir = dir;
         }
       })
       // Then, insert a reference to the ego ID in to all nodes and edges
@@ -198,7 +221,6 @@ class FileExportManager {
       .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
       // Then, process the union option
       .then(sessionsByProtocol => {
-        console.log('sessionsbyprotocol', sessionsByProtocol);
         if (this.exportOptions.globalOptions.unifyNetworks) {
           // Result is a SINGLE session, with MULTIPLE ego and sessionVariables
           // We add the sessionID to each entity so that we can groupBy on it within
@@ -300,6 +322,8 @@ class FileExportManager {
                 //
                 partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
                   const partitionedEntity = partitionedNetwork.partitionEntity;
+
+                  console.log('reached exportfile', tmpDir);
                   // gather one promise for each exported file
                   return exportFile(
                     prefix,
@@ -323,7 +347,9 @@ class FileExportManager {
         if (exportedPaths.length === 0) {
           throw new RequestError(ErrorMessages.NothingToExport);
         }
-        return archive(exportedPaths, destinationPath);
+
+        console.log('about to return archive', exportedPaths);
+        return archive(exportedPaths, tmpDir);
       })
       .catch((err) => {
         cleanUp();

@@ -1,27 +1,37 @@
 import { extensions } from './utils';
+import uuid from 'uuid/v4';
+import { tempDataPath, createDirectory } from '../../../filesystem';
+import { isElectron, isCordova } from '../../../Environment';
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { readdir, rmdir, tryUnlink } = require('../utils/promised-fs');
 
-const tmpDirPrefix = 'org.codaco.server.exporting.';
-
 /**
  * Create a new temp directory to hold intermediate export files
  * @async
  * @return {string} the directory (path) created
  */
-export const makeTempDir = () =>
-  new Promise((resolve, reject) => {
-    fs.mkdtemp(path.join(os.tmpdir(), tmpDirPrefix), (err, dir) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(dir);
-      }
-    });
-  });
+
+export const makeTempDir = () => {
+  const directoryName = `temp-export-${uuid()}`;
+  let directoryPath;
+  if (isElectron()) {
+    directoryPath = path.join(tempDataPath(), directoryName);
+  }
+
+  if (isCordova()) {
+    directoryPath = `${tempDataPath()}${directoryName}`;
+  }
+
+  if (!directoryPath) {
+    return;
+  }
+
+  console.log('maketempdir', directoryPath);
+  return createDirectory(directoryPath);
+}
 
 export const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 

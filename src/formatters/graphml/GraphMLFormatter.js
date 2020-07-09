@@ -33,6 +33,9 @@ class GraphMLFormatter {
       this.codebook,
       this.exportOptions,
     );
+
+    console.log('writing to string', Readable);
+    debugger;
     const inStream = new Readable({
       read(/* size */) {
         const { done, value } = generator.next();
