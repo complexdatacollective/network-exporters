@@ -9,7 +9,7 @@ import {
   edgeSourceProperty,
   edgeTargetProperty,
 } from '../utils/reservedAttributes';
-import { getEntityAttributes } from './utils';
+import { getEntityAttributes } from '../utils/general';
 import { getAttributePropertyFromCodebook } from './graphml/helpers';
 
 // Determine which variables to include

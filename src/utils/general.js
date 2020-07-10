@@ -1,9 +1,21 @@
-import { entityAttributesProperty } from '../utils/reservedAttributes';
 
-/**
- * @module ExportUtils
- */
+import { entityAttributesProperty } from './reservedAttributes';
+
 export const getEntityAttributes = entity => (entity && entity[entityAttributesProperty]) || {};
+
+export const makeFilename = (prefix, entityType, exportFormat, extension) => {
+  let name = prefix;
+  if (extension !== `.${exportFormat}`) {
+    name += name ? '_' : '';
+    name += exportFormat;
+  }
+  if (entityType) {
+    name += `_${escapeFilePart(entityType)}`;
+  }
+  return `${name}${extension}`;
+};
+
+export const escapeFilePart = part => part.replace(/\W/g, '');
 
 export const extensions = {
   graphml: '.graphml',
@@ -28,3 +40,5 @@ export const getFileExtension = (formatterType) => {
       return null;
   }
 };
+
+export const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
