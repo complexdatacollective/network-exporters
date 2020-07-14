@@ -32,7 +32,7 @@ const archiveOptions = {
  * @param {string[]} sourcePaths
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archiveElectron = (sourcePaths, destinationPath) =>
+const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
   new Promise((resolve, reject) => {
     const output = fs.createWriteStream(destinationPath);
     const zip = archiver('zip', archiveOptions);
@@ -48,6 +48,10 @@ const archiveElectron = (sourcePaths, destinationPath) =>
 
     zip.on('warning', reject);
     zip.on('error', reject);
+    zip.on('progress', (progress) => {
+      const percent = progress.entries.processed / progress.entries.total * 100;
+      updateCallback(percent);
+    });
 
     sourcePaths.forEach((sourcePath) => {
       zip.append(fs.createReadStream(sourcePath), { name: path.basename(sourcePath) });
@@ -65,43 +69,29 @@ const archiveElectron = (sourcePaths, destinationPath) =>
  * @param {string[]} sourcePaths
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archiveCordova = (sourcePaths, targetFileName) => {
+const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
   const zip = new JSZip();
 
   const promisedExports = sourcePaths.map(
     sourcePath => {
-      const [baseDirectory, filename] = splitUrl(sourcePath);
-      console.log('split', baseDirectory, filename, sourcePath)
+      const [filename] = splitUrl(sourcePath);
       return readFile(sourcePath)
       .then(fileContent => zip.file(filename, fileContent))
-
-
-      // return getFileEntry(sourcePath, filesystem)
-      // .then(createReader)
-      // .then(file => new Promise((resolve, reject) => {
-      //   const reader = new FileReader();
-      //   reader.onloadend = data => resolve(zip.file(file.name, data.target.result));
-      //   reader.onerror = err => reject(err);
-      //   reader.readAsText(file);
-      // }))
     }
   );
 
   return new Promise((resolve, reject) => {
     Promise.all(promisedExports).then(() => {
-      console.log('writing zip...gathered files', zip);
       const [baseDirectory, filename] = splitUrl(targetFileName);
-      console.log('split', baseDirectory, filename);
       resolveFileSystemUrl(baseDirectory)
         .then(directoryEntry => newFile(directoryEntry, filename))
         .then(makeFileWriter)
         .then(fileWriter => {
-          console.log('about to write...');
-          zip.generateAsync({ type: 'blob' }).then((blob) => {
-            console.log('GOT BLOB');
+          zip.generateAsync({ type: 'blob' }, (update) => {
+            updateCallback(update.percent);
+          }).then((blob) => {
             fileWriter.seek(0);
             fileWriter.onwrite = () => {
-              console.log('resolving with', targetFileName);
               resolve(targetFileName);
             } // eslint-disable-line no-param-reassign
             fileWriter.onerror = err => reject(err); // eslint-disable-line no-param-reassign
@@ -120,17 +110,17 @@ const archiveCordova = (sourcePaths, targetFileName) => {
  * @param {object} filesystem filesystem to use for reading files in to zip
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archive = (sourcePaths, tempDir) => {
+const archive = (sourcePaths, tempDir, updateCallback) => {
   const defaultFileName = 'networkCanvasExport.zip';
   let writePath;
   if (isElectron()) {
     writePath = path.join(tempDir, defaultFileName);
-    return archiveElectron(sourcePaths, writePath);
+    return archiveElectron(sourcePaths, writePath, updateCallback);
   }
 
   if (isCordova()) {
     writePath = `${tempDir}${defaultFileName}`;
-    return archiveCordova(sourcePaths, writePath);
+    return archiveCordova(sourcePaths, writePath, updateCallback);
   }
 
   throw new Error(`zip archiving not available on platform ${getEnvironment()}`);
@@ -138,3 +128,4 @@ const archive = (sourcePaths, tempDir) => {
 
 // This is adapted from Architect; consider using `extract` as well
 export default archive;
+

@@ -22,7 +22,8 @@ import {
 import { isCordova, isElectron } from './utils/Environment';
 import archive from './utils/archive';
 import sanitizeFilename from 'sanitize-filename';
-import { RequestError, ErrorMessages} from './errors/RequestError';
+import { RequestError, ErrorMessages} from './errors/ExportError';
+import ProgressMessages from './ProgressMessages';
 
 /**
  * Interface for all data exports
@@ -30,11 +31,6 @@ import { RequestError, ErrorMessages} from './errors/RequestError';
 class FileExportManager {
 
   constructor(exportOptions = {}) {
-    // Todo: Reject if export options arent valid
-    // if (!formatsAreValid(exportFormats) || !exportFormats.length) {
-    //   return Promise.reject(new RequestError(ErrorMessages.InvalidExportOptions));
-    // }
-
     const defaultCSVOptions = {
       adjacencyMatrix: false,
       attributeList: true,
@@ -54,16 +50,13 @@ class FileExportManager {
       },
     };
 
-    // Allow shorthand 'true' to accept default export options for a given type
+    // Merge default and user-supplied options
     this.exportOptions = {
       ...merge(defaultExportOptions, exportOptions),
       ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
     };
 
     this.events = new EventEmitter();
-
-    setInterval(() => this.emit('pulse', 'hello!'), 1000);
-
   }
 
   on = (...args) => {
@@ -75,14 +68,8 @@ class FileExportManager {
       console.warn('Malformed emit.');
       return;
     }
+    console.log(event, payload);
     this.events.emit(event, payload);
-  }
-
-  provideUpdate(statusText, progress) {
-    this.emit('update', {
-      statusText,
-      progress,
-    })
   }
 
   removeAllListeners = () => {
@@ -98,7 +85,7 @@ class FileExportManager {
    * @param {*} destinationPath path to write the resulting files to
    */
   exportSessions(sessions, protocols) {
-    this.emit('begin');
+    this.emit('begin', ProgressMessages.Begin);
 
     // Reject if required parameters aren't provided
     if (
@@ -111,7 +98,10 @@ class FileExportManager {
     let tmpDir;
 
     const cleanUp = () => {
-      removeDirectory(tmpDir)
+
+      if (tmpDir) {
+        removeDirectory(tmpDir)
+      }
     };
 
     let promisedExports;
@@ -119,19 +109,12 @@ class FileExportManager {
     // First, create a temporary working directory somewhere on the FS.
     const exportPromise = makeTempDir()
       .then((dir) => {
-        if (!dir) {
-          throw new Error('Temporary directory unavailable');
-        }
-
         tmpDir = isCordova() ? dir.toInternalURL() : dir;
         return;
       })
       // Then, insert a reference to the ego ID in to all nodes and edges
       .then(() => {
-        this.provideUpdate(
-          'Formatting network data...',
-          10,
-        );
+        this.emit('update', ProgressMessages.Formatting);
 
         return insertEgoIntoSessionNetworks(sessions);
       })
@@ -145,10 +128,7 @@ class FileExportManager {
           return sessionsByProtocol;
         }
 
-        this.provideUpdate(
-          'Merging networks...',
-          20,
-        );
+        this.emit('update', ProgressMessages.Merging);
 
         // Result is a SINGLE session, with MULTIPLE ego and sessionVariables
         // We add the sessionID to each entity so that we can groupBy on it within
@@ -183,9 +163,6 @@ class FileExportManager {
       })
       // Encode each network in each format specified
       .then((unifiedSessions) => {
-        let sessionExportCount = 1;
-        const sessionExportTotal = sessions.length;
-
         promisedExports = flattenDeep(
           // Export every network
           // => [n1, n2]
@@ -195,13 +172,10 @@ class FileExportManager {
               return Promise.reject(new RequestError(ErrorMessages.MissingParameters));
             };
 
-            return unifiedSessions[protocolUUID].map(session => {
-              this.provideUpdate(
-                `Exporting session ${sessionExportCount} of ${sessionExportTotal}`,
-                30 + ((80 - 30) * sessionExportCount / sessionExportTotal),
-              );
+            const sessionExportTotal = unifiedSessions[protocolUUID].length;
 
-              sessionExportCount += 1;
+            return unifiedSessions[protocolUUID].map((session, sessionExportCount) => {
+              this.emit('update', ProgressMessages.ExportSession(sessionExportCount, sessionExportTotal));
 
               // todo: move out of this loop to network utils
               const verifySessionVariables = (sessionVariables) => {
@@ -254,7 +228,6 @@ class FileExportManager {
 
                 partitionNetworkByType(protocol.codebook, session, format).map((partitionedNetwork) => {
                   const partitionedEntity = partitionedNetwork.partitionEntity;
-                  console.log('partition temp', tmpDir);
                   // gather one promise for each exported file
                   return exportFile(
                     prefix,
@@ -279,37 +252,26 @@ class FileExportManager {
           throw new RequestError(ErrorMessages.NothingToExport);
         }
 
-        this.provideUpdate(
-          'Zipping files...',
-          80,
-        );
+        this.emit('update', ProgressMessages.ZipStart);
 
-        return archive(exportedPaths, tmpDir);
+        return archive(exportedPaths, tmpDir, (percent) => {
+          this.emit('update', ProgressMessages.ZipProgress(percent));
+        });
       })
       .then((zipLocation) => {
-        this.provideUpdate(
-          'Saving...',
-          100,
-        );
+        this.emit('update', ProgressMessages.Saving);
+
         return new Promise((resolve, reject) => {
-          console.log('zip tmp dir', tmpDir);
           if (isElectron()) {
-            // Open saveas dialog
             const { dialog } = window.require('electron').remote;
 
             dialog.showSaveDialog({
               filters: [{ name: 'zip', extensions: ['zip'] }],
               defaultPath: 'networkCanvasExport.zip',
             })
-            .then(({
-              canceled,
-              filePath
-            }) => {
-              if (canceled) {
-                console.log('cancelled dialog');
-                resolve();
-              }
-              // we have a filepath. copy from temp location to this location.
+            .then(({ canceled, filePath }) => {
+              if (canceled) { resolve(); }
+
               rename(zipLocation, filePath)
               .then(() => {
                 const { shell } = window.require('electron');
@@ -339,7 +301,7 @@ class FileExportManager {
         throw err;
       })
       .then(() => {
-        this.emit('finished');
+        this.emit('finished', ProgressMessages.Finished);
         cleanUp();
       });
 

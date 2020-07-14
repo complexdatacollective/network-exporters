@@ -4,6 +4,7 @@ import uuid from 'uuid/v4';
 import { Writable } from 'stream';
 import { trimChars } from 'lodash/fp';
 import environments from './environments';
+import { RequestError, ErrorMessages} from '../errors/ExportError';
 import inEnvironment, { isElectron, isCordova } from './Environment';
 
 const Buffer = require('buffer/').Buffer;
@@ -50,7 +51,7 @@ export const makeTempDir = () => {
   }
 
   if (!directoryPath) {
-    return;
+    return Promise.reject(new RequestError(ErrorMessages.NoTmpFS));
   }
 
   return createDirectory(directoryPath);
