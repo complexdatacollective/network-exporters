@@ -64,12 +64,10 @@ export const exportFile = (
     .then((ws) => {
       writeStream = ws;
       writeStream.on('finish', () => {
-        setTimeout(() => {
-          resolve(filePath);
-        }, 4000);
+        promiseResolve(filePath);
       });
       writeStream.on('error', (err) => {
-        reject(err);
+        promiseReject(err);
       });
 
       streamController = formatter.writeToStream(writeStream);

@@ -235,7 +235,7 @@ class FileExportManager {
                       this.exportOptions,
                     );
                   } catch (error) {
-                    this.emit('error', error);
+                    this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
                     return Promise.reject(error);
                   }
                 })
