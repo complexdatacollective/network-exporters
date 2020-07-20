@@ -51,7 +51,7 @@ export const makeTempDir = () => {
   }
 
   if (!directoryPath) {
-    return Promise.reject(new RequestError(ErrorMessages.NoTmpFS));
+    return Promise.reject(new ExportError(ErrorMessages.NoTmpFS));
   }
 
   return createDirectory(directoryPath);

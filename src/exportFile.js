@@ -5,6 +5,8 @@ import {
 } from './utils/general';
 import { isCordova, isElectron } from './utils/Environment';
 import getFormatterClass from './utils/getFormatterClass';
+import { ExportError} from './errors/ExportError';
+import UserCancelledExport from './errors/UserCancelledExport';
 
 /**
  * Export a single (CSV or graphml) file
@@ -31,18 +33,20 @@ export const exportFile = (
   const Formatter = getFormatterClass(exportFormat);
   const extension = getFileExtension(exportFormat);
 
-  // TODO: complete validation of parameters
   if (!Formatter || !extension) {
-    return Promise.reject(new RequestError(`Invalid export format ${exportFormat}`));
+    return Promise.reject(new ExportError(`Invalid export format ${exportFormat}`));
   }
 
   // Establish variables to hold the stream controller (needed to handle abort method)
   // and the stream itself.
   let streamController;
   let writeStream;
+  let promiseResolve, promiseReject;
 
   // Create a promise
   const pathPromise = new Promise((resolve, reject) => {
+    promiseResolve = resolve;
+    promiseReject = reject;
     let filePath;
 
     const formatter = new Formatter(network, codebook, exportOptions);
@@ -60,7 +64,9 @@ export const exportFile = (
     .then((ws) => {
       writeStream = ws;
       writeStream.on('finish', () => {
-        resolve(filePath);
+        setTimeout(() => {
+          resolve(filePath);
+        }, 4000);
       });
       writeStream.on('error', (err) => {
         reject(err);
@@ -79,6 +85,8 @@ export const exportFile = (
     if (writeStream) {
       writeStream.destroy();
     }
+
+    promiseReject(new UserCancelledExport());
   };
 
   return pathPromise;
