@@ -73,11 +73,11 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
   const zip = new JSZip();
 
   const promisedExports = sourcePaths.map(
-    sourcePath => {
+    (sourcePath) => {
       const [filename] = splitUrl(sourcePath);
       return readFile(sourcePath)
-      .then(fileContent => zip.file(filename, fileContent))
-    }
+        .then(fileContent => zip.file(filename, fileContent));
+    },
   );
 
   return new Promise((resolve, reject) => {
@@ -86,18 +86,18 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
       resolveFileSystemUrl(baseDirectory)
         .then(directoryEntry => newFile(directoryEntry, filename))
         .then(makeFileWriter)
-        .then(fileWriter => {
+        .then((fileWriter) => {
           zip.generateAsync({ type: 'blob' }, (update) => {
             updateCallback(update.percent);
           }).then((blob) => {
             fileWriter.seek(0);
             fileWriter.onwrite = () => {
               resolve(targetFileName);
-            } // eslint-disable-line no-param-reassign
+            }; // eslint-disable-line no-param-reassign
             fileWriter.onerror = err => reject(err); // eslint-disable-line no-param-reassign
             fileWriter.write(blob);
           });
-        })
+        });
     });
   });
 };
@@ -128,4 +128,3 @@ const archive = (sourcePaths, tempDir, updateCallback) => {
 
 // This is adapted from Architect; consider using `extract` as well
 export default archive;
-

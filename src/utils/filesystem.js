@@ -4,10 +4,10 @@ import uuid from 'uuid/v4';
 import { Writable } from 'stream';
 import { trimChars } from 'lodash/fp';
 import environments from './environments';
-import { RequestError, ErrorMessages} from '../errors/ExportError';
+import { RequestError, ErrorMessages } from '../errors/ExportError';
 import inEnvironment, { isElectron, isCordova } from './Environment';
 
-const Buffer = require('buffer/').Buffer;
+const { Buffer } = require('buffer/');
 
 const trimPath = trimChars('/ ');
 
@@ -55,7 +55,7 @@ export const makeTempDir = () => {
   }
 
   return createDirectory(directoryPath);
-}
+};
 
 const userDataPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
@@ -114,8 +114,7 @@ const appPath = inEnvironment((environment) => {
 const getFileEntry = (filename, fileSystem) => new Promise((resolve, reject) => {
   fileSystem.root.getFile(filename, { create: true, exclusive: false },
     fileEntry => resolve(fileEntry),
-    err => reject(err),
-  );
+    err => reject(err));
 });
 
 
@@ -241,8 +240,7 @@ const writeFile = inEnvironment((environment) => {
             fileWriter.onwriteend = () => resolve(fileUrl); // eslint-disable-line no-param-reassign
             fileWriter.onerror = error => reject(error); // eslint-disable-line no-param-reassign
             fileWriter.write(data);
-          }),
-        );
+          }));
     };
   }
 
@@ -332,8 +330,8 @@ const removeDirectory = inEnvironment((environment) => {
       new Promise((resolve, reject) => {
         try {
           if (
-            !targetPath.includes(userDataPath()) &&
-            !targetPath.includes(tempDataPath())
+            !targetPath.includes(userDataPath())
+            && !targetPath.includes(tempDataPath())
           ) { reject('Attempted to remove path outside of safe directories!'); return; }
           fs.rmdir(targetPath, { recursive: true }, resolve);
         } catch (error) {
@@ -351,9 +349,9 @@ const removeDirectory = inEnvironment((environment) => {
 
     // If folder doesn't exist that's fine
     const ignoreMissingEntry = e => (
-      e.code === FileError.NOT_FOUND_ERR ?
-        Promise.resolve() :
-        Promise.reject(e)
+      e.code === FileError.NOT_FOUND_ERR
+        ? Promise.resolve()
+        : Promise.reject(e)
     );
 
     return targetUrl =>
@@ -374,9 +372,9 @@ const getNestedPaths = inEnvironment((environment) => {
         .split(path.sep)
         .reduce(
           (memo, dir) => (
-            memo.length === 0 ?
-              [dir] :
-              [...memo, path.join(memo[memo.length - 1], dir)]
+            memo.length === 0
+              ? [dir]
+              : [...memo, path.join(memo[memo.length - 1], dir)]
           ),
           [],
         );
@@ -394,9 +392,9 @@ const getNestedPaths = inEnvironment((environment) => {
       return path
         .reduce(
           (memo, dir) => (
-            memo.length === 0 ?
-              [dir] :
-              [...memo, `${memo[memo.length - 1]}${dir}/`]
+            memo.length === 0
+              ? [dir]
+              : [...memo, `${memo[memo.length - 1]}${dir}/`]
           ),
           [location],
         )
@@ -468,7 +466,7 @@ const writeStream = inEnvironment((environment) => {
 
             const writeChunk = (chunkByteArray) => {
               previousFileWriterLength = fileWriter.length;
-              const byteLength = chunkByteArray.byteLength;
+              const { byteLength } = chunkByteArray;
               const data = chunkByteArray.slice(0, byteLength);
               try {
                 // fileWriter.write documents a blob arg, but called with a blob,
@@ -584,7 +582,7 @@ export const createWriteStream = inEnvironment((environment) => {
 
             const writeChunk = (chunkByteArray) => {
               previousFileWriterLength = fileWriter.length;
-              const byteLength = chunkByteArray.byteLength;
+              const { byteLength } = chunkByteArray;
               const data = chunkByteArray.slice(0, byteLength);
               try {
                 // fileWriter.write documents a blob arg, but called with a blob,

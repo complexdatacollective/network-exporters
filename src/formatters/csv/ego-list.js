@@ -10,7 +10,7 @@ import {
   sessionExportTimeProperty,
   ncCaseProperty,
   ncSessionProperty,
-  ncProtocolNameProperty
+  ncProtocolNameProperty,
 } from '../../utils/reservedAttributes';
 import { processEntityVariables } from '../network';
 
@@ -25,7 +25,7 @@ const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
         ...network.ego[sessionID],
         ...network.sessionVariables[sessionID],
       }, 'ego', codebook, exportOptions)
-    ))
+    ));
   }
 
   return [processEntityVariables({
@@ -98,13 +98,13 @@ const toCSVStream = (egos, outStream) => {
           // Session variables exist at the top level - all others inside `attributes`
           let value;
           if (
-            attrName === entityPrimaryKeyProperty ||
-            attrName === caseProperty ||
-            attrName === sessionProperty ||
-            attrName === protocolName ||
-            attrName === sessionStartTimeProperty ||
-            attrName === sessionFinishTimeProperty ||
-            attrName === sessionExportTimeProperty
+            attrName === entityPrimaryKeyProperty
+            || attrName === caseProperty
+            || attrName === sessionProperty
+            || attrName === protocolName
+            || attrName === sessionStartTimeProperty
+            || attrName === sessionFinishTimeProperty
+            || attrName === sessionExportTimeProperty
           ) {
             value = ego[attrName];
           } else {

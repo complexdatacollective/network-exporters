@@ -1,5 +1,5 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../config/setupTestEnv'
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { asAdjacencyMatrix, AdjacencyMatrixFormatter } from '../matrix';
 import { ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 
@@ -129,7 +129,7 @@ describe('AdjacencyMatrixFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new AdjacencyMatrixFormatter({}, {}, { globalOptions: {}});
+    const formatter = new AdjacencyMatrixFormatter({}, {}, { globalOptions: {} });
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

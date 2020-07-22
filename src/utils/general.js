@@ -10,14 +10,14 @@ import {
 // Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
 export const verifySessionVariables = (sessionVariables) => {
   if (
-    !sessionVariables[caseProperty] ||
-    !sessionVariables[sessionProperty] ||
-    !sessionVariables[remoteProtocolProperty] ||
-    !sessionVariables[sessionExportTimeProperty]
+    !sessionVariables[caseProperty]
+    || !sessionVariables[sessionProperty]
+    || !sessionVariables[remoteProtocolProperty]
+    || !sessionVariables[sessionExportTimeProperty]
   ) {
     return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
   }
-}
+};
 
 export const getEntityAttributes = entity => (entity && entity[entityAttributesProperty]) || {};
 

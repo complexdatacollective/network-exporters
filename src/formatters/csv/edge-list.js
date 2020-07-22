@@ -6,7 +6,7 @@ import {
   ncSourceUUID,
   ncTargetUUID,
   ncTypeProperty,
-  ncUUIDProperty
+  ncUUIDProperty,
 } from '../../utils/reservedAttributes';
 import { processEntityVariables } from '../network';
 
@@ -36,9 +36,7 @@ const { sanitizedCellValue, csvEOL } = require('./csv');
  */
 const asEdgeList = (network, codebook, exportOptions) => {
   const directed = exportOptions.globalOptions.useDirectedEdges;
-  const processedEdges = (network.edges || []).map((edge) => {
-    return processEntityVariables(edge, 'edge', codebook, exportOptions);
-  });
+  const processedEdges = (network.edges || []).map(edge => processEntityVariables(edge, 'edge', codebook, exportOptions));
 
   // This code block duplicated the edges when directed mode was off.
   // It has been disabled pending full directed mode support:
@@ -121,13 +119,13 @@ const toCSVStream = (edges, outStream) => {
           // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
           let value;
           if (
-            attrName === entityPrimaryKeyProperty ||
-            attrName === exportIDProperty ||
-            attrName === egoProperty ||
-            attrName === 'to' ||
-            attrName === 'from' ||
-            attrName === ncSourceUUID ||
-            attrName === ncTargetUUID
+            attrName === entityPrimaryKeyProperty
+            || attrName === exportIDProperty
+            || attrName === egoProperty
+            || attrName === 'to'
+            || attrName === 'from'
+            || attrName === ncSourceUUID
+            || attrName === ncTargetUUID
           ) {
             value = edge[attrName];
           } else {

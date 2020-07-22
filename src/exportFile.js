@@ -5,7 +5,7 @@ import {
 } from './utils/general';
 import { isCordova, isElectron } from './utils/Environment';
 import getFormatterClass from './utils/getFormatterClass';
-import { ExportError} from './errors/ExportError';
+import { ExportError } from './errors/ExportError';
 import UserCancelledExport from './errors/UserCancelledExport';
 
 /**
@@ -41,7 +41,8 @@ export const exportFile = (
   // and the stream itself.
   let streamController;
   let writeStream;
-  let promiseResolve, promiseReject;
+  let promiseResolve; let
+    promiseReject;
 
   // Create a promise
   const pathPromise = new Promise((resolve, reject) => {
@@ -61,17 +62,17 @@ export const exportFile = (
     }
 
     createWriteStream(filePath)
-    .then((ws) => {
-      writeStream = ws;
-      writeStream.on('finish', () => {
-        promiseResolve(filePath);
-      });
-      writeStream.on('error', (err) => {
-        promiseReject(err);
-      });
+      .then((ws) => {
+        writeStream = ws;
+        writeStream.on('finish', () => {
+          promiseResolve(filePath);
+        });
+        writeStream.on('error', (err) => {
+          promiseReject(err);
+        });
 
-      streamController = formatter.writeToStream(writeStream);
-    });
+        streamController = formatter.writeToStream(writeStream);
+      });
   });
 
   // Decorate the promise with an abort method that also tears down the

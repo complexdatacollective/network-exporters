@@ -3,7 +3,7 @@ import {
   egoProperty,
   entityPrimaryKeyProperty,
   exportIDProperty,
-  ncUUIDProperty
+  ncUUIDProperty,
 } from '../../utils/reservedAttributes';
 import { processEntityVariables } from '../network';
 
@@ -70,9 +70,9 @@ const toCSVStream = (nodes, outStream) => {
           // The primary key and ego id exist at the top-level; all others inside `.attributes`
           let value;
           if (
-            attrName === entityPrimaryKeyProperty ||
-            attrName === egoProperty ||
-            attrName === exportIDProperty
+            attrName === entityPrimaryKeyProperty
+            || attrName === egoProperty
+            || attrName === exportIDProperty
           ) {
             value = node[attrName];
           } else {

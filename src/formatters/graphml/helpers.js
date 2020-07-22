@@ -6,15 +6,16 @@ export const getEntityAttributes = node => (node && node[entityAttributesPropert
 
 // Gephi does not support long lines in graphML, meaning we need to "beautify" the output
 export const formatXml = (xml, tab) => { // tab = optional indent value, default is tab (\t)
-  var formatted = '', indent= '';
+  let formatted = ''; let
+    indent = '';
   tab = tab || '\t';
-  xml.split(/>\s*</).forEach(function(node) {
-      if (node.match( /^\/\w/ )) indent = indent.substring(tab.length); // decrease indent by one 'tab'
-      formatted += indent + '<' + node + '>\r\n';
-      if (node.match( /^<?\w[^>]*[^\/]$/ )) indent += tab;              // increase indent
+  xml.split(/>\s*</).forEach((node) => {
+    if (node.match(/^\/\w/)) indent = indent.substring(tab.length); // decrease indent by one 'tab'
+    formatted += `${indent}<${node}>\r\n`;
+    if (node.match(/^<?\w[^>]*[^\/]$/)) indent += tab; // increase indent
   });
-  return formatted.substring(1, formatted.length-3);
-}
+  return formatted.substring(1, formatted.length - 3);
+};
 
 export const VariableTypeValues = Object.freeze(Object.values(VariableType));
 
@@ -101,8 +102,8 @@ export const codebookExists = (codebook, type, element, key) => {
  */
 export const getAttributePropertyFromCodebook = (codebook, type, element, key, attributeProperty = 'type') => {
   if (type === 'ego') {
-      const variableInfo = getEgoVariableInfo(codebook, key);
-      return variableInfo && variableInfo[attributeProperty];
+    const variableInfo = getEgoVariableInfo(codebook, key);
+    return variableInfo && variableInfo[attributeProperty];
   }
   const variableInfo = getVariableInfo(codebook, type, element, key);
   return variableInfo && variableInfo[attributeProperty];
@@ -119,6 +120,4 @@ export const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
   return element;
 };
 
-export const createDataElement = (xmlDoc, attributes, text) => {
-  return createElement(xmlDoc, 'data', attributes, xmlDoc.createTextNode(text));
-}
+export const createDataElement = (xmlDoc, attributes, text) => createElement(xmlDoc, 'data', attributes, xmlDoc.createTextNode(text));

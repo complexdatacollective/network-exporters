@@ -52,31 +52,27 @@ const serializer = new globalContext.XMLSerializer();
 const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
 
 // Utility function for indenting and serializing XML element
-const formatAndSerialize = element => {
-  return formatXml(serialize(element));
-}
+const formatAndSerialize = element => formatXml(serialize(element));
 
 // Utility sha1 function that returns hashed text
 const sha1 = (text) => {
-  const shaInstance = new jsSHA("SHA-1", "TEXT", { encoding: "UTF8" });
+  const shaInstance = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
   shaInstance.update(text);
-  return shaInstance.getHash("HEX");
-}
+  return shaInstance.getHash('HEX');
+};
 
 // If includeNCMeta is true, include our custom XML schema
-const getXmlHeader = () => {
-    return `<?xml version="1.0" encoding="UTF-8"?>
+const getXmlHeader = () => `<?xml version="1.0" encoding="UTF-8"?>
   <graphml
     xmlns="http://graphml.graphdrawing.org/xmlns"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns
     http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"
     xmlns:nc="http://schema.networkcanvas.com/xmlns">${eol}`;
-}
 
 // Use exportOptions.defaultOptions from FileExportManager to determine parameters
 // for edge direction.
-const getGraphHeader = ({ globalOptions: { useDirectedEdges, } }, sessionVariables) => {
+const getGraphHeader = ({ globalOptions: { useDirectedEdges } }, sessionVariables) => {
   const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
 
   let metaAttributes = `nc:caseId="${sessionVariables[caseProperty]}"
@@ -98,7 +94,7 @@ const getGraphHeader = ({ globalOptions: { useDirectedEdges, } }, sessionVariabl
 >${eol}`;
 };
 
-const getGraphFooter = `</graph>${eol}`
+const getGraphFooter = `</graph>${eol}`;
 
 const xmlFooter = `</graphml>${eol}`;
 
@@ -123,18 +119,10 @@ const generateKeyElements = (
   // Create an array to track variables we have already created <key>s for
   const done = [];
 
-  /**
-   * REMOVED LAYOUT KEY CREATION:
-   * We used to create a Gephi readable layout <key> here, but
-   * it has been removed because (1) Gephi is unstable and presently not well
-   * maintained, and (2) its implementation is nonstandard.
-   */
-
-  // Create <key> for a 'label' variable allowed on all elements.
-  // This is used by gephi to label nodes/edges.
+  // Create <key> for a 'label' variable that is allowed on all elements.
+  // This is used by Gephi to label nodes/edges.
   // Only create once!
   if (type === 'node' && done.indexOf('label') === -1 && !excludeList.includes('label')) {
-
     const labelDataElement = document.createElement('key');
     labelDataElement.setAttribute('id', 'label');
     labelDataElement.setAttribute('attr.name', 'label');
@@ -146,7 +134,6 @@ const generateKeyElements = (
 
   // Create a <key> for the network canvas entity type.
   if (type === 'node' && done.indexOf('type') === -1 && !excludeList.includes('type')) {
-    // Create <key> for type
     const typeDataElement = document.createElement('key');
     typeDataElement.setAttribute('id', ncTypeProperty);
     typeDataElement.setAttribute('attr.name', ncTypeProperty);
@@ -158,7 +145,6 @@ const generateKeyElements = (
 
   // Create a <key> for network canvas UUID.
   if (type === 'node' && done.indexOf('uuid') === -1 && !excludeList.includes('uuid')) {
-    // Create <key> for type
     const typeDataElement = document.createElement('key');
     typeDataElement.setAttribute('id', ncUUIDProperty);
     typeDataElement.setAttribute('attr.name', ncUUIDProperty);
@@ -168,7 +154,7 @@ const generateKeyElements = (
     done.push('uuid');
   }
 
-  // Create a <key> for from and to properties that reference network canvas UUIDs.
+  // Create a <key> for `from` and `to` properties that reference network canvas UUIDs.
   if (type === 'edge' && done.indexOf('originalEdgeSource') === -1) {
     // Create <key> for type
     const typeDataElement = document.createElement('key');
@@ -191,30 +177,31 @@ const generateKeyElements = (
   // Main loop over entities
   entities.forEach((element) => {
     const elementAttributes = getEntityAttributes(element);
-    let keyTarget = type === 'ego' ? 'graph' : type; // nodes and edges set for="node|edge" but ego has for="graph"
 
-    // Loop over attributes
+    // nodes and edges have for="node|edge" but ego has for="graph"
+    const keyTarget = type === 'ego' ? 'graph' : type;
+
+    // Loop over attributes for this entity
     Object.keys(elementAttributes).forEach((key) => {
       // transpose ids to names based on codebook; fall back to the raw key
-      let keyName = getAttributePropertyFromCodebook(codebook, type, element, key, 'name') || key;
-
+      const keyName = getAttributePropertyFromCodebook(codebook, type, element, key, 'name') || key;
 
       // Test if we have already created a key for this variable, and that it
       // isn't on our exclude list.
       if (done.indexOf(key) === -1 && !excludeList.includes(keyName)) {
         const keyElement = document.createElement('key');
 
-        // Determine attribute type to decide how to encode
+        // Determine attribute type to decide how to encode it
         const variableType = getAttributePropertyFromCodebook(codebook, type, element, key);
 
         // <key> id must be xs:NMTOKEN: http://books.xmlschemata.org/relaxng/ch19-77231.html
         // do not be tempted to change this to the variable 'name' for this reason!
-        // If variableType is undefined, variable wasn't in the codebook (could be external data).
-        // This means that key might not be a UUID, so update the key ID to be SHA1 of variable
-        // name to ensure it is xs:NMTOKEN compliant
         if (variableType) {
           keyElement.setAttribute('id', key);
         } else {
+          // If variableType is undefined, variable wasn't in the codebook (could be external data).
+          // This means that key might not be a UUID, so update the key ID to be SHA1 of variable
+          // name to ensure it is xs:NMTOKEN compliant
           const hashedKeyName = sha1(key);
           keyElement.setAttribute('id', hashedKeyName);
         }
@@ -234,7 +221,7 @@ const generateKeyElements = (
           }
           case VariableType.layout: {
             // special handling for layout variables: split the variable into
-            //two <key> elements - one for X and one for Y.
+            // two <key> elements - one for X and one for Y.
             keyElement.setAttribute('attr.name', `${keyName}_Y`);
             keyElement.setAttribute('id', `${key}_Y`);
             keyElement.setAttribute('attr.type', 'double');
@@ -250,18 +237,19 @@ const generateKeyElements = (
             break;
           }
           case VariableType.categorical: {
-            /**
-             * Special handling for categorical variables:
-             * Because categorical variables can have multiple membership, we
-             * split them out into several boolean variables
-             *
-             * Because key id must be an xs:NMTOKEN, we hash the option value.
-             */
+            /*
+            * Special handling for categorical variables:
+            * Because categorical variables can have multiple membership, we
+            * split them out into several boolean variables
+            *
+            * Because key id must be an xs:NMTOKEN, we hash the option value.
+            */
 
             // fetch options property for this variable
             const options = getAttributePropertyFromCodebook(codebook, type, element, key, 'options');
 
             options.forEach((option, index) => {
+              // Hash the value to ensure that it is NKTOKEN compliant
               const hashedOptionValue = sha1(option.value);
 
               if (index === options.length - 1) {
@@ -297,36 +285,47 @@ const generateKeyElements = (
   return fragment;
 };
 
+/**
+ * Function for creating data elements for ego
+ * Ego data elements are attached directly to the <graph> element
+ *
+ * @param {*} document - the XML ownerDocument
+ * @param {Object} ego - an object representing ego
+ * @param {Array} excludeList - Attributes to exclude lookup of in codebook
+ * @param {Object} codebook - Copy of codebook
+ * @param {Object} exportOptions - Export options object
+ */
 const generateEgoDataElements = (
-  document, // the XML ownerDocument
-  ego, // List of nodes or edges or an object representing ego
-  excludeList, // Attributes to exclude lookup of in codebook
-  codebook, // Copy of codebook
-  exportOptions, // Export options object
+  document,
+  ego,
+  excludeList,
+  codebook,
+  exportOptions,
 ) => {
   let fragment = '';
 
-  /**
-   * Ego is a special case
-   * Ego data elements are attached directly to the <graph> element
-   */
   // Get the ego's attributes for looping over later
   const entityAttributes = getEntityAttributes(ego);
 
   // Create data element for Ego UUID
-  fragment += formatAndSerialize(createDataElement(document, { key: ncUUIDProperty }, ego[entityPrimaryKeyProperty]));
-
+  fragment += formatAndSerialize(
+    createDataElement(
+      document,
+      { key: ncUUIDProperty },
+      ego[entityPrimaryKeyProperty],
+    ),
+  );
 
   // Add entity attributes
   Object.keys(entityAttributes).forEach((key) => {
-    const keyName = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'name');
+    let keyName = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'name');
     const keyType = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'type');
 
-    // Generate sha1 of keyname if it wasn't found in the codebook
+    // Generate sha1 of keyName if it wasn't found in the codebook
+    // To ensure NMTOKEN compliance
     if (!keyName) {
       keyName = sha1(key);
     }
-
 
     if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
       if (keyType === 'categorical') {
@@ -334,9 +333,13 @@ const generateEgoDataElements = (
         options.forEach((option) => {
           const hashedOptionValue = sha1(option.value);
           const optionKey = `${key}_${hashedOptionValue}`;
-          fragment += formatAndSerialize(createDataElement(
-            document, { key: optionKey }, !!entityAttributes[key] && includes(entityAttributes[key], option.value),
-          ));
+          fragment += formatAndSerialize(
+            createDataElement(
+              document,
+              { key: optionKey },
+              !!entityAttributes[key] && includes(entityAttributes[key], option.value),
+            ),
+          );
         });
       } else if (keyType && typeof entityAttributes[key] !== 'object') {
         fragment += formatAndSerialize(createDataElement(document, { key }, entityAttributes[key]));
@@ -346,7 +349,8 @@ const generateEgoDataElements = (
         let yCoord;
         if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
           xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-          yCoord = ((1.0 - entityAttributes[key].y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+          yCoord = ((1.0 - entityAttributes[key].y)
+            * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
         } else {
           xCoord = entityAttributes[key].x;
           yCoord = entityAttributes[key].y;
@@ -354,7 +358,6 @@ const generateEgoDataElements = (
 
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_X` }, xCoord));
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_Y` }, yCoord));
-
       } else {
         fragment += formatAndSerialize(
           createDataElement(document, { key: keyName }, entityAttributes[key]),
@@ -364,7 +367,7 @@ const generateEgoDataElements = (
   });
 
   return fragment;
-}
+};
 
 // @return {DocumentFragment} a fragment containing all XML elements for the supplied dataList
 const generateDataElements = (
@@ -385,17 +388,17 @@ const generateDataElements = (
     // Get the entity's attributes for looping over later
     const entityAttributes = getEntityAttributes(entity);
 
-    // Set the id of the entity element to the export ID property,
-    // or generate a new UUID if needed
-    if (entity[entityPrimaryKeyProperty]) {
-      domElement.setAttribute('id', entity[exportIDProperty]);
-    } else {
-      console.warn('no export ID found on entity. Generating random UUID...');
-      domElement.setAttribute('id', uuid());
-    }
+    // Set the id of the entity element to the export ID property
+    domElement.setAttribute('id', entity[exportIDProperty]);
 
     // Create data element for entity UUID
-    domElement.appendChild(createDataElement(document, { key: ncUUIDProperty }, entity[entityPrimaryKeyProperty]));
+    domElement.appendChild(
+      createDataElement(
+        document,
+        { key: ncUUIDProperty },
+        entity[entityPrimaryKeyProperty],
+      ),
+    );
 
     // Create data element for entity type
     const entityTypeName = codebook[type][entity.type].name || entity.type;
@@ -409,11 +412,23 @@ const generateDataElements = (
       domElement.setAttribute('target', entity[edgeTargetProperty]);
 
       // Insert the nc UUID versions of 'to' and 'from' under special properties
-      domElement.appendChild(createDataElement(document, { key: ncSourceUUID }, entity[ncSourceUUID]));
-      domElement.appendChild(createDataElement(document, { key: ncTargetUUID }, entity[ncTargetUUID]));
+      domElement.appendChild(
+        createDataElement(
+          document,
+          { key: ncSourceUUID },
+          entity[ncSourceUUID],
+        ),
+      );
+
+      domElement.appendChild(
+        createDataElement(
+          document,
+          { key: ncTargetUUID },
+          entity[ncTargetUUID],
+        ),
+      );
     } else {
-      // For nodes, add <data> for label
-      // If there is no name property, fall back to labelling as "Node"
+      // For nodes, add a <data> element for the label using the name property
       const entityLabel = () => {
         const variableCalledName = findKey(codebook[type][entity.type].variables, variable => variable.name.toLowerCase() === 'name');
 
@@ -421,8 +436,9 @@ const generateDataElements = (
           return entity[entityAttributesProperty][variableCalledName];
         }
 
-        return "Node"
-      }
+        domElement.setAttribute('id', entity[exportIDProperty]);
+        return 'Node';
+      };
 
       domElement.appendChild(createDataElement(document, { key: 'label' }, entityLabel()));
     }
@@ -432,11 +448,10 @@ const generateDataElements = (
       let keyName = getAttributePropertyFromCodebook(codebook, type, entity, key, 'name');
       const keyType = getAttributePropertyFromCodebook(codebook, type, entity, key, 'type');
 
-      // Generate sha1 of keyname if it wasn't found in the codebook
+      // Generate sha1 of keyName if it wasn't found in the codebook
       if (!keyName) {
         keyName = sha1(key);
       }
-
 
       if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
         // Handle categorical variables
@@ -446,7 +461,9 @@ const generateDataElements = (
             const hashedOptionValue = sha1(option.value);
             const optionKey = `${key}_${hashedOptionValue}`;
             domElement.appendChild(createDataElement(
-              document, { key: optionKey }, !!entityAttributes[key] && includes(entityAttributes[key], option.value),
+              document,
+              { key: optionKey },
+              !!entityAttributes[key] && includes(entityAttributes[key], option.value),
             ));
           });
         // Handle all codebook variables apart from layout variables
@@ -459,7 +476,8 @@ const generateDataElements = (
           let yCoord;
           if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
             xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-            yCoord = ((1.0 - entityAttributes[key].y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+            yCoord = ((1.0 - entityAttributes[key].y) * exportOptions.globalOptions.screenLayoutHeight)
+              .toFixed(2);
           } else {
             xCoord = entityAttributes[key].x;
             yCoord = entityAttributes[key].y;
@@ -470,8 +488,9 @@ const generateDataElements = (
 
         // Handle non-codebook variables
         } else {
-          // If we reach this point, we could not detect the attribute type by looking in the codebook.
-          // We assume it is not in the codebook, and therefore use the SHA1 hash of the name as the key
+          // If we reach this point, we could not detect the attribute type by looking
+          // in the codebook.
+          // We therefore use the SHA1 hash of the name as the key
           domElement.appendChild(
             createDataElement(document, { key: keyName }, entityAttributes[key]),
           );
@@ -491,14 +510,15 @@ const generateDataElements = (
  * @param {*} codebook
  * @param {*} exportOptions
  */
-export function* graphMLGenerator(network, codebook, exportOptions) {
+function* graphMLGenerator(network, codebook, exportOptions) {
+  const thingy = network;
   yield getXmlHeader();
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
 
   const generateEgoKeys = ego => generateKeyElements(
     xmlDoc,
-    [ego], // TODO: refactor key generation function to not need collection.
+    [ego],
     'ego',
     [],
     codebook,
@@ -547,9 +567,11 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
   // generate keys for ego
   if (exportOptions.globalOptions.unifyNetworks) {
-    const combinedEgos = Object.values(network.ego).reduce((union, ego) => {
-      return { [entityAttributesProperty]: { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] } };
-    }, { [entityAttributesProperty]: {} });
+    const combinedEgos = Object.values(network.ego).reduce((union, ego) => ({
+      [entityAttributesProperty]:
+          { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] },
+    }), { [entityAttributesProperty]: {} });
+
     yield generateEgoKeys(combinedEgos);
   } else {
     yield generateEgoKeys(network.ego);
@@ -563,34 +585,36 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
   if (exportOptions.globalOptions.unifyNetworks) {
     // Group nodes and edges by sessionProperty, and then map.
-    network.nodes = groupBy(network.nodes, sessionProperty);
-    network.edges = groupBy(network.edges, sessionProperty);
+    const groupedNetwork = {
+      nodes: groupBy(network.nodes, sessionProperty),
+      edges: groupBy(network.edges, sessionProperty),
+    };
 
-    for (let sessionID in network.sessionVariables) {
-      yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
+    /* eslint-disable no-restricted-syntax, guard-for-in, no-unused-vars */
+    for (const sessionID in groupedNetwork.sessionVariables) {
+      yield getGraphHeader(exportOptions, groupedNetwork.sessionVariables[sessionID]);
 
       // Add ego to graph
-      if (network.ego[sessionID]) {
-        yield generateEgoElements(network.ego[sessionID]);
+      if (groupedNetwork.ego[sessionID]) {
+        yield generateEgoElements(groupedNetwork.ego[sessionID]);
       }
 
       // add nodes and edges to graph
-      if (network.nodes[sessionID]) {
-        for (let i = 0; i < network.nodes[sessionID].length; i += 100) {
-          yield generateNodeElements(network.nodes[sessionID].slice(i, i + 100));
+      if (groupedNetwork.nodes[sessionID]) {
+        for (let i = 0; i < groupedNetwork.nodes[sessionID].length; i += 100) {
+          yield generateNodeElements(groupedNetwork.nodes[sessionID].slice(i, i + 100));
         }
       }
 
-      if (network.edges[sessionID]) {
-        for (let i = 0; i < network.edges[sessionID].length; i += 100) {
-          yield generateEdgeElements(network.edges[sessionID].slice(i, i + 100));
+      if (groupedNetwork.edges[sessionID]) {
+        for (let i = 0; i < groupedNetwork.edges[sessionID].length; i += 100) {
+          yield generateEdgeElements(groupedNetwork.edges[sessionID].slice(i, i + 100));
         }
       }
 
       yield getGraphFooter;
     }
-
-
+    /* eslint-enable no-restricted-syntax, guard-for-in */
   } else {
     // TODO: reduce duplication with this code
     yield getGraphHeader(exportOptions, network.sessionVariables);
@@ -618,3 +642,5 @@ export function* graphMLGenerator(network, codebook, exportOptions) {
 
   yield xmlFooter;
 }
+
+export default graphMLGenerator;

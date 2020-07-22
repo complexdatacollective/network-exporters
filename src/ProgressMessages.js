@@ -19,7 +19,7 @@ const ProgressMessages = {
     progress: 60,
     statusText: 'Creating zip archive...',
   },
-  ZipProgress: (percent) => ({
+  ZipProgress: percent => ({
     progress: 60 + ((85 - 60) * (percent / 100)), // between ZipStart and Saving
     statusText: 'Zipping files...',
   }),

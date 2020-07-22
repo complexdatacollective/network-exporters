@@ -116,7 +116,7 @@ class AdjacencyMatrix {
    * @return {Object} an abort controller; call the attached abort() method as needed.
    */
   toCSVStream(outStream) {
-    const uniqueNodeIds = this.uniqueNodeIds;
+    const { uniqueNodeIds } = this;
     const dataColumnCount = uniqueNodeIds.length;
     const matrixCellCount = dataColumnCount * dataColumnCount;
 
@@ -245,6 +245,7 @@ export class AdjacencyMatrixFormatter {
   constructor(data, codebook, { globalOptions: { useDirectedEdges } }) {
     this.matrix = asAdjacencyMatrix(data, useDirectedEdges);
   }
+
   writeToStream(outStream) {
     return this.matrix.toCSVStream(outStream);
   }
