@@ -15,6 +15,9 @@ export const mockCodebook = {
     'mock-edge-type': {
       name: 'peer',
     },
+    'mock-edge-type-2': {
+      name: 'likes',
+    },
   },
 };
 

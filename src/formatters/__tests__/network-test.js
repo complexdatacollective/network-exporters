@@ -66,18 +66,38 @@ describe('network format helpers', () => {
 
   describe('insertEgoIntoSessionNetworks', () => {
     it('inserts ego uid in node objects', () => {
-      const a = { nodes: [{ id: 1 }, { id: 2 }], edges: [], ego: { [entityPrimaryKeyProperty]: 1 } };
+      const a = {
+        nodes: [{ id: 1 }, { id: 2 }],
+        edges: [],
+        ego: { [entityPrimaryKeyProperty]: 1 },
+      };
       const b = { nodes: [{ id: a }], edges: [], ego: { [entityPrimaryKeyProperty]: 2 } };
       const egoNetworks = insertEgoIntoSessionNetworks([a, b]);
-      expect(egoNetworks[0].nodes).toEqual([{ [egoProperty]: 1, id: 1 }, { [egoProperty]: 1, id: 2 }]);
+      expect(egoNetworks[0].nodes).toEqual([{
+        [egoProperty]: 1,
+        id: 1,
+      }, {
+        [egoProperty]: 1,
+        id: 2,
+      }]);
       expect(egoNetworks[1].nodes).toEqual([{ [egoProperty]: 2, id: a }]);
     });
 
     it('inserts ego uid in edge objects', () => {
-      const a = { nodes: [], edges: [{ id: 1 }, { id: 2 }], ego: { [entityPrimaryKeyProperty]: 1 } };
+      const a = {
+        nodes: [],
+        edges: [{ id: 1 }, { id: 2 }],
+        ego: { [entityPrimaryKeyProperty]: 1 },
+      };
       const b = { nodes: [], edges: [{ id: a }], ego: { [entityPrimaryKeyProperty]: 2 } };
       const egoNetworks = insertEgoIntoSessionNetworks([a, b]);
-      expect(egoNetworks[0].edges).toEqual([{ [egoProperty]: 1, id: 1 }, { [egoProperty]: 1, id: 2 }]);
+      expect(egoNetworks[0].edges).toEqual([{
+        [egoProperty]: 1,
+        id: 1,
+      }, {
+        [egoProperty]: 1,
+        id: 2,
+      }]);
       expect(egoNetworks[1].edges).toEqual([{ [egoProperty]: 2, id: a }]);
     });
   });

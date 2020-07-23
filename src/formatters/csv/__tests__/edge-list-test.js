@@ -47,8 +47,17 @@ describe('asEdgeList', () => {
   });
 
   it('include egoID', () => {
-    expect(listFromEdges([{ _egoID: 123, [edgeSourceProperty]: 1, [edgeTargetProperty]: 2 }], true)).toEqual([
-      { _egoID: 123, [edgeSourceProperty]: 1, [edgeTargetProperty]: 2, [entityAttributesProperty]: {} },
+    expect(listFromEdges([{
+      _egoID: 123,
+      [edgeSourceProperty]: 1,
+      [edgeTargetProperty]: 2,
+    }], true)).toEqual([
+      {
+        _egoID: 123,
+        [edgeSourceProperty]: 1,
+        [edgeTargetProperty]: 2,
+        [entityAttributesProperty]: {},
+      },
     ]);
   });
 });
