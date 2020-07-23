@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions} from '../../../../config/mockObjects';
+import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
 import AttributeListFormatter, { asAttributeList, toCSVStream } from '../attribute-list';
 import { entityPrimaryKeyProperty, entityAttributesProperty, egoProperty, caseProperty, ncSessionProperty, ncProtocolNameProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, ncCaseProperty, sessionProperty, exportIDProperty, ncUUIDProperty } from '../../../utils/reservedAttributes';
 

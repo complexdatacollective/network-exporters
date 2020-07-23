@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions} from '../../../../config/mockObjects';
+import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
 import { entityPrimaryKeyProperty, edgeSourceProperty, edgeTargetProperty, entityAttributesProperty, exportIDProperty, egoProperty, ncUUIDProperty, ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 import EdgeListFormatter, { asEdgeList, toCSVStream } from '../edge-list';
 
