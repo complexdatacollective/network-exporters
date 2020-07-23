@@ -17,7 +17,7 @@ import { processEntityVariables } from '../network';
 const { Readable } = require('stream');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
-const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
+export const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
   if (exportOptions.globalOptions.unifyNetworks) {
     // If unified networks is enabled, network.ego is an object keyed by sessionID.
     return Object.keys(network.ego).map(sessionID => (
@@ -79,7 +79,7 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (egos, outStream) => {
+export const toCSVStream = (egos, outStream) => {
   const totalRows = egos.length;
   const attrNames = attributeHeaders(egos);
   let headerWritten = false;

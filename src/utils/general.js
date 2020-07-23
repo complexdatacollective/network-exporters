@@ -1,4 +1,5 @@
 
+import { ExportError, ErrorMessages } from '../errors/ExportError';
 import {
   caseProperty,
   sessionProperty,
@@ -17,9 +18,13 @@ export const verifySessionVariables = (sessionVariables) => {
   ) {
     return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
   }
+
+  return true;
 };
 
 export const getEntityAttributes = entity => (entity && entity[entityAttributesProperty]) || {};
+
+export const escapeFilePart = part => part.replace(/\W/g, '');
 
 export const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
@@ -32,8 +37,6 @@ export const makeFilename = (prefix, entityType, exportFormat, extension) => {
   }
   return `${name}${extension}`;
 };
-
-export const escapeFilePart = part => part.replace(/\W/g, '');
 
 export const extensions = {
   graphml: '.graphml',

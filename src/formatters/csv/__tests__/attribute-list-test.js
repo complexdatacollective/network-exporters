@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
-import { makeWriteableStream } from '../../../../../config/jest/setupTestEnv';
-import { asAttributeList, toCSVStream, AttributeListFormatter } from '../attribute-list';
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import AttributeListFormatter, { asAttributeList, toCSVStream } from '../attribute-list';
 
 describe('asAttributeList', () => {
   it('transforms a network to nodes', () => {

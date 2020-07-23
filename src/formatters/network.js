@@ -39,7 +39,8 @@ export const processEntityVariables = (entity, entityType, codebook, exportOptio
         let yCoord;
         if (attributeData && exportOptions.globalOptions.useScreenLayoutCoordinates) {
           xCoord = (attributeData.x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-          yCoord = ((1.0 - attributeData.y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+          yCoord = ((1.0 - attributeData.y) * exportOptions.globalOptions.screenLayoutHeight)
+            .toFixed(2);
         } else {
           xCoord = attributeData && attributeData.x;
           yCoord = attributeData && attributeData.y;

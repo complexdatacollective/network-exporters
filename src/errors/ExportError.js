@@ -5,14 +5,14 @@
  * API services can use this to distinguish between client input errors and
  * unexpected (server) errors.
  */
-class ExportError extends Error {
+export class ExportError extends Error {
   constructor(message) {
     super(message);
     this.name = 'ExportError';
   }
 }
 
-const ErrorMessages = {
+export const ErrorMessages = {
   NoTmpFS: 'Couldn\'t create a temporary directory for the export.',
   EmptyFilelist: 'Empty filelist',
   FilelistNotSingular: 'Multiple files must be uploaded separately',
@@ -27,10 +27,4 @@ const ErrorMessages = {
   NotFound: 'Not found',
   NothingToExport: 'No data available to export',
   VerificationFailed: 'Request verification failed',
-};
-
-module.exports = {
-  default: ExportError,
-  ExportError,
-  ErrorMessages,
 };

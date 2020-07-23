@@ -1,6 +1,6 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../../config/jest/setupTestEnv';
-import { asEdgeList, toCSVStream, EdgeListFormatter } from '../edge-list';
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import EdgeListFormatter, { asEdgeList, toCSVStream } from '../edge-list';
 
 const listFromEdges = (edges, directed) => asEdgeList({ edges }, directed);
 

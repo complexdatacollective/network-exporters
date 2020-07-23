@@ -5,13 +5,10 @@ const path = require('path');
 const archiver = require('archiver');
 const JSZip = require('jszip');
 const {
-  getTempFileSystem,
   resolveFileSystemUrl,
   splitUrl,
   readFile,
   newFile,
-  getFileEntry,
-  createReader,
   makeFileWriter,
 } = require('../../../filesystem');
 
@@ -91,9 +88,9 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
             updateCallback(update.percent);
           }).then((blob) => {
             fileWriter.seek(0);
-            fileWriter.onwrite = () => {
+            fileWriter.onwrite = () => { // eslint-disable-line no-param-reassign
               resolve(targetFileName);
-            }; // eslint-disable-line no-param-reassign
+            };
             fileWriter.onerror = err => reject(err); // eslint-disable-line no-param-reassign
             fileWriter.write(blob);
           });

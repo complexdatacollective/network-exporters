@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 import { createWriteStream } from './utils/filesystem';
 import {
   getFileExtension,
@@ -16,12 +17,13 @@ import UserCancelledExport from './errors/UserCancelledExport';
  * @param  {string} outDir directory where we should write the file
  * @param  {object} network NC-formatted network `({ nodes, edges, ego })`
  * @param  {Object} codebook needed to lookup variable types for encoding
- * @param  {Object} exportOptions the new style configuration object, passed through to the formatter
+ * @param  {Object} exportOptions the new style configuration object, passed through to the
+ *                  formatter
  * @return {Promise} promise decorated with an `abort` method.
  *                           If aborted, the returned promise will never settle.
  * @private
  */
-export const exportFile = (
+const exportFile = (
   namePrefix,
   partitonedEntityName,
   exportFormat,
@@ -90,3 +92,5 @@ export const exportFile = (
 
   return pathPromise;
 };
+
+export default { exportFile };

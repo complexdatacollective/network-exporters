@@ -5,7 +5,6 @@ import {
   exportIDProperty,
   ncSourceUUID,
   ncTargetUUID,
-  ncTypeProperty,
   ncUUIDProperty,
 } from '../../utils/reservedAttributes';
 import { processEntityVariables } from '../network';
@@ -34,7 +33,7 @@ const { sanitizedCellValue, csvEOL } = require('./csv');
  *                            default: false
  * @return {Array} the edges list
  */
-const asEdgeList = (network, codebook, exportOptions) => {
+export const asEdgeList = (network, codebook, exportOptions) => {
   const directed = exportOptions.globalOptions.useDirectedEdges;
   const processedEdges = (network.edges || []).map(edge => processEntityVariables(edge, 'edge', codebook, exportOptions));
 
@@ -100,7 +99,7 @@ const getPrintableAttribute = (attribute) => {
  *
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (edges, outStream) => {
+export const toCSVStream = (edges, outStream) => {
   const totalChunks = edges.length;
   let chunkContent;
   let chunkIndex = 0;

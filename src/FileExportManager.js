@@ -1,4 +1,4 @@
-import { merge, isEmpty, groupBy, flattenDeep, compact } from 'lodash';
+import { merge, isEmpty, groupBy, flattenDeep } from 'lodash';
 import { EventEmitter } from 'eventemitter3';
 import sanitizeFilename from 'sanitize-filename';
 import {
@@ -12,7 +12,7 @@ import {
   removeDirectory,
   makeTempDir,
 } from './utils/filesystem';
-import { exportFile } from './exportFile';
+import exportFile from './exportFile';
 import {
   insertEgoIntoSessionNetworks,
   resequenceIds,
@@ -64,6 +64,7 @@ class FileExportManager {
 
   emit(event, payload) {
     if (!event) {
+      // eslint-disable-next-line no-console
       console.warn('Malformed emit.');
       return;
     }
@@ -137,7 +138,7 @@ class FileExportManager {
         // We add the sessionID to each entity so that we can groupBy on it within
         // the exporter to reconstruct the sessions.
         return Object.keys(sessionsByProtocol)
-          .reduce((sessions, protocolUUID) => {
+          .reduce((existing, protocolUUID) => {
             const protocolSessions = sessionsByProtocol[protocolUUID]
               .reduce((union, session) => ({
               // Merge node list when union option is selected
@@ -159,7 +160,7 @@ class FileExportManager {
                 },
               }), { nodes: [], edges: [], ego: {}, sessionVariables: {} });
             return {
-              ...sessions,
+              ...existing,
               [protocolUUID]: Array(protocolSessions),
             };
           }, {});
@@ -171,7 +172,8 @@ class FileExportManager {
 
         // Create an array of promises representing each session in each export format
         const finishedSessions = [];
-        const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks ? Object.keys(unifiedSessions).length : sessions.length;
+        const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
+          ? Object.keys(unifiedSessions).length : sessions.length;
 
         promisedExports = flattenDeep(
           Object.keys(unifiedSessions).map((protocolUUID) => {
@@ -214,7 +216,11 @@ class FileExportManager {
               return exportFormats.map((format) => {
                 // partitioning network based on node and edge type so we can create
                 // an individual export file for each type
-                const partitionedNetworks = partitionNetworkByType(protocol.codebook, session, format);
+                const partitionedNetworks = partitionNetworkByType(
+                  protocol.codebook,
+                  session,
+                  format,
+                );
 
                 return partitionedNetworks.map((partitionedNetwork) => {
                   const partitionedEntity = partitionedNetwork.partitionEntity;
@@ -319,6 +325,8 @@ class FileExportManager {
 
         this.emit('finished', ProgressMessages.Finished);
         cleanUp();
+
+        return Promise.resolve();
       })
       .catch((err) => {
         // We don't throw if this is an error from user cancelling

@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { asAdjacencyMatrix, AdjacencyMatrixFormatter } from '../matrix';
+import AdjacencyMatrixFormatter, { asAdjacencyMatrix } from '../matrix';
 import { ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 
 const mockNetwork = edges => ({
@@ -40,7 +40,9 @@ describe('asAdjacencyMatrix', () => {
   });
 
   it('only represents presence (not counts)', () => {
-    expect(mockMatrix([{ [ncSourceUUID]: 1, [ncTargetUUID]: 2 }, { [ncSourceUUID]: 1, [ncTargetUUID]: 2 }]).toArray()).toEqual([
+    expect(mockMatrix([
+      { [ncSourceUUID]: 1, [ncTargetUUID]: 2 }, { [ncSourceUUID]: 1, [ncTargetUUID]: 2 },
+    ]).toArray()).toEqual([
       0, 1,
       1, 0,
     ]);
@@ -88,7 +90,9 @@ describe('toCSVStream', () => {
   });
 
   it('Handles duplicate edges', async () => {
-    const matrix = mockMatrix([{ [ncSourceUUID]: 1, [ncTargetUUID]: 2 }, { [ncSourceUUID]: 1, [ncTargetUUID]: 2 }]);
+    const matrix = mockMatrix([
+      { [ncSourceUUID]: 1, [ncTargetUUID]: 2 }, { [ncSourceUUID]: 1, [ncTargetUUID]: 2 },
+    ]);
     matrix.toCSVStream(writable);
     const csv = await writable.asString();
     expect(csv).toEqual(',1,2\r\n1,0,1\r\n2,1,0\r\n');

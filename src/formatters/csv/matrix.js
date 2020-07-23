@@ -1,9 +1,8 @@
 /* eslint-disable no-bitwise */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
+import { Readable } from 'stream';
 import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from '../../utils/reservedAttributes';
-
-const { Readable } = require('stream');
-const { csvEOL } = require('./csv');
+import { csvEOL } from './csv';
 
 /**
  * An opaque reprensentation of an adjacency matrix with binary values (edge is present/absent).
@@ -90,6 +89,7 @@ class AdjacencyMatrix {
     const byteIndex = ~~(elementIndex / 8);
     const bitIndex = elementIndex % 8;
     const adjacencyBitmask = 1 << (7 - bitIndex); // cells are ordered left->right
+    // eslint-disable-next-line operator-assignment
     this.arrayView[byteIndex] = this.arrayView[byteIndex] | adjacencyBitmask;
   }
 
@@ -241,7 +241,7 @@ export const asAdjacencyMatrix = (network, directed = false) => {
   return adjacencyMatrix;
 };
 
-export class AdjacencyMatrixFormatter {
+class AdjacencyMatrixFormatter {
   constructor(data, codebook, { globalOptions: { useDirectedEdges } }) {
     this.matrix = asAdjacencyMatrix(data, useDirectedEdges);
   }

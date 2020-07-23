@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { DOMParser } from 'xmldom';
-import { graphMLGenerator } from '../createGraphML';
+import graphMLGenerator from '../createGraphML';
 
 describe('buildGraphML', () => {
   const buildXML = (...args) => {

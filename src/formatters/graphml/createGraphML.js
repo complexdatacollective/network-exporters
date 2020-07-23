@@ -1,5 +1,5 @@
-import { v4 as uuid } from 'uuid';
 import { findKey, includes, groupBy } from 'lodash';
+import { jsSHA as JsSHA } from 'jssha/dist/sha1';
 import {
   getEntityAttributes,
   createDataElement,
@@ -19,7 +19,6 @@ import {
   sessionStartTimeProperty,
   protocolName,
   exportIDProperty,
-  egoProperty,
   ncSourceUUID,
   ncTargetUUID,
   edgeSourceProperty,
@@ -27,8 +26,6 @@ import {
   ncTypeProperty,
   ncUUIDProperty,
 } from '../../utils/reservedAttributes';
-
-const jsSHA = require('jssha/dist/sha1');
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
@@ -56,7 +53,7 @@ const formatAndSerialize = element => formatXml(serialize(element));
 
 // Utility sha1 function that returns hashed text
 const sha1 = (text) => {
-  const shaInstance = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
+  const shaInstance = new JsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
   shaInstance.update(text);
   return shaInstance.getHash('HEX');
 };
@@ -348,7 +345,9 @@ const generateEgoDataElements = (
         let xCoord;
         let yCoord;
         if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-          xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+          xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth)
+            .toFixed(2);
+
           yCoord = ((1.0 - entityAttributes[key].y)
             * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
         } else {
@@ -475,9 +474,11 @@ const generateDataElements = (
           let xCoord;
           let yCoord;
           if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-            xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-            yCoord = ((1.0 - entityAttributes[key].y) * exportOptions.globalOptions.screenLayoutHeight)
-              .toFixed(2);
+            xCoord = (entityAttributes[key].x
+              * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+
+            yCoord = ((1.0 - entityAttributes[key].y)
+              * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
           } else {
             xCoord = entityAttributes[key].x;
             yCoord = entityAttributes[key].y;
@@ -511,7 +512,6 @@ const generateDataElements = (
  * @param {*} exportOptions
  */
 function* graphMLGenerator(network, codebook, exportOptions) {
-  const thingy = network;
   yield getXmlHeader();
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);

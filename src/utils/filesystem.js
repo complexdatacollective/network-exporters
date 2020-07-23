@@ -4,7 +4,7 @@ import uuid from 'uuid/v4';
 import { Writable } from 'stream';
 import { trimChars } from 'lodash/fp';
 import environments from './environments';
-import { RequestError, ErrorMessages } from '../errors/ExportError';
+import { ExportError, ErrorMessages } from '../errors/ExportError';
 import inEnvironment, { isElectron, isCordova } from './Environment';
 
 const { Buffer } = require('buffer/');
@@ -31,6 +31,68 @@ const inSequence = (items, apply) =>
     (result, item) => result.then(() => apply(item)),
     Promise.resolve(),
   );
+
+const tempDataPath = inEnvironment((environment) => {
+  if (environment === environments.ELECTRON) {
+    const electron = window.require('electron');
+
+    return () => (electron.app || electron.remote.app).getPath('temp');
+  }
+
+  if (environment === environments.CORDOVA) {
+    return () => cordova.file.cacheDirectory;
+  }
+
+  throw new Error(`userDataPath() not available on platform ${environment}`);
+});
+
+const resolveFileSystemUrl = inEnvironment((environment) => {
+  if (environment === environments.CORDOVA) {
+    return path => new Promise((resolve, reject) =>
+      window.resolveLocalFileSystemURL(path, resolve, reject));
+  }
+
+  throw new Error(`resolveFileSystemUrl() not available on platform ${environment}`);
+});
+
+const createDirectory = inEnvironment((environment) => {
+  if (environment === environments.ELECTRON) {
+    const fs = require('fs');
+
+    return targetPath =>
+      new Promise((resolve, reject) => {
+        try {
+          fs.mkdir(targetPath, () => {
+            resolve(targetPath);
+          });
+        } catch (error) {
+          if (error.code !== 'EEXISTS') { reject(error); }
+          throw error;
+        }
+      });
+  }
+
+  if (environment === environments.CORDOVA) {
+    const appendDirectory = (directoryEntry, directoryToAppend) =>
+      new Promise((resolve, reject) => {
+        directoryEntry.getDirectory(
+          directoryToAppend,
+          { create: true },
+          resolve,
+          reject,
+        );
+      });
+
+    return (targetUrl) => {
+      const [baseDirectory, directoryToAppend] = splitUrl(targetUrl);
+
+      return resolveFileSystemUrl(baseDirectory)
+        .then(directoryEntry => appendDirectory(directoryEntry, directoryToAppend));
+    };
+  }
+
+  throw new Error(`createDirectory() not available on platform ${environment}`);
+});
 
 /**
  * Create a new temp directory to hold intermediate export files
@@ -83,20 +145,6 @@ export const getFileNativePath = inEnvironment((environment) => {
   throw new Error(`getFileNativePath() not available on platform ${environment}`);
 });
 
-const tempDataPath = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    const electron = window.require('electron');
-
-    return () => (electron.app || electron.remote.app).getPath('temp');
-  }
-
-  if (environment === environments.CORDOVA) {
-    return () => cordova.file.cacheDirectory;
-  }
-
-  throw new Error(`userDataPath() not available on platform ${environment}`);
-});
-
 const appPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const electron = require('electron');
@@ -122,15 +170,6 @@ export const getTempFileSystem = () => new Promise((resolve, reject) => {
   window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, (dirEntry) => {
     resolve(dirEntry);
   }, error => reject(error));
-});
-
-const resolveFileSystemUrl = inEnvironment((environment) => {
-  if (environment === environments.CORDOVA) {
-    return path => new Promise((resolve, reject) =>
-      window.resolveLocalFileSystemURL(path, resolve, reject));
-  }
-
-  throw new Error(`resolveFileSystemUrl() not available on platform ${environment}`);
 });
 
 const readFile = inEnvironment((environment) => {
@@ -168,39 +207,6 @@ const readFile = inEnvironment((environment) => {
   }
 
   throw new Error(`readFile() not available on platform ${environment}`);
-});
-
-/**
- * Deprecated.
- * This reads the binary contents of a file into a base-64 encoded data URL,
- * which works as long as the file is small enough (but is slow).
- * On iOS, asset loading currently relies on observed behavior of the tmp fs;
- * this may be useful as a fallback in the future (see #681).
- */
-const readFileAsDataUrl = inEnvironment((environment) => {
-  if (environment === environments.CORDOVA) {
-    const fileReader = fileEntry =>
-      new Promise((resolve, reject) => {
-        if (!fileEntry) { reject('File not found'); }
-        fileEntry.file((file) => {
-          const reader = new FileReader();
-
-          reader.onloadend = (event) => {
-            resolve(event.target.result);
-          };
-
-          reader.onerror = error => reject(error, 'filesystem.readFileAsDataUrl');
-
-          reader.readAsDataURL(file);
-        }, reject);
-      });
-
-    return filename =>
-      resolveFileSystemUrl(filename)
-        .then(fileReader);
-  }
-
-  throw new Error(`readFileAsDataUrl() not available on platform ${environment}`);
 });
 
 export const makeFileWriter = fileEntry =>
@@ -259,45 +265,6 @@ const writeFile = inEnvironment((environment) => {
   throw new Error(`writeFile() not available on platform ${environment}`);
 });
 
-const createDirectory = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    const fs = require('fs');
-
-    return targetPath =>
-      new Promise((resolve, reject) => {
-        try {
-          fs.mkdir(targetPath, () => {
-            resolve(targetPath);
-          });
-        } catch (error) {
-          if (error.code !== 'EEXISTS') { reject(error); }
-          throw error;
-        }
-      });
-  }
-
-  if (environment === environments.CORDOVA) {
-    const appendDirectory = (directoryEntry, directoryToAppend) =>
-      new Promise((resolve, reject) => {
-        directoryEntry.getDirectory(
-          directoryToAppend,
-          { create: true },
-          resolve,
-          reject,
-        );
-      });
-
-    return (targetUrl) => {
-      const [baseDirectory, directoryToAppend] = splitUrl(targetUrl);
-
-      return resolveFileSystemUrl(baseDirectory)
-        .then(directoryEntry => appendDirectory(directoryEntry, directoryToAppend));
-    };
-  }
-
-  throw new Error(`createDirectory() not available on platform ${environment}`);
-});
-
 const rename = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fs = require('fs');
@@ -332,7 +299,7 @@ const removeDirectory = inEnvironment((environment) => {
           if (
             !targetPath.includes(userDataPath())
             && !targetPath.includes(tempDataPath())
-          ) { reject('Attempted to remove path outside of safe directories!'); return; }
+          ) { reject(new Error('Attempted to remove path outside of safe directories!')); return; }
           fs.rmdir(targetPath, { recursive: true }, resolve);
         } catch (error) {
           if (error.code !== 'EEXISTS') { reject(error); }
@@ -717,7 +684,6 @@ export {
   rename,
   removeDirectory,
   readFile,
-  readFileAsDataUrl,
   resolveFileSystemUrl,
   writeFile,
   writeStream,

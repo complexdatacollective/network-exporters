@@ -1,12 +1,11 @@
 /* eslint-env jest */
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import EgoListFormatter, { asEgoAndSessionVariablesList, toCSVStream } from '../ego-list';
 
-import { makeWriteableStream } from '../../../../../config/jest/setupTestEnv';
-import { asEgoList, toCSVStream, EgoListFormatter } from '../ego-list';
-
-describe('asEgoList', () => {
+describe('asEgoAndSessionVariablesList', () => {
   it('transforms a network to ego', () => {
     const network = { nodes: [], edges: [], ego: { id: 1, attributes: {} } };
-    expect(asEgoList(network)).toEqual([network.ego]);
+    expect(asEgoAndSessionVariablesList(network)).toEqual([network.ego]);
   });
 });
 

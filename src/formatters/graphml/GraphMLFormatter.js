@@ -1,5 +1,5 @@
 import { Readable } from 'stream';
-import { graphMLGenerator } from './createGraphML';
+import graphMLGenerator from './createGraphML';
 
 /** Class providing a graphML formatter. */
 class GraphMLFormatter {
@@ -25,7 +25,7 @@ class GraphMLFormatter {
   }
 
   /**
-   * A (unused?) method allowing writing the file to a string.
+   * A method allowing writing the file to a string. Used for tests.
    */
   writeToString() {
     const generator = graphMLGenerator(
@@ -34,8 +34,6 @@ class GraphMLFormatter {
       this.exportOptions,
     );
 
-    console.log('writing to string', Readable);
-    debugger;
     const inStream = new Readable({
       read(/* size */) {
         const { done, value } = generator.next();

@@ -10,7 +10,7 @@ import { processEntityVariables } from '../network';
 const { Readable } = require('stream');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
-const asAttributeList = (network, codebook, exportOptions) => {
+export const asAttributeList = (network, codebook, exportOptions) => {
   const processedNodes = (network.nodes).map((node) => {
     if (codebook && codebook.node[node.type]) {
       return processEntityVariables(node, 'node', codebook, exportOptions);
@@ -51,7 +51,7 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-const toCSVStream = (nodes, outStream) => {
+export const toCSVStream = (nodes, outStream) => {
   const totalRows = nodes.length;
   const attrNames = attributeHeaders(nodes);
   let headerWritten = false;

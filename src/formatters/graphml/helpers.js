@@ -5,14 +5,14 @@ import { entityAttributesProperty } from '../../utils/reservedAttributes';
 export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
 // Gephi does not support long lines in graphML, meaning we need to "beautify" the output
-export const formatXml = (xml, tab) => { // tab = optional indent value, default is tab (\t)
-  let formatted = ''; let
-    indent = '';
-  tab = tab || '\t';
+export const formatXml = (xml, tab = '\t') => { // tab = optional indent value, default is tab (\t)
+  let formatted = '';
+  let indent = '';
+
   xml.split(/>\s*</).forEach((node) => {
     if (node.match(/^\/\w/)) indent = indent.substring(tab.length); // decrease indent by one 'tab'
     formatted += `${indent}<${node}>\r\n`;
-    if (node.match(/^<?\w[^>]*[^\/]$/)) indent += tab; // increase indent
+    if (node.match(/^<?\w[^>]*[^/]$/)) indent += tab; // increase indent
   });
   return formatted.substring(1, formatted.length - 3);
 };
