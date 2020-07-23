@@ -1,21 +1,8 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import { mockCodebook, mockExportOptions} from '../../../../config/mockObjects';
 import { entityPrimaryKeyProperty, edgeSourceProperty, edgeTargetProperty, entityAttributesProperty, exportIDProperty, egoProperty, ncUUIDProperty, ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 import EdgeListFormatter, { asEdgeList, toCSVStream } from '../edge-list';
-
-const mockCodebook = {};
-
-const mockExportOptions = {
-  exportGraphML: true,
-  exportCSV: true,
-  globalOptions: {
-    unifyNetworks: false,
-    useDirectedEdges: false,
-    useScreenLayoutCoordinates: true,
-    screenLayoutHeight: 1080,
-    screenLayoutWidth: 1920,
-  },
-};
 
 const nodes = [
   { [entityPrimaryKeyProperty]: 1 },
