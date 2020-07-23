@@ -2,6 +2,7 @@
 import { includes } from 'lodash';
 import {
   entityPrimaryKeyProperty,
+  sessionProperty,
   egoProperty,
   exportIDProperty,
   ncSourceUUID,
@@ -175,3 +176,34 @@ export const resequenceIds = (sessions) => {
 
   return resequencedEntities;
 };
+
+// Result is a SINGLE session, with MULTIPLE ego and sessionVariables
+// We add the sessionID to each entity so that we can groupBy on it within
+// the exporter to reconstruct the sessions.
+export const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
+  .reduce((sessions, protocolUUID) => {
+    const protocolSessions = sessionsByProtocol[protocolUUID]
+      .reduce((union, session) => ({
+      // Merge node list when union option is selected
+        nodes: [...union.nodes, ...session.nodes.map(node => ({
+          ...node,
+          [sessionProperty]: session.sessionVariables[sessionProperty],
+        }))],
+        edges: [...union.edges, ...session.edges.map(edge => ({
+          ...edge,
+          [sessionProperty]: session.sessionVariables[sessionProperty],
+        }))],
+        ego: {
+          ...union.ego,
+          [session.sessionVariables[sessionProperty]]: session.ego,
+        },
+        sessionVariables: {
+          ...union.sessionVariables,
+          [session.sessionVariables[sessionProperty]]: session.sessionVariables,
+        },
+      }), { nodes: [], edges: [], ego: {}, sessionVariables: {} });
+    return {
+      ...sessions,
+      [protocolUUID]: Array(protocolSessions),
+    };
+  }, {});
