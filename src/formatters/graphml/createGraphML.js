@@ -1,5 +1,5 @@
 import { findKey, includes, groupBy } from 'lodash';
-import { jsSHA as JsSHA } from 'jssha/dist/sha1';
+import jsSHA from 'jssha/dist/sha1';
 import {
   getEntityAttributes,
   createDataElement,
@@ -53,7 +53,8 @@ const formatAndSerialize = element => formatXml(serialize(element));
 
 // Utility sha1 function that returns hashed text
 const sha1 = (text) => {
-  const shaInstance = new JsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
+  // eslint-disable-next-line new-cap
+  const shaInstance = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
   shaInstance.update(text);
   return shaInstance.getHash('HEX');
 };
