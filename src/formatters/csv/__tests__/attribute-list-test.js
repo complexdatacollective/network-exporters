@@ -1,7 +1,24 @@
 /* eslint-env jest */
 
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import { mockCodebook, mockExportOptions} from '../../../../config/mockObjects';
 import AttributeListFormatter, { asAttributeList, toCSVStream } from '../attribute-list';
+import { entityPrimaryKeyProperty, entityAttributesProperty, egoProperty, caseProperty, ncSessionProperty, ncProtocolNameProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, ncCaseProperty, sessionProperty, exportIDProperty, ncUUIDProperty } from '../../../utils/reservedAttributes';
+
+const node = {
+  [egoProperty]: 123,
+  [entityPrimaryKeyProperty]: 1,
+  [entityAttributesProperty]: {
+    name: 'Jane',
+  },
+};
+
+const baseCSVAttributes = [
+  exportIDProperty,
+  egoProperty,
+  ncUUIDProperty,
+];
+
 
 describe('asAttributeList', () => {
   it('transforms a network to nodes', () => {
@@ -12,57 +29,156 @@ describe('asAttributeList', () => {
 
 describe('toCSVStream', () => {
   let writable;
+  let testNode;
 
   beforeEach(() => {
     writable = makeWriteableStream();
+    testNode = node;
   });
 
   it('writes a simple CSV', async () => {
-    toCSVStream([{ _uid: 1, _egoID: 2, type: 'type', attributes: { name: 'Jane' } }], writable);
+    toCSVStream([testNode], writable);
+
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,name\r\n1,type,Jane\r\n');
+
+    const result = [
+      ...baseCSVAttributes,
+      'name\r\n',
+      123,
+      1,
+      'Jane\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 
   it('escapes quotes', async () => {
-    toCSVStream([{ _uid: 1, attributes: { nickname: '"Nicky"' } }], writable);
+    toCSVStream([
+      {
+        ...testNode,
+        [entityAttributesProperty]: {
+          name: '"Nicky"',
+        },
+      },
+    ], writable);
+
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,nickname\r\n1,,"""Nicky"""\r\n');
+
+    const result = [
+      ...baseCSVAttributes,
+      'name\r\n',
+      123,
+      1,
+      '"""Nicky"""\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 
   it('escapes quotes in attr names', async () => {
-    toCSVStream([{ _uid: 1, attributes: { '"quoted"': 1 } }], writable);
+    toCSVStream([
+      {
+        ...testNode,
+        [entityAttributesProperty]: {
+          '"quoted"': 1,
+        },
+      },
+    ], writable);
+
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,"""quoted"""\r\n1,,1\r\n');
+
+    const result = [
+      ...baseCSVAttributes,
+      '"""quoted"""\r\n',
+      123,
+      1,
+      '1\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 
   it('stringifies and quotes objects', async () => {
-    toCSVStream([{ _uid: 1, attributes: { location: { x: 1, y: 1 } } }], writable);
+    toCSVStream([
+      {
+        ...testNode,
+        [entityAttributesProperty]: {
+          location: { x: 1, y: 1 },
+        },
+      },
+    ], writable);
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,location\r\n1,,"{""x"":1,""y"":1}"\r\n');
+    const result = [
+      ...baseCSVAttributes,
+      'location\r\n',
+      123,
+      1,
+      '"{""x"":1,""y"":1}"\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 
   it('exports undefined values as blank', async () => {
-    toCSVStream([{ _uid: 1, attributes: { prop: undefined } }], writable);
+    toCSVStream([
+      {
+        ...testNode,
+        [entityAttributesProperty]: {
+          prop: undefined,
+        },
+      },
+    ], writable);
+
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,prop\r\n1,,\r\n');
+
+    const result = [
+      ...baseCSVAttributes,
+      'prop\r\n',
+      123,
+      1,
+      '\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 
   it('exports null values as blank', async () => {
-    toCSVStream([{ _uid: 1, attributes: { prop: null } }], writable);
+    toCSVStream([
+      {
+        ...testNode,
+        [entityAttributesProperty]: {
+          prop: null,
+        },
+      },
+    ], writable);
+
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,prop\r\n1,,\r\n');
+
+    const result = [
+      ...baseCSVAttributes,
+      'prop\r\n',
+      123,
+      1,
+      '\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 
   it('exports `false` values as "false"', async () => {
-    toCSVStream([{ _uid: 1, attributes: { prop: false } }], writable);
-    const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasAlterID,networkCanvasNodeType,prop\r\n1,,false\r\n');
-  });
+    toCSVStream([
+      {
+        ...testNode,
+        [entityAttributesProperty]: {
+          prop: false,
+        },
+      },
+    ], writable);
 
-  it('exports egoID', async () => {
-    toCSVStream([{ _uid: 1, _egoID: 2, attributes: { prop: false } }], writable, true);
     const csv = await writable.asString();
-    expect(csv).toEqual('networkCanvasEgoID,networkCanvasAlterID,networkCanvasNodeType,prop\r\n2,1,,false\r\n');
+
+    const result = [
+      ...baseCSVAttributes,
+      'prop\r\n',
+      123,
+      1,
+      'false\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 });
 
@@ -74,7 +190,7 @@ describe('AttributeListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new AttributeListFormatter({});
+    const formatter = new AttributeListFormatter({}, mockCodebook, mockExportOptions);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

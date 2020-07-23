@@ -11,7 +11,7 @@ const { Readable } = require('stream');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
 export const asAttributeList = (network, codebook, exportOptions) => {
-  const processedNodes = (network.nodes).map((node) => {
+  const processedNodes = (network.nodes || []).map((node) => {
     if (codebook && codebook.node[node.type]) {
       return processEntityVariables(node, 'node', codebook, exportOptions);
     }
