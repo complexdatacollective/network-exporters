@@ -1,16 +1,10 @@
 import getEnvironment, { isElectron, isCordova } from './Environment';
+import { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } from './filesystem';
 
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const JSZip = require('jszip');
-const {
-  resolveFileSystemUrl,
-  splitUrl,
-  readFile,
-  newFile,
-  makeFileWriter,
-} = require('../../../filesystem');
 
 // const zlibFastestCompression = 1;
 // const zlibBestCompression = 9;
