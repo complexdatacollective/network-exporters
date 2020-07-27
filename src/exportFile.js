@@ -11,16 +11,16 @@ import UserCancelledExport from './errors/UserCancelledExport';
 
 /**
  * Export a single (CSV or graphml) file
- * @param  {string} namePrefix used to construct the filename
- * @param  {string} partitionedEntityName an entity name used by CSV formatters
- * @param  {formats} exportFormat a special config object that specifies the formatter class
- * @param  {string} outDir directory where we should write the file
- * @param  {object} network NC-formatted network `({ nodes, edges, ego })`
- * @param  {Object} codebook needed to lookup variable types for encoding
- * @param  {Object} exportOptions the new style configuration object, passed through to the
- *                  formatter
- * @return {Promise} promise decorated with an `abort` method.
- *                           If aborted, the returned promise will never settle.
+ * @param  {string}   namePrefix used to construct the filename
+ * @param  {string}   partitionedEntityName an entity name used by CSV formatters
+ * @param  {formats}  exportFormat a special config object that specifies the formatter class
+ * @param  {string}   outDir directory where we should write the file
+ * @param  {object}   network NC-formatted network `({ nodes, edges, ego })`
+ * @param  {Object}   codebook needed to lookup variable types for encoding
+ * @param  {Object}   exportOptions the new style configuration object, passed through to
+ *                    the formatter
+ * @return {Promise}  promise decorated with an `abort` method.
+ *                    If aborted, the returned promise will never settle.
  * @private
  */
 const exportFile = (
@@ -43,8 +43,8 @@ const exportFile = (
   // and the stream itself.
   let streamController;
   let writeStream;
-  let promiseResolve; let
-    promiseReject;
+  let promiseResolve;
+  let promiseReject;
 
   // Create a promise
   const pathPromise = new Promise((resolve, reject) => {
@@ -93,4 +93,4 @@ const exportFile = (
   return pathPromise;
 };
 
-export default { exportFile };
+export default exportFile;
