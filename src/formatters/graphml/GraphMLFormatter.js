@@ -1,12 +1,18 @@
-const { Readable } = require('stream');
+import { Readable } from 'stream';
+import graphMLGenerator from './createGraphML';
 
-const { graphMLGenerator } = require('./createGraphML');
-
+/** Class providing a graphML formatter. */
 class GraphMLFormatter {
-  constructor(data, useDirectedEdges, _, codebook) {
-    this.network = data;
+  /**
+   * Create a graphML formatter.
+   * @param {Object} network - a NC format network object.
+   * @param {Object} codebook - the codebook for this network.
+   * @param {Object} exportOptions - global export options object from FileExportManager.
+   */
+  constructor(network, codebook, exportOptions) {
+    this.network = network;
     this.codebook = codebook;
-    this.useDirectedEdges = useDirectedEdges;
+    this.exportOptions = exportOptions;
   }
 
   streamToString = (stream) => {
@@ -18,12 +24,16 @@ class GraphMLFormatter {
     });
   }
 
+  /**
+   * A method allowing writing the file to a string. Used for tests.
+   */
   writeToString() {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.useDirectedEdges,
+      this.exportOptions,
     );
+
     const inStream = new Readable({
       read(/* size */) {
         const { done, value } = generator.next();
@@ -38,11 +48,15 @@ class GraphMLFormatter {
     return this.streamToString(inStream);
   }
 
+  /**
+   * Write the file to a stream one chunk at a time.
+   * @param {Stream} outStream
+   */
   writeToStream(outStream) {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.useDirectedEdges,
+      this.exportOptions,
     );
     const inStream = new Readable({
       read(/* size */) {
@@ -64,4 +78,4 @@ class GraphMLFormatter {
   }
 }
 
-module.exports = GraphMLFormatter;
+export default GraphMLFormatter;

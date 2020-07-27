@@ -1,18 +1,20 @@
 /* eslint-env jest */
-/* eslint-disable @codaco/spellcheck/spell-checker */
 
-const { DOMParser } = require('xmldom');
-const { graphMLGenerator } = require('../createGraphML');
+import { DOMParser } from 'xmldom';
+import { mockExportOptions } from '../../../../config/mockObjects';
+import graphMLGenerator from '../createGraphML';
+import { caseProperty, sessionExportTimeProperty, sessionFinishTimeProperty, sessionStartTimeProperty, protocolName } from '../../../utils/reservedAttributes';
 
 describe('buildGraphML', () => {
   const buildXML = (...args) => {
     let xmlString = '';
-    for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax
+    for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax, no-unused-vars, max-len
       xmlString += chunk;
     }
     return (new DOMParser()).parseFromString(xmlString);
   };
   const edgeType = 'peer';
+  const nodeType = 'person';
   let network;
   let codebook;
   let xml;
@@ -20,16 +22,24 @@ describe('buildGraphML', () => {
   beforeEach(() => {
     network = {
       nodes: [
-        { _uid: '1', type: 'person', attributes: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 } } },
-        { _uid: '2', type: 'person', attributes: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 50, 'mock-uuid-3': { x: 0, y: 0 } } },
+        { _uid: '1', type: 'mock-node-type', attributes: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 } } },
+        { _uid: '2', type: 'mock-node-type', attributes: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 50, 'mock-uuid-3': { x: 0, y: 0 } } },
       ],
       edges: [
-        { from: '1', to: '2', type: 'mock-uuid-3' },
+        { from: '1', to: '2', type: 'mock-edge-type' },
       ],
+      sessionVariables: {
+        [caseProperty]: 123,
+        [protocolName]: 'protocol name',
+        [sessionStartTimeProperty]: 100,
+        [sessionFinishTimeProperty]: 200,
+        [sessionExportTimeProperty]: 300,
+      },
     };
     codebook = {
       node: {
-        person: {
+        'mock-node-type': {
+          name: nodeType,
           variables: {
             'mock-uuid-1': { name: 'firstName', type: 'string' },
             'mock-uuid-2': { name: 'age', type: 'number' },
@@ -38,12 +48,12 @@ describe('buildGraphML', () => {
         },
       },
       edge: {
-        'mock-uuid-3': {
+        'mock-edge-type': {
           name: edgeType,
         },
       },
     };
-    xml = buildXML(network, codebook);
+    xml = buildXML(network, codebook, mockExportOptions);
   });
 
   it('produces a graphml document', () => {
@@ -60,12 +70,12 @@ describe('buildGraphML', () => {
 
   it('adds node type', () => {
     const node = xml.getElementsByTagName('node')[0];
-    expect(node.getElementsByTagName('data')[0].textContent).toEqual('person');
+    expect(node.getElementsByTagName('data')[1].textContent).toEqual('person');
   });
 
   it('adds edge type', () => {
     const edge = xml.getElementsByTagName('edge')[0];
-    expect(edge.getElementsByTagName('data')[1].textContent).toEqual('mock-uuid-3');
+    expect(edge.getElementsByTagName('data')[1].textContent).toEqual('peer');
   });
 
   it('adds edges', () => {
@@ -73,22 +83,27 @@ describe('buildGraphML', () => {
   });
 
   it('infers int types', () => { // This indicates that transposition worked for nodes
-    expect(xml.getElementById('age').getAttribute('attr.type')).toEqual('int');
+    expect(xml.getElementById('mock-uuid-2').getAttribute('attr.type')).toEqual('int');
   });
 
   it('converts layout types', () => {
-    expect(xml.getElementById('layoutX').getAttribute('attr.type')).toEqual('double');
-    expect(xml.getElementById('layoutY').getAttribute('attr.type')).toEqual('double');
+    expect(xml.getElementById('mock-uuid-3_X').getAttribute('attr.type')).toEqual('double');
+    expect(xml.getElementById('mock-uuid-3_Y').getAttribute('attr.type')).toEqual('double');
   });
 
   it('exports edge labels', () => { // This indicates that [non-]transposition worked for edges
     const edge = xml.getElementsByTagName('edge')[0];
-    expect(edge.getElementsByTagName('data')[0].textContent).toEqual(edgeType);
+    expect(edge.getElementsByTagName('data')[1].textContent).toEqual(edgeType);
   });
 
   describe('with directed edge option', () => {
     beforeEach(() => {
-      xml = buildXML(network, codebook, true);
+      xml = buildXML(network, codebook, {
+        ...mockExportOptions,
+        globalOptions: {
+          useDirectedEdges: true,
+        },
+      });
     });
 
     it('specifies directed edges', () => {

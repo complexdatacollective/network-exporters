@@ -2,9 +2,9 @@
   "name": "network-exporters",
   "version": "1.0.0",
   "description": "Utility for exporting a network",
-  "main": "graphml/createGraphML.js",
+  "main": "src/FileExportManager.js",
   "scripts": {
-    "lint": "eslint **/*.js",
+    "lint": "eslint src",
     "test": "jest"
   },
   "repository": {
@@ -17,16 +17,55 @@
   },
   "homepage": "https://github.com/codaco/network-exporters#readme",
   "devDependencies": {
-    "eslint": "^5.10.0",
+    "@babel/core": "^7.8.3",
+    "@babel/plugin-proposal-class-properties": "^7.7.4",
+    "@babel/plugin-proposal-json-strings": "^7.7.4",
+    "@babel/plugin-syntax-dynamic-import": "^7.7.4",
+    "@babel/plugin-syntax-import-meta": "^7.7.4",
+    "@babel/plugin-transform-runtime": "^7.9.6",
+    "@babel/preset-env": "^7.7.7",
+    "@babel/preset-react": "^7.7.4",
+    "babel-eslint": "^10.1.0",
+    "babel-jest": "^25.1.0",
+    "babel-loader": "^8.0.6",
+    "electron": "^9.1.1",
+    "enzyme": "^3.11.0",
+    "enzyme-adapter-react-16": "^1.15.2",
+    "eslint": "^7.0.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.14.0",
-    "jest": "^23.6.0",
+    "eventemitter3": "^4.0.4",
+    "jest": "^26.0.1",
+    "lodash": "^4.17.15",
+    "react": "^16.5.2",
+    "react-dom": "^16.5.2",
+    "regenerator-runtime": "^0.13.5",
+    "uuid": "^3.4.0",
     "xmldom": "^0.1.27"
   },
   "jest": {
-    "testMatch": [
-      "<rootDir>/**/*-test.js"
+    "collectCoverageFrom": [
+      "src/**/*.{js,jsx}"
+    ],
+    "testPathIgnorePatterns": [
+      "<rootDir>[/\\\\](www|docs|node_modules|scripts|test)[/\\\\]"
+    ],
+    "testEnvironment": "node",
+    "testURL": "http://localhost",
+    "transform": {
+      "/node_modules/(?!codaco/ui).+\\.js$": "<rootDir>/node_modules/babel-jest",
+      "^.+\\.(js|jsx)$": "<rootDir>/node_modules/babel-jest"
+    },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!@codaco/ui).+\\.js$"
     ]
   },
-  "dependencies": {}
+  "dependencies": {
+    "@babel/runtime": "^7.8.3",
+    "archiver": "^4.0.1",
+    "electron-log": "^4.1.2",
+    "jssha": "^3.1.0",
+    "jszip": "^3.4.0",
+    "sanitize-filename": "^1.6.3"
+  }
 }

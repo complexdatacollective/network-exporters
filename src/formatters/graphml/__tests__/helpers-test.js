@@ -1,5 +1,4 @@
 /* eslint-env jest */
-
 const { getGraphMLTypeForKey } = require('../helpers');
 
 describe('getGraphMLTypeForKey', () => {

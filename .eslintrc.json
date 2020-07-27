@@ -1,11 +1,13 @@
 {
   "extends": "airbnb-base",
   "env": {
-    "browser": false,
-    "commonjs": false,
-    "es6": true,
+    "browser": true,
+    "commonjs": true,
+    "es2020": true,
     "node": true
   },
+  "root": true,
+  "parser": "babel-eslint",
   "parserOptions": {
     "ecmaVersion": 2018,
     "ecmaFeatures": {
