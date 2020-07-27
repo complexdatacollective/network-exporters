@@ -91,6 +91,13 @@ class FileExportManager {
     let promisedExports; // Will hold array of promises representing each export task
     let cancelled = false; // Top-level cancelled property used to abort promise chain
 
+    // Utility function to delete temporary directory (and contents) when needed.
+    const cleanUp = () => {
+      if (tmpDir) {
+        removeDirectory(tmpDir);
+      }
+    };
+
     this.emit('begin', ProgressMessages.Begin);
 
     // Reject if required parameters aren't provided
@@ -101,13 +108,6 @@ class FileExportManager {
       return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
     }
 
-    // Utility function to delete temporary directory (and contents) when needed.
-    const cleanUp = () => {
-      if (tmpDir) {
-        removeDirectory(tmpDir);
-      }
-    };
-
     // exportPromise is the return value of this method
     const exportPromise = makeTempDir() // Begin by creating temporary directory
       .then((dir) => {
@@ -115,9 +115,8 @@ class FileExportManager {
       })
       // Insert a reference to the ego ID into all nodes and edges
       .then(() => {
-        const frozenSessions = Object.freeze(sessions);
         this.emit('update', ProgressMessages.Formatting);
-        return insertEgoIntoSessionNetworks(frozenSessions);
+        return insertEgoIntoSessionNetworks(sessions);
       })
       // Resequence IDs for this export
       .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
