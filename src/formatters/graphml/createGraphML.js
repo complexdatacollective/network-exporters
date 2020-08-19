@@ -589,6 +589,8 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     const groupedNetwork = {
       nodes: groupBy(network.nodes, sessionProperty),
       edges: groupBy(network.edges, sessionProperty),
+      sessionVariables: network.sessionVariables,
+      ego: network.ego,
     };
 
     /* eslint-disable no-restricted-syntax, guard-for-in, no-unused-vars */
