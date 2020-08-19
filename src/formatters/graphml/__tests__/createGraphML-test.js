@@ -1,9 +1,8 @@
 /* eslint-env jest */
 
 import { DOMParser } from 'xmldom';
-import { mockExportOptions } from '../../../../config/mockObjects';
+import { mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2 } from '../../../../config/mockObjects';
 import graphMLGenerator from '../createGraphML';
-import { caseProperty, sessionExportTimeProperty, sessionFinishTimeProperty, sessionStartTimeProperty, protocolName } from '../../../utils/reservedAttributes';
 
 describe('buildGraphML', () => {
   const buildXML = (...args) => {
@@ -13,51 +12,33 @@ describe('buildGraphML', () => {
     }
     return (new DOMParser()).parseFromString(xmlString);
   };
-  const edgeType = 'peer';
-  const nodeType = 'person';
+  const edgeType = mockCodebook.edge["mock-edge-type"].name;
+  const nodeType = mockCodebook.node["mock-node-type"].name;
   let network;
   let codebook;
+  let exportOptions;
   let xml;
 
   beforeEach(() => {
-    network = {
-      nodes: [
-        { _uid: '1', type: 'mock-node-type', attributes: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 } } },
-        { _uid: '2', type: 'mock-node-type', attributes: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 50, 'mock-uuid-3': { x: 0, y: 0 } } },
-      ],
-      edges: [
-        { from: '1', to: '2', type: 'mock-edge-type' },
-      ],
-      sessionVariables: {
-        [caseProperty]: 123,
-        [protocolName]: 'protocol name',
-        [sessionStartTimeProperty]: 100,
-        [sessionFinishTimeProperty]: 200,
-        [sessionExportTimeProperty]: 300,
-      },
-    };
-    codebook = {
-      node: {
-        'mock-node-type': {
-          name: nodeType,
-          variables: {
-            'mock-uuid-1': { name: 'firstName', type: 'string' },
-            'mock-uuid-2': { name: 'age', type: 'number' },
-            'mock-uuid-3': { name: 'layout', type: 'layout' },
-          },
-        },
-      },
-      edge: {
-        'mock-edge-type': {
-          name: edgeType,
-        },
-      },
-    };
-    xml = buildXML(network, codebook, mockExportOptions);
+    network = mockNetwork;
+    codebook = mockCodebook;
+    exportOptions = {
+      ...mockExportOptions,
+      exportGraphML: true,
+    }
+
+    const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
+    const protocolNetwork = processedNetworks['protocol-uid-1'][0];
+
+    xml = buildXML(protocolNetwork, codebook, exportOptions);
   });
 
   it('produces a graphml document', () => {
     expect(xml.getElementsByTagName('graphml')).toHaveLength(1);
+  });
+
+  it('creates a single graph element when not merging', () => {
+    expect(xml.getElementsByTagName('graph')).toHaveLength(1);
   });
 
   it('defaults to undirected edges', () => {
@@ -70,12 +51,12 @@ describe('buildGraphML', () => {
 
   it('adds node type', () => {
     const node = xml.getElementsByTagName('node')[0];
-    expect(node.getElementsByTagName('data')[1].textContent).toEqual('person');
+    expect(node.getElementsByTagName('data')[1].textContent).toEqual(nodeType);
   });
 
   it('adds edge type', () => {
     const edge = xml.getElementsByTagName('edge')[0];
-    expect(edge.getElementsByTagName('data')[1].textContent).toEqual('peer');
+    expect(edge.getElementsByTagName('data')[1].textContent).toEqual(edgeType);
   });
 
   it('adds edges', () => {
@@ -98,8 +79,11 @@ describe('buildGraphML', () => {
 
   describe('with directed edge option', () => {
     beforeEach(() => {
-      xml = buildXML(network, codebook, {
-        ...mockExportOptions,
+      const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
+      const protocolNetwork = processedNetworks['protocol-uid-1'][0];
+
+      xml = buildXML(protocolNetwork, codebook, {
+        ...exportOptions,
         globalOptions: {
           useDirectedEdges: true,
         },
@@ -108,6 +92,24 @@ describe('buildGraphML', () => {
 
     it('specifies directed edges', () => {
       expect(xml.getElementsByTagName('graph')[0].getAttribute('edgedefault')).toEqual('directed');
+    });
+  });
+
+  describe('with merged networks', () => {
+    beforeEach(() => {
+      const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], true);
+      const protocolNetwork = processedNetworks['protocol-uid-1'][0];
+
+      xml = buildXML(protocolNetwork, codebook, {
+        ...exportOptions,
+        globalOptions: {
+          unifyNetworks: true,
+        },
+      });
+    });
+
+    it('creates multiple graph elements', () => {
+      expect(xml.getElementsByTagName('graph')).toHaveLength(2);
     });
   });
 });

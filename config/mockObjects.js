@@ -1,6 +1,14 @@
-import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty } from '../src/utils/reservedAttributes';
+import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty } from '../src/utils/reservedAttributes';
+import { insertEgoIntoSessionNetworks, resequenceIds, unionOfNetworks } from '../src/formatters/network';
+import { groupBy } from 'lodash';
 
 export const mockCodebook = {
+  ego: {
+    variables: {
+      'mock-uuid-1': { name: 'egoName', type: 'string' },
+      'mock-uuid-2': { name: 'egoAge', type: 'number' },
+    }
+  },
   node: {
     'mock-node-type': {
       name: 'person',
@@ -22,8 +30,8 @@ export const mockCodebook = {
 };
 
 export const mockExportOptions = {
-  exportGraphML: true,
-  exportCSV: true,
+  exportGraphML: false,
+  exportCSV: false,
   globalOptions: {
     unifyNetworks: false,
     useDirectedEdges: false,
@@ -41,11 +49,58 @@ export const mockNetwork = {
   edges: [
     { from: '1', to: '2', type: 'mock-edge-type' },
   ],
+  ego: {
+    [entityPrimaryKeyProperty]: "ego-id-1",
+    [entityAttributesProperty]: {
+      'mock-uuid-1': 'Dee',
+      'mock-uuid-2': 40,
+    }
+  },
   sessionVariables: {
     [caseProperty]: 123,
     [protocolName]: 'protocol name',
+    [protocolProperty]: 'protocol-uid-1',
+    [sessionProperty]: 'session-id-1',
     [sessionStartTimeProperty]: 100,
     [sessionFinishTimeProperty]: 200,
     [sessionExportTimeProperty]: 300,
   },
 };
+
+export const mockNetwork2 = {
+  nodes: [
+    { [entityPrimaryKeyProperty]: '10', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jimbo', 'mock-uuid-2': 20, 'mock-uuid-3': { x: 10, y: 50 } } },
+    { [entityPrimaryKeyProperty]: '20', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jambo', 'mock-uuid-2': 30, 'mock-uuid-3': { x: 20, y: 20 } } },
+  ],
+  edges: [
+    { from: '10', to: '20', type: 'mock-edge-type' },
+  ],
+  ego: {
+    [entityPrimaryKeyProperty]: "ego-id-10",
+    [entityAttributesProperty]: {
+      'mock-uuid-1': 'Dee',
+      'mock-uuid-2': 40,
+    }
+  },
+  sessionVariables: {
+    [caseProperty]: 456,
+    [protocolName]: 'protocol name',
+    [protocolProperty]: 'protocol-uid-1',
+    [sessionProperty]: 'session-id-2',
+    [sessionStartTimeProperty]: 1000,
+    [sessionFinishTimeProperty]: 2000,
+    [sessionExportTimeProperty]: 3000,
+  },
+};
+
+// Function designed to mirror the flow in FileExportManager.exportSessions()
+export const processMockNetworks = (networkCollection, unify) => {
+  const sessionsWithEgo = insertEgoIntoSessionNetworks(networkCollection);
+  const sessionsWithResequencedIDs = resequenceIds(sessionsWithEgo);
+  const sessionsByProtocol = groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`);
+
+  if (!unify) {
+    return sessionsByProtocol;
+  }
+  return unionOfNetworks(sessionsByProtocol);
+}
