@@ -1,6 +1,6 @@
 {
   "name": "network-exporters",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Utility for exporting a network",
   "main": "src/FileExportManager.js",
   "scripts": {

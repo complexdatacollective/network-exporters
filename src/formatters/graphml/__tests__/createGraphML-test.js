@@ -12,20 +12,17 @@ describe('buildGraphML', () => {
     }
     return (new DOMParser()).parseFromString(xmlString);
   };
-  const edgeType = mockCodebook.edge["mock-edge-type"].name;
-  const nodeType = mockCodebook.node["mock-node-type"].name;
-  let network;
-  let codebook;
+  const edgeType = mockCodebook.edge['mock-edge-type'].name;
+  const nodeType = mockCodebook.node['mock-node-type'].name;
+  const codebook = mockCodebook;
   let exportOptions;
   let xml;
 
   beforeEach(() => {
-    network = mockNetwork;
-    codebook = mockCodebook;
     exportOptions = {
       ...mockExportOptions,
       exportGraphML: true,
-    }
+    };
 
     const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
     const protocolNetwork = processedNetworks['protocol-uid-1'][0];
