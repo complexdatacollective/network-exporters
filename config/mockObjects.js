@@ -30,8 +30,8 @@ export const mockCodebook = {
 };
 
 export const mockExportOptions = {
-  exportGraphML: false,
-  exportCSV: false,
+  exportGraphML: true,
+  exportCSV: true,
   globalOptions: {
     unifyNetworks: false,
     useDirectedEdges: false,
