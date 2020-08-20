@@ -592,12 +592,12 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     };
 
     /* eslint-disable no-restricted-syntax, guard-for-in, no-unused-vars */
-    for (const sessionID in groupedNetwork.sessionVariables) {
-      yield getGraphHeader(exportOptions, groupedNetwork.sessionVariables[sessionID]);
+    for (const sessionID in network.sessionVariables) {
+      yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
 
       // Add ego to graph
-      if (groupedNetwork.ego[sessionID]) {
-        yield generateEgoElements(groupedNetwork.ego[sessionID]);
+      if (network.ego[sessionID]) {
+        yield generateEgoElements(network.ego[sessionID]);
       }
 
       // add nodes and edges to graph
