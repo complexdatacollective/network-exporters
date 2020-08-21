@@ -325,7 +325,7 @@ const generateEgoDataElements = (
       keyName = sha1(key);
     }
 
-    if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
+    if (!excludeList.includes(keyName) && entityAttributes[key] !== null) {
       if (keyType === 'categorical') {
         const options = getAttributePropertyFromCodebook(codebook, 'ego', null, key, 'options');
         options.forEach((option) => {
@@ -453,7 +453,7 @@ const generateDataElements = (
         keyName = sha1(key);
       }
 
-      if (!excludeList.includes(keyName) && !!entityAttributes[key]) {
+      if (!excludeList.includes(keyName) && entityAttributes[key] !== null) {
         // Handle categorical variables
         if (keyType === 'categorical') {
           const options = getAttributePropertyFromCodebook(codebook, type, entity, key, 'options');
