@@ -1,13 +1,14 @@
+import { groupBy } from 'lodash';
 import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty } from '../src/utils/reservedAttributes';
 import { insertEgoIntoSessionNetworks, resequenceIds, unionOfNetworks } from '../src/formatters/network';
-import { groupBy } from 'lodash';
 
 export const mockCodebook = {
   ego: {
     variables: {
       'mock-uuid-1': { name: 'egoName', type: 'string' },
       'mock-uuid-2': { name: 'egoAge', type: 'number' },
-    }
+      'mock-uuid-3': { name: 'boolVar', type: 'boolean' },
+    },
   },
   node: {
     'mock-node-type': {
@@ -44,17 +45,19 @@ export const mockExportOptions = {
 export const mockNetwork = {
   nodes: [
     { [entityPrimaryKeyProperty]: '1', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 } } },
-    { [entityPrimaryKeyProperty]: '2', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 50, 'mock-uuid-3': { x: 0, y: 0 } } },
+    { [entityPrimaryKeyProperty]: '2', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 0, 'mock-uuid-3': { x: 0, y: 0 } } },
+    { [entityPrimaryKeyProperty]: '3', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jumbo', 'mock-uuid-2': 50, 'mock-uuid-3': null } },
   ],
   edges: [
     { from: '1', to: '2', type: 'mock-edge-type' },
   ],
   ego: {
-    [entityPrimaryKeyProperty]: "ego-id-1",
+    [entityPrimaryKeyProperty]: 'ego-id-1',
     [entityAttributesProperty]: {
       'mock-uuid-1': 'Dee',
       'mock-uuid-2': 40,
-    }
+      'mock-uuid-3': false,
+    },
   },
   sessionVariables: {
     [caseProperty]: 123,
@@ -76,11 +79,12 @@ export const mockNetwork2 = {
     { from: '10', to: '20', type: 'mock-edge-type' },
   ],
   ego: {
-    [entityPrimaryKeyProperty]: "ego-id-10",
+    [entityPrimaryKeyProperty]: 'ego-id-10',
     [entityAttributesProperty]: {
       'mock-uuid-1': 'Dee',
       'mock-uuid-2': 40,
-    }
+      'mock-uuid-3': true,
+    },
   },
   sessionVariables: {
     [caseProperty]: 456,
@@ -103,4 +107,4 @@ export const processMockNetworks = (networkCollection, unify) => {
     return sessionsByProtocol;
   }
   return unionOfNetworks(sessionsByProtocol);
-}
+};
