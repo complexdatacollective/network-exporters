@@ -43,7 +43,7 @@ describe('buildGraphML', () => {
   });
 
   it('adds nodes', () => {
-    expect(xml.getElementsByTagName('node')).toHaveLength(2);
+    expect(xml.getElementsByTagName('node')).toHaveLength(3);
   });
 
   it('adds node type', () => {
@@ -72,6 +72,21 @@ describe('buildGraphML', () => {
   it('exports edge labels', () => { // This indicates that [non-]transposition worked for edges
     const edge = xml.getElementsByTagName('edge')[0];
     expect(edge.getElementsByTagName('data')[1].textContent).toEqual(edgeType);
+  });
+
+  it('includes 0 and false values', () => {
+    const node = xml.getElementsByTagName('node')[1];
+    expect(node.getElementsByTagName('data')[4].textContent).toEqual('0'); // node var
+    expect(xml.getElementsByTagName('data')[3].textContent).toEqual('false'); // ego var
+  });
+
+  it('excludes null values', () => {
+    const nodeSansNull = xml.getElementsByTagName('node')[0];
+    const anotherSansNull = xml.getElementsByTagName('node')[1];
+    const nodeWithNull = xml.getElementsByTagName('node')[2];
+    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(7);
+    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(7);
+    expect(nodeWithNull.getElementsByTagName('data').length).toEqual(5);
   });
 
   describe('with directed edge option', () => {
