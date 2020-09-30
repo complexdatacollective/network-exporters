@@ -1,13 +1,13 @@
 /* eslint-disable global-require */
-import { createWriteStream } from './utils/filesystem';
-import {
+const { createWriteStream } = require('./utils/filesystem');
+const {
   getFileExtension,
   makeFilename,
-} from './utils/general';
-import { isCordova, isElectron } from './utils/Environment';
-import getFormatterClass from './utils/getFormatterClass';
-import { ExportError } from './errors/ExportError';
-import UserCancelledExport from './errors/UserCancelledExport';
+} = require('./utils/general');
+const { isCordova, isElectron } = require('./utils/Environment');
+const getFormatterClass = require('./utils/getFormatterClass');
+const { ExportError } = require('./errors/ExportError');
+const UserCancelledExport = require('./errors/UserCancelledExport');
 
 /**
  * Export a single (CSV or graphml) file
@@ -93,4 +93,4 @@ const exportFile = (
   return pathPromise;
 };
 
-export default exportFile;
+module.exports = exportFile;

@@ -1,5 +1,5 @@
-import getEnvironment, { isElectron, isCordova } from './Environment';
-import { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } from './filesystem';
+const { default: getEnvironment, isElectron, isCordova } = require('./Environment');
+const { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } = require('./filesystem');
 
 const fs = require('fs');
 const path = require('path');
@@ -118,4 +118,4 @@ const archive = (sourcePaths, tempDir, updateCallback) => {
 };
 
 // This is adapted from Architect; consider using `extract` as well
-export default archive;
+module.exports = archive;

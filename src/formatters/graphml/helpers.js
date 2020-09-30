@@ -1,11 +1,11 @@
-import { isNil } from 'lodash';
-import { VariableType } from '../../utils/protocol-consts';
-import { entityAttributesProperty } from '../../utils/reservedAttributes';
+const { isNil } = require('lodash');
+const { VariableType } = require('../../utils/protocol-consts');
+const { entityAttributesProperty } = require('../../utils/reservedAttributes');
 
-export const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
+const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
 
 // Gephi does not support long lines in graphML, meaning we need to "beautify" the output
-export const formatXml = (xml, tab = '\t') => { // tab = optional indent value, default is tab (\t)
+const formatXml = (xml, tab = '\t') => { // tab = optional indent value, default is tab (\t)
   let formatted = '';
   let indent = '';
 
@@ -17,7 +17,7 @@ export const formatXml = (xml, tab = '\t') => { // tab = optional indent value, 
   return formatted.substring(1, formatted.length - 3);
 };
 
-export const VariableTypeValues = Object.freeze(Object.values(VariableType));
+const VariableTypeValues = Object.freeze(Object.values(VariableType));
 
 /**
  * For a given key, return a valid Graphml data 'type' for encoding
@@ -32,7 +32,7 @@ export const VariableTypeValues = Object.freeze(Object.values(VariableType));
  * @param {*} data
  * @param {*} key
  */
-export const getGraphMLTypeForKey = (data, key) => (
+const getGraphMLTypeForKey = (data, key) => (
   data.reduce((result, value) => {
     const attrs = getEntityAttributes(value);
     if (isNil(attrs[key])) return result;
@@ -61,7 +61,7 @@ export const getGraphMLTypeForKey = (data, key) => (
  * @param {*} entity
  * @param {*} key
  */
-export const getVariableInfo = (codebook, type, entity, key) => (
+const getVariableInfo = (codebook, type, entity, key) => (
   codebook[type]
   && codebook[type][entity.type]
   && codebook[type][entity.type].variables
@@ -74,7 +74,7 @@ export const getVariableInfo = (codebook, type, entity, key) => (
  * @param {*} type
  * @param {*} key
  */
-export const getEgoVariableInfo = (codebook, key) => (
+const getEgoVariableInfo = (codebook, key) => (
   codebook.ego
   && codebook.ego.variables
   && codebook.ego.variables[key]
@@ -87,7 +87,7 @@ export const getEgoVariableInfo = (codebook, key) => (
  * @param {*} element
  * @param {*} key
  */
-export const codebookExists = (codebook, type, element, key) => {
+const codebookExists = (codebook, type, element, key) => {
   const variableInfo = getVariableInfo(codebook, type, element, key);
   return variableInfo && variableInfo.type && VariableTypeValues.includes(variableInfo.type);
 };
@@ -100,7 +100,7 @@ export const codebookExists = (codebook, type, element, key) => {
  * @param {*} key key within element to select
  * @param {*} variableAttribute property of key to return
  */
-export const getAttributePropertyFromCodebook = (codebook, type, element, key, attributeProperty = 'type') => {
+const getAttributePropertyFromCodebook = (codebook, type, element, key, attributeProperty = 'type') => {
   if (type === 'ego') {
     const variableInfo = getEgoVariableInfo(codebook, key);
     return variableInfo && variableInfo[attributeProperty];
@@ -109,7 +109,7 @@ export const getAttributePropertyFromCodebook = (codebook, type, element, key, a
   return variableInfo && variableInfo[attributeProperty];
 };
 
-export const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
+const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
   const element = xmlDoc.createElement(tagName);
   Object.entries(attrs).forEach(([key, val]) => {
     element.setAttribute(key, val);
@@ -120,4 +120,17 @@ export const createElement = (xmlDoc, tagName, attrs = {}, child = null) => {
   return element;
 };
 
-export const createDataElement = (xmlDoc, attributes, text) => createElement(xmlDoc, 'data', attributes, xmlDoc.createTextNode(text));
+const createDataElement = (xmlDoc, attributes, text) => createElement(xmlDoc, 'data', attributes, xmlDoc.createTextNode(text));
+
+module.exports = {
+  codebookExists,
+  createDataElement,
+  createElement,
+  formatXml,
+  getAttributePropertyFromCodebook,
+  getEgoVariableInfo,
+  getEntityAttributes,
+  getGraphMLTypeForKey,
+  getVariableInfo,
+  VariableTypeValues,
+};

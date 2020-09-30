@@ -1,30 +1,30 @@
-import { merge, isEmpty, groupBy, flattenDeep } from 'lodash';
-import { EventEmitter } from 'eventemitter3';
-import sanitizeFilename from 'sanitize-filename';
-import {
+const { merge, isEmpty, groupBy, flattenDeep } = require('lodash');
+const { EventEmitter } = require('eventemitter3');
+const sanitizeFilename = require('sanitize-filename');
+const {
   caseProperty,
   sessionProperty,
   protocolProperty,
-} from './utils/reservedAttributes';
-import {
+} = require('./utils/reservedAttributes');
+const {
   getFileNativePath,
   rename,
   removeDirectory,
   makeTempDir,
-} from './utils/filesystem';
-import exportFile from './exportFile';
-import {
+} = require('./utils/filesystem');
+const exportFile = require('./exportFile');
+const {
   insertEgoIntoSessionNetworks,
   resequenceIds,
   partitionNetworkByType,
   unionOfNetworks,
-} from './formatters/network';
-import { verifySessionVariables } from './utils/general';
-import { isCordova, isElectron } from './utils/Environment';
-import archive from './utils/archive';
-import { ExportError, ErrorMessages } from './errors/ExportError';
-import ProgressMessages from './ProgressMessages';
-import UserCancelledExport from './errors/UserCancelledExport';
+} = require('./formatters/network');
+const { verifySessionVariables } = require('./utils/general');
+const { isCordova, isElectron } = require('./utils/Environment');
+const archive = require('./utils/archive');
+const { ExportError, ErrorMessages } = require('./errors/ExportError');
+const ProgressMessages = require('./ProgressMessages');
+const UserCancelledExport = require('./errors/UserCancelledExport');
 
 /**
  * Interface for all data exports
@@ -324,4 +324,4 @@ class FileExportManager {
   }
 }
 
-export default FileExportManager;
+module.exports = FileExportManager;

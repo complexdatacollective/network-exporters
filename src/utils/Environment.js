@@ -1,17 +1,22 @@
-import environments from './environments';
+const environments = require('./environments');
 
-export const isElectron = () => !!window.electron || !!window.require;
+const isElectron = () => !!window.electron || !!window.require;
 
-const os = (window.require && window.require('os')) || window.os;
-export const isMacOS = () => isElectron && os.platform() === 'darwin';
+if (typeof window !== 'undefined' && window) {
+  const os = (window.require && window.require('os')) || window.os;
+} else {
+  const os = require('os');
+}
 
-export const isWindows = () => isElectron && os.platform() === 'win32';
+const isMacOS = () => isElectron && os.platform() === 'darwin';
 
-export const isLinux = () => isElectron && os.platform() === 'linux';
+const isWindows = () => isElectron && os.platform() === 'win32';
 
-export const isCordova = () => !!window.cordova;
+const isLinux = () => isElectron && os.platform() === 'linux';
 
-export const isWeb = () => (!isCordova() && !isElectron());
+const isCordova = () => !!window.cordova;
+
+const isWeb = () => (!isCordova() && !isElectron());
 
 const getEnvironment = () => {
   if (isCordova()) return environments.CORDOVA;
@@ -23,4 +28,12 @@ const inEnvironment = tree =>
   (...args) =>
     tree(getEnvironment())(...args);
 
-export default inEnvironment;
+module.exports = {
+  default: inEnvironment,
+  inEnvironment,
+  isCordova,
+  isLinux,
+  isMacOS,
+  isWeb,
+  isWindows,
+};

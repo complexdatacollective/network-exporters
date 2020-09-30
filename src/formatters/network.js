@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
-import { includes } from 'lodash';
-import {
+const { includes } = require('lodash');
+const {
   entityPrimaryKeyProperty,
   sessionProperty,
   egoProperty,
@@ -9,13 +9,13 @@ import {
   ncTargetUUID,
   edgeSourceProperty,
   edgeTargetProperty,
-} from '../utils/reservedAttributes';
-import { getEntityAttributes } from '../utils/general';
-import { getAttributePropertyFromCodebook } from './graphml/helpers';
+} = require('../utils/reservedAttributes');
+const { getEntityAttributes } = require('../utils/general');
+const { getAttributePropertyFromCodebook } = require('./graphml/helpers');
 
 // Determine which variables to include
 // TODO: Move this to CSV formatter, since only CSV uses it
-export const processEntityVariables = (entity, entityType, codebook, exportOptions) => ({
+const processEntityVariables = (entity, entityType, codebook, exportOptions) => ({
   ...entity,
   attributes: Object.keys(getEntityAttributes(entity)).reduce(
     (accumulatedAttributes, attributeUUID) => {
@@ -65,7 +65,7 @@ export const processEntityVariables = (entity, entityType, codebook, exportOptio
 
 // Iterates a network, and adds an attribute to nodes and edges
 // that references the ego ID that nominated it
-export const insertNetworkEgo = session => (
+const insertNetworkEgo = session => (
   {
     ...session,
     nodes: session.nodes.map(node => (
@@ -77,7 +77,7 @@ export const insertNetworkEgo = session => (
   }
 );
 
-export const insertEgoIntoSessionNetworks = sessions => (
+const insertEgoIntoSessionNetworks = sessions => (
   sessions.map(session => insertNetworkEgo(session))
 );
 
@@ -92,7 +92,7 @@ export const insertEgoIntoSessionNetworks = sessions => (
  * @return {Array} An array of networks, partitioned by type. Each network object is decorated
  *                 with an additional `partitionEntity` prop to facilitate format naming.
  */
-export const partitionNetworkByType = (codebook, session, format) => {
+const partitionNetworkByType = (codebook, session, format) => {
   const getEntityName = (uuid, type) => codebook[type][uuid].name;
 
   switch (format) {
@@ -143,7 +143,7 @@ export const partitionNetworkByType = (codebook, session, format) => {
 
 // Iterates sessions and adds an automatically incrementing counter to
 // allow for human readable IDs
-export const resequenceIds = (sessions) => {
+const resequenceIds = (sessions) => {
   let resequencedId = 0;
   const IDLookupMap = {}; // Create a lookup object { [oldID] -> [incrementedID] }
   const resequencedEntities = sessions.map(session => ({
@@ -180,7 +180,7 @@ export const resequenceIds = (sessions) => {
 // Result is a SINGLE session, with MULTIPLE ego and sessionVariables
 // We add the sessionID to each entity so that we can groupBy on it within
 // the exporter to reconstruct the sessions.
-export const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
+const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
   .reduce((sessions, protocolUUID) => {
     const protocolSessions = sessionsByProtocol[protocolUUID]
       .reduce((union, session) => ({
@@ -207,3 +207,12 @@ export const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProto
       [protocolUUID]: Array(protocolSessions),
     };
   }, {});
+
+  module.exports = {
+    processEntityVariables,
+    insertNetworkEgo,
+    insertEgoIntoSessionNetworks,
+    partitionNetworkByType,
+    resequenceIds,
+    unionOfNetworks,
+  };
