@@ -1,11 +1,24 @@
 const environments = require('./environments');
 
-const isElectron = () => !!window.electron || !!window.require;
-
+let hasWindow = false;
 if (typeof window !== 'undefined' && window) {
-  const os = (window.require && window.require('os')) || window.os;
+  hasWindow = true;
+}
+
+let isElectron;
+if (hasWindow) {
+  isElectron = () => !!window.electron || !!window.require;
 } else {
-  const os = require('os');
+  // if no window object assume we are in nodejs environment (Electron main)
+  isElectron = () => true;
+}
+
+let os;
+
+if (hasWindow) {
+  os = (window.require && window.require('os')) || window.os;
+} else {
+  os = require('os');
 }
 
 const isMacOS = () => isElectron && os.platform() === 'darwin';
@@ -14,7 +27,13 @@ const isWindows = () => isElectron && os.platform() === 'win32';
 
 const isLinux = () => isElectron && os.platform() === 'linux';
 
-const isCordova = () => !!window.cordova;
+let isCordova;
+if (hasWindow) {
+  isCordova = () => !!window.cordova;
+} else {
+  // if no window object assume we are in nodejs environment (Electron main)
+  isCordova = () => false;
+}
 
 const isWeb = () => (!isCordova() && !isElectron());
 
@@ -32,6 +51,7 @@ module.exports = {
   default: inEnvironment,
   inEnvironment,
   isCordova,
+  isElectron,
   isLinux,
   isMacOS,
   isWeb,

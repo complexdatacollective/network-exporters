@@ -34,7 +34,14 @@ const inSequence = (items, apply) =>
 
 const tempDataPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const electron = window.require('electron');
+    let electron;
+
+    if (typeof window !== 'undefined' && window) {
+      electron = window.require('electron');
+    } else {
+      // if no window object assume we are in nodejs environment (Electron main)
+      electron = require('electron');
+    }
 
     return () => (electron.app || electron.remote.app).getPath('temp');
   }
@@ -121,7 +128,14 @@ const makeTempDir = () => {
 
 const userDataPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const electron = window.require('electron');
+    let electron;
+
+    if (typeof window !== 'undefined' && window) {
+      electron = window.require('electron');
+    } else {
+      // if no window object assume we are in nodejs environment (Electron main)
+      electron = require('electron');
+    }
 
     return () => (electron.app || electron.remote.app).getPath('userData');
   }

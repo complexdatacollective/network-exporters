@@ -5,7 +5,7 @@ const {
   makeFilename,
 } = require('./utils/general');
 const { isCordova, isElectron } = require('./utils/Environment');
-const getFormatterClass = require('./utils/getFormatterClass');
+const { getFormatterClass } = require('./utils/getFormatterClass');
 const { ExportError } = require('./errors/ExportError');
 const UserCancelledExport = require('./errors/UserCancelledExport');
 

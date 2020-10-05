@@ -24,7 +24,7 @@ const { isCordova, isElectron } = require('./utils/Environment');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
-const UserCancelledExport = require('./errors/UserCancelledExport');
+const { UserCancelledExport } = require('./errors/UserCancelledExport');
 
 /**
  * Interface for all data exports
@@ -256,7 +256,17 @@ class FileExportManager {
         this.emit('update', ProgressMessages.Saving);
         return new Promise((resolve, reject) => {
           if (isElectron()) {
-            const { dialog } = window.require('electron').remote;
+            let electron;
+
+            if (typeof window !== 'undefined' && window) {
+              electron = window.require('electron').remote;
+            } else {
+              // if no window object assume we are in nodejs environment (Electron main)
+              // no remote needed
+              electron = require('electron');
+            }
+
+            const dialog = electron.dialog;
 
             dialog.showSaveDialog({
               filters: [{ name: 'zip', extensions: ['zip'] }],
@@ -267,7 +277,7 @@ class FileExportManager {
 
                 rename(zipLocation, filePath)
                   .then(() => {
-                    const { shell } = window.require('electron');
+                    const shell = electron.shell;
                     shell.showItemInFolder(filePath);
                     resolve();
                   })
