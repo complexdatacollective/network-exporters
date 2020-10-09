@@ -1,4 +1,4 @@
-const { merge, isEmpty, groupBy, flattenDeep } = require('lodash');
+const { merge, isEmpty, groupBy, flattenDeep, first } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
 const sanitizeFilename = require('sanitize-filename');
 const {
@@ -267,11 +267,15 @@ class FileExportManager {
             }
 
             const dialog = electron.dialog;
+            const browserWindow = first(electron.BrowserWindow.getAllWindows());
 
-            dialog.showSaveDialog({
-              filters: [{ name: 'zip', extensions: ['zip'] }],
-              defaultPath: 'networkCanvasExport.zip',
-            })
+            dialog.showSaveDialog(
+              browserWindow,
+              {
+                filters: [{ name: 'zip', extensions: ['zip'] }],
+                defaultPath: 'networkCanvasExport.zip',
+              },
+            )
               .then(({ canceled, filePath }) => {
                 if (canceled) { resolve(); }
 
