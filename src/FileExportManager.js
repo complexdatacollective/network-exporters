@@ -277,7 +277,10 @@ class FileExportManager {
               },
             )
               .then(({ canceled, filePath }) => {
-                if (canceled) { resolve(); }
+                if (canceled) {
+                  this.emit('cancelled', ProgressMessages.Cancelled);
+                  resolve();
+                }
 
                 rename(zipLocation, filePath)
                   .then(() => {
