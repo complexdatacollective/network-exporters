@@ -33,4 +33,7 @@ const ProgressMessages = {
   },
 };
 
-module.exports = ProgressMessages;
+module.exports = {
+  default: ProgressMessages,
+  ProgressMessages,
+}

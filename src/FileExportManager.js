@@ -23,7 +23,7 @@ const { verifySessionVariables } = require('./utils/general');
 const { isCordova, isElectron } = require('./utils/Environment');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
-const ProgressMessages = require('./ProgressMessages');
+const { ProgressMessages } = require('./ProgressMessages');
 const { UserCancelledExport } = require('./errors/UserCancelledExport');
 
 /**
