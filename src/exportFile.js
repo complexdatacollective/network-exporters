@@ -7,7 +7,7 @@ const {
 const { isCordova, isElectron } = require('./utils/Environment');
 const { getFormatterClass } = require('./utils/getFormatterClass');
 const { ExportError } = require('./errors/ExportError');
-const { UserCancelledExport } = require('./errors/UserCancelledExport');
+const UserCancelledExport = require('./errors/UserCancelledExport');
 
 /**
  * Export a single (CSV or graphml) file

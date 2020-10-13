@@ -1,3 +1,4 @@
+const { Readable } = require('stream');
 const {
   entityAttributesProperty,
   egoProperty,
@@ -6,8 +7,6 @@ const {
   ncUUIDProperty,
 } = require('../../utils/reservedAttributes');
 const { processEntityVariables } = require('../network');
-
-const { Readable } = require('stream');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
 const asAttributeList = (network, codebook, exportOptions) => {
@@ -108,7 +107,6 @@ class AttributeListFormatter {
 }
 
 module.exports = {
-  default: AttributeListFormatter,
   AttributeListFormatter,
   asAttributeList,
   toCSVStream,

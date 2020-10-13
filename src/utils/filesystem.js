@@ -3,11 +3,10 @@
 const uuid = require('uuid/v4');
 const { Writable } = require('stream');
 const { trimChars } = require('lodash/fp');
+const { Buffer } = require('buffer/');
 const environments = require('./environments');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
 const { inEnvironment, isElectron, isCordova } = require('./Environment');
-
-const { Buffer } = require('buffer/');
 
 const trimPath = trimChars('/ ');
 

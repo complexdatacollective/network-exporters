@@ -1,5 +1,5 @@
 const { Readable } = require('stream');
-const { graphMLGenerator } = require('./createGraphML');
+const graphMLGenerator = require('./createGraphML');
 
 /** Class providing a graphML formatter. */
 class GraphMLFormatter {
@@ -78,7 +78,4 @@ class GraphMLFormatter {
   }
 }
 
-module.exports = {
-  default: GraphMLFormatter,
-  GraphMLFormatter,
-};
+module.exports = GraphMLFormatter;

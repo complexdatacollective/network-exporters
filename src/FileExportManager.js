@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 const { merge, isEmpty, groupBy, flattenDeep, first } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
 const sanitizeFilename = require('sanitize-filename');
@@ -23,8 +24,8 @@ const { verifySessionVariables } = require('./utils/general');
 const { isCordova, isElectron } = require('./utils/Environment');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
-const { ProgressMessages } = require('./ProgressMessages');
-const { UserCancelledExport } = require('./errors/UserCancelledExport');
+const ProgressMessages = require('./ProgressMessages');
+const UserCancelledExport = require('./errors/UserCancelledExport');
 
 /**
  * Interface for all data exports
@@ -266,7 +267,7 @@ class FileExportManager {
               electron = require('electron');
             }
 
-            const dialog = electron.dialog;
+            const { dialog } = electron;
             const browserWindow = first(electron.BrowserWindow.getAllWindows());
 
             dialog.showSaveDialog(
@@ -284,7 +285,7 @@ class FileExportManager {
 
                 rename(zipLocation, filePath)
                   .then(() => {
-                    const shell = electron.shell;
+                    const { shell } = electron;
                     shell.showItemInFolder(filePath);
                     resolve();
                   })

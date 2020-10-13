@@ -1,3 +1,4 @@
+const { Readable } = require('stream');
 const {
   entityAttributesProperty,
   egoProperty,
@@ -8,9 +9,6 @@ const {
   ncUUIDProperty,
 } = require('../../utils/reservedAttributes');
 const { processEntityVariables } = require('../network');
-
-const { Readable } = require('stream');
-
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
 /**
@@ -160,7 +158,6 @@ class EdgeListFormatter {
 }
 
 module.exports = {
-  default: EdgeListFormatter,
   EdgeListFormatter,
   asEdgeList,
   toCSVStream,

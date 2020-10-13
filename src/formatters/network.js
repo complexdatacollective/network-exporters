@@ -208,11 +208,11 @@ const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
     };
   }, {});
 
-  module.exports = {
-    processEntityVariables,
-    insertNetworkEgo,
-    insertEgoIntoSessionNetworks,
-    partitionNetworkByType,
-    resequenceIds,
-    unionOfNetworks,
-  };
+module.exports = {
+  processEntityVariables,
+  insertNetworkEgo,
+  insertEgoIntoSessionNetworks,
+  partitionNetworkByType,
+  resequenceIds,
+  unionOfNetworks,
+};

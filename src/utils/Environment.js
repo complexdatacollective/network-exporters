@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 const environments = require('./environments');
 
 let hasWindow = false;
@@ -48,8 +49,8 @@ const inEnvironment = tree =>
     tree(getEnvironment())(...args);
 
 module.exports = {
-  default: inEnvironment,
   inEnvironment,
+  getEnvironment,
   isCordova,
   isElectron,
   isLinux,

@@ -12,7 +12,4 @@ const VariableType = Object.freeze({
   datetime: 'datetime',
 });
 
-module.exports = {
-  default: VariableType,
-  VariableType,
-};
+module.exports = VariableType;

@@ -7,7 +7,7 @@ const {
   getAttributePropertyFromCodebook,
   formatXml,
 } = require('./helpers');
-const { VariableType } = require('../../utils/protocol-consts');
+const VariableType = require('../../utils/protocol-consts');
 const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -644,7 +644,4 @@ function* graphMLGenerator(network, codebook, exportOptions) {
   yield xmlFooter;
 }
 
-module.exports = {
-  default: graphMLGenerator,
-  graphMLGenerator,
-};
+module.exports = graphMLGenerator;

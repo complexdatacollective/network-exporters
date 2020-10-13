@@ -1,3 +1,4 @@
+const { Readable } = require('stream');
 const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -13,8 +14,6 @@ const {
   ncProtocolNameProperty,
 } = require('../../utils/reservedAttributes');
 const { processEntityVariables } = require('../network');
-
-const { Readable } = require('stream');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
 const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
@@ -140,7 +139,6 @@ class EgoListFormatter {
 }
 
 module.exports = {
-  default: EgoListFormatter,
   EgoListFormatter,
   asEgoAndSessionVariablesList,
   toCSVStream,
