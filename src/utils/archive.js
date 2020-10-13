@@ -65,7 +65,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
 
   const promisedExports = sourcePaths.map(
     (sourcePath) => {
-      const [filename] = splitUrl(sourcePath);
+      const [, filename] = splitUrl(sourcePath);
       return readFile(sourcePath)
         .then(fileContent => zip.file(filename, fileContent));
     },
