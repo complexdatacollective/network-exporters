@@ -195,6 +195,7 @@ class FileExportManager {
                 return partitionedNetworks.map((partitionedNetwork) => {
                   const partitionedEntity = partitionedNetwork.partitionEntity;
                   if (!finishedSessions.includes(prefix)) {
+                    this.emit('session-exported', session.sessionVariables.sessionId);
                     this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
                     finishedSessions.push(prefix);
                   }
