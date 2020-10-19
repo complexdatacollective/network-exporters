@@ -155,12 +155,17 @@ class FileExportManager {
 
             return unifiedSessions[protocolUUID].map((session) => {
               // Reject if sessions don't have required sessionVariables
-              if (this.exportOptions.globalOptions.unifyNetworks) {
-                Object.values(session.sessionVariables).forEach((sessionVariables) => {
-                  verifySessionVariables(sessionVariables);
-                });
-              } else {
-                verifySessionVariables(session.sessionVariables);
+              try {
+                if (this.exportOptions.globalOptions.unifyNetworks) {
+                  Object.values(session.sessionVariables)
+                    .forEach((sessionVariables) => {
+                      verifySessionVariables(sessionVariables);
+                    });
+                } else {
+                  verifySessionVariables(session.sessionVariables);
+                }
+              } catch (e) {
+                return Promise.reject(e);
               }
 
               const protocol = protocols[protocolUUID];
