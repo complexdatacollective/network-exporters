@@ -1,4 +1,5 @@
-import {
+const { Readable } = require('stream');
+const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   caseProperty,
@@ -11,13 +12,11 @@ import {
   ncCaseProperty,
   ncSessionProperty,
   ncProtocolNameProperty,
-} from '../../utils/reservedAttributes';
-import { processEntityVariables } from '../network';
-
-const { Readable } = require('stream');
+} = require('../../utils/reservedAttributes');
+const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
-export const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
+const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
   if (exportOptions.globalOptions.unifyNetworks) {
     // If unified networks is enabled, network.ego is an object keyed by sessionID.
     return Object.keys(network.ego).map(sessionID => (
@@ -79,7 +78,7 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-export const toCSVStream = (egos, outStream) => {
+const toCSVStream = (egos, outStream) => {
   const totalRows = egos.length;
   const attrNames = attributeHeaders(egos);
   let headerWritten = false;
@@ -139,4 +138,8 @@ class EgoListFormatter {
   }
 }
 
-export default EgoListFormatter;
+module.exports = {
+  EgoListFormatter,
+  asEgoAndSessionVariablesList,
+  toCSVStream,
+};

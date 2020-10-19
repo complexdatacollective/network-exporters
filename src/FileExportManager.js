@@ -1,30 +1,31 @@
-import { merge, isEmpty, groupBy, flattenDeep } from 'lodash';
-import { EventEmitter } from 'eventemitter3';
-import sanitizeFilename from 'sanitize-filename';
-import {
+/* eslint-disable global-require */
+const { merge, isEmpty, groupBy, flattenDeep, first } = require('lodash');
+const { EventEmitter } = require('eventemitter3');
+const sanitizeFilename = require('sanitize-filename');
+const {
   caseProperty,
   sessionProperty,
   protocolProperty,
-} from './utils/reservedAttributes';
-import {
+} = require('./utils/reservedAttributes');
+const {
   getFileNativePath,
   rename,
   removeDirectory,
   makeTempDir,
-} from './utils/filesystem';
-import exportFile from './exportFile';
-import {
+} = require('./utils/filesystem');
+const exportFile = require('./exportFile');
+const {
   insertEgoIntoSessionNetworks,
   resequenceIds,
   partitionNetworkByType,
   unionOfNetworks,
-} from './formatters/network';
-import { verifySessionVariables } from './utils/general';
-import { isCordova, isElectron } from './utils/Environment';
-import archive from './utils/archive';
-import { ExportError, ErrorMessages } from './errors/ExportError';
-import ProgressMessages from './ProgressMessages';
-import UserCancelledExport from './errors/UserCancelledExport';
+} = require('./formatters/network');
+const { verifySessionVariables } = require('./utils/general');
+const { isCordova, isElectron } = require('./utils/Environment');
+const archive = require('./utils/archive');
+const { ExportError, ErrorMessages } = require('./errors/ExportError');
+const ProgressMessages = require('./ProgressMessages');
+const UserCancelledExport = require('./errors/UserCancelledExport');
 
 /**
  * Interface for all data exports
@@ -257,18 +258,35 @@ class FileExportManager {
         this.emit('update', ProgressMessages.Saving);
         return new Promise((resolve, reject) => {
           if (isElectron()) {
-            const { dialog } = window.require('electron').remote;
+            let electron;
 
-            dialog.showSaveDialog({
-              filters: [{ name: 'zip', extensions: ['zip'] }],
-              defaultPath: 'networkCanvasExport.zip',
-            })
+            if (typeof window !== 'undefined' && window) {
+              electron = window.require('electron').remote;
+            } else {
+              // if no window object assume we are in nodejs environment (Electron main)
+              // no remote needed
+              electron = require('electron');
+            }
+
+            const { dialog } = electron;
+            const browserWindow = first(electron.BrowserWindow.getAllWindows());
+
+            dialog.showSaveDialog(
+              browserWindow,
+              {
+                filters: [{ name: 'zip', extensions: ['zip'] }],
+                defaultPath: 'networkCanvasExport.zip',
+              },
+            )
               .then(({ canceled, filePath }) => {
-                if (canceled) { resolve(); }
+                if (canceled) {
+                  this.emit('cancelled', ProgressMessages.Cancelled);
+                  resolve();
+                }
 
                 rename(zipLocation, filePath)
                   .then(() => {
-                    const { shell } = window.require('electron');
+                    const { shell } = electron;
                     shell.showItemInFolder(filePath);
                     resolve();
                   })
@@ -325,4 +343,4 @@ class FileExportManager {
   }
 }
 
-export default FileExportManager;
+module.exports = FileExportManager;

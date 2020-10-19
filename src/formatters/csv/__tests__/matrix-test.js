@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import AdjacencyMatrixFormatter, { asAdjacencyMatrix } from '../matrix';
+import { AdjacencyMatrixFormatter, asAdjacencyMatrix } from '../matrix';
 import { ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 
 const mockNetwork = edges => ({

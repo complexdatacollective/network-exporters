@@ -1,26 +1,50 @@
 // Model properties
-export const entityPrimaryKeyProperty = '_uid';
-export const entityAttributesProperty = 'attributes';
-export const edgeSourceProperty = 'from';
-export const edgeTargetProperty = 'to';
+const entityPrimaryKeyProperty = '_uid';
+const entityAttributesProperty = 'attributes';
+const edgeSourceProperty = 'from';
+const edgeTargetProperty = 'to';
 
 // Session variable properties
-export const caseProperty = 'caseId';
-export const sessionProperty = 'sessionId';
-export const protocolProperty = 'protocolUID';
-export const protocolName = 'protocolName';
-export const remoteProtocolProperty = 'remoteProtocolID';
-export const sessionStartTimeProperty = 'sessionStart';
-export const sessionFinishTimeProperty = 'sessionFinish';
-export const sessionExportTimeProperty = 'sessionExported';
+const caseProperty = 'caseId';
+const sessionProperty = 'sessionId';
+const protocolProperty = 'protocolUID';
+const protocolName = 'protocolName';
+const remoteProtocolProperty = 'remoteProtocolID';
+const sessionStartTimeProperty = 'sessionStart';
+const sessionFinishTimeProperty = 'sessionFinish';
+const sessionExportTimeProperty = 'sessionExported';
 
 // Export properties
-export const exportIDProperty = 'id'; // property for auto incrementing ID number
-export const egoProperty = 'networkCanvasEgoUUID';
-export const ncTypeProperty = 'networkCanvasType';
-export const ncProtocolNameProperty = 'networkCanvasProtocolName';
-export const ncCaseProperty = 'networkCanvasCaseID';
-export const ncSessionProperty = 'networkCanvasSessionID';
-export const ncUUIDProperty = 'networkCanvasUUID';
-export const ncSourceUUID = 'networkCanvasSourceUUID';
-export const ncTargetUUID = 'networkCanvasTargetUUID';
+const exportIDProperty = 'id'; // property for auto incrementing ID number
+const egoProperty = 'networkCanvasEgoUUID';
+const ncTypeProperty = 'networkCanvasType';
+const ncProtocolNameProperty = 'networkCanvasProtocolName';
+const ncCaseProperty = 'networkCanvasCaseID';
+const ncSessionProperty = 'networkCanvasSessionID';
+const ncUUIDProperty = 'networkCanvasUUID';
+const ncSourceUUID = 'networkCanvasSourceUUID';
+const ncTargetUUID = 'networkCanvasTargetUUID';
+
+module.exports = {
+  caseProperty,
+  edgeSourceProperty,
+  edgeTargetProperty,
+  egoProperty,
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  exportIDProperty, // property for auto incrementing ID number
+  ncCaseProperty,
+  ncProtocolNameProperty,
+  ncSessionProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+  ncTypeProperty,
+  ncUUIDProperty,
+  protocolName,
+  protocolProperty,
+  remoteProtocolProperty,
+  sessionExportTimeProperty,
+  sessionFinishTimeProperty,
+  sessionProperty,
+  sessionStartTimeProperty,
+};

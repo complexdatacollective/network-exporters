@@ -1,10 +1,9 @@
-import getEnvironment, { isElectron, isCordova } from './Environment';
-import { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } from './filesystem';
-
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
 const JSZip = require('jszip');
+const { getEnvironment, isElectron, isCordova } = require('./Environment');
+const { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } = require('./filesystem');
 
 // const zlibFastestCompression = 1;
 // const zlibBestCompression = 9;
@@ -65,7 +64,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
 
   const promisedExports = sourcePaths.map(
     (sourcePath) => {
-      const [filename] = splitUrl(sourcePath);
+      const [, filename] = splitUrl(sourcePath);
       return readFile(sourcePath)
         .then(fileContent => zip.file(filename, fileContent));
     },
@@ -118,4 +117,4 @@ const archive = (sourcePaths, tempDir, updateCallback) => {
 };
 
 // This is adapted from Architect; consider using `extract` as well
-export default archive;
+module.exports = archive;

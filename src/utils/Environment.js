@@ -1,17 +1,42 @@
-import environments from './environments';
+/* eslint-disable global-require */
+const environments = require('./environments');
 
-export const isElectron = () => !!window.electron || !!window.require;
+let hasWindow = false;
+if (typeof window !== 'undefined' && window) {
+  hasWindow = true;
+}
 
-const os = (window.require && window.require('os')) || window.os;
-export const isMacOS = () => isElectron && os.platform() === 'darwin';
+let isElectron;
+if (hasWindow) {
+  isElectron = () => !!window.electron || !!window.require;
+} else {
+  // if no window object assume we are in nodejs environment (Electron main)
+  isElectron = () => true;
+}
 
-export const isWindows = () => isElectron && os.platform() === 'win32';
+let os;
 
-export const isLinux = () => isElectron && os.platform() === 'linux';
+if (hasWindow) {
+  os = (window.require && window.require('os')) || window.os;
+} else {
+  os = require('os');
+}
 
-export const isCordova = () => !!window.cordova;
+const isMacOS = () => isElectron && os.platform() === 'darwin';
 
-export const isWeb = () => (!isCordova() && !isElectron());
+const isWindows = () => isElectron && os.platform() === 'win32';
+
+const isLinux = () => isElectron && os.platform() === 'linux';
+
+let isCordova;
+if (hasWindow) {
+  isCordova = () => !!window.cordova;
+} else {
+  // if no window object assume we are in nodejs environment (Electron main)
+  isCordova = () => false;
+}
+
+const isWeb = () => (!isCordova() && !isElectron());
 
 const getEnvironment = () => {
   if (isCordova()) return environments.CORDOVA;
@@ -23,4 +48,13 @@ const inEnvironment = tree =>
   (...args) =>
     tree(getEnvironment())(...args);
 
-export default inEnvironment;
+module.exports = {
+  inEnvironment,
+  getEnvironment,
+  isCordova,
+  isElectron,
+  isLinux,
+  isMacOS,
+  isWeb,
+  isWindows,
+};

@@ -1,16 +1,15 @@
-import {
+const { Readable } = require('stream');
+const {
   entityAttributesProperty,
   egoProperty,
   entityPrimaryKeyProperty,
   exportIDProperty,
   ncUUIDProperty,
-} from '../../utils/reservedAttributes';
-import { processEntityVariables } from '../network';
-
-const { Readable } = require('stream');
+} = require('../../utils/reservedAttributes');
+const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
-export const asAttributeList = (network, codebook, exportOptions) => {
+const asAttributeList = (network, codebook, exportOptions) => {
   const processedNodes = (network.nodes || []).map((node) => {
     if (codebook && codebook.node[node.type]) {
       return processEntityVariables(node, 'node', codebook, exportOptions);
@@ -51,7 +50,7 @@ const getPrintableAttribute = (attribute) => {
 /**
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-export const toCSVStream = (nodes, outStream) => {
+const toCSVStream = (nodes, outStream) => {
   const totalRows = nodes.length;
   const attrNames = attributeHeaders(nodes);
   let headerWritten = false;
@@ -107,4 +106,8 @@ class AttributeListFormatter {
   }
 }
 
-export default AttributeListFormatter;
+module.exports = {
+  AttributeListFormatter,
+  asAttributeList,
+  toCSVStream,
+};

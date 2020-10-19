@@ -1,8 +1,8 @@
 /* eslint-disable no-bitwise */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
-import { Readable } from 'stream';
-import { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } from '../../utils/reservedAttributes';
-import { csvEOL } from './csv';
+const { Readable } = require('stream');
+const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require('../../utils/reservedAttributes');
+const { csvEOL } = require('./csv');
 
 /**
  * An opaque reprensentation of an adjacency matrix with binary values (edge is present/absent).
@@ -235,7 +235,7 @@ class AdjacencyMatrix {
   }
 }
 
-export const asAdjacencyMatrix = (network, directed = false) => {
+const asAdjacencyMatrix = (network, directed = false) => {
   const adjacencyMatrix = new AdjacencyMatrix(network);
   adjacencyMatrix.calculateEdges(directed);
   return adjacencyMatrix;
@@ -251,4 +251,7 @@ class AdjacencyMatrixFormatter {
   }
 }
 
-export default AdjacencyMatrixFormatter;
+module.exports = {
+  AdjacencyMatrixFormatter,
+  asAdjacencyMatrix,
+};

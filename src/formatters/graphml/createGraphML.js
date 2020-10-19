@@ -1,14 +1,14 @@
-import { findKey, includes, groupBy } from 'lodash';
-import jsSHA from 'jssha/dist/sha1';
-import {
+const { findKey, includes, groupBy } = require('lodash');
+const jsSHA = require('jssha/dist/sha1');
+const {
   getEntityAttributes,
   createDataElement,
   getGraphMLTypeForKey,
   getAttributePropertyFromCodebook,
   formatXml,
-} from './helpers';
-import { VariableType } from '../../utils/protocol-consts';
-import {
+} = require('./helpers');
+const VariableType = require('../../utils/protocol-consts');
+const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   caseProperty,
@@ -25,7 +25,7 @@ import {
   edgeTargetProperty,
   ncTypeProperty,
   ncUUIDProperty,
-} from '../../utils/reservedAttributes';
+} = require('../../utils/reservedAttributes');
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
@@ -644,4 +644,4 @@ function* graphMLGenerator(network, codebook, exportOptions) {
   yield xmlFooter;
 }
 
-export default graphMLGenerator;
+module.exports = graphMLGenerator;

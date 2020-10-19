@@ -1,13 +1,12 @@
 /* eslint-disable global-require */
 /* global FileWriter, FileError, cordova */
-import uuid from 'uuid/v4';
-import { Writable } from 'stream';
-import { trimChars } from 'lodash/fp';
-import environments from './environments';
-import { ExportError, ErrorMessages } from '../errors/ExportError';
-import inEnvironment, { isElectron, isCordova } from './Environment';
-
+const uuid = require('uuid/v4');
+const { Writable } = require('stream');
+const { trimChars } = require('lodash/fp');
 const { Buffer } = require('buffer/');
+const environments = require('./environments');
+const { ExportError, ErrorMessages } = require('../errors/ExportError');
+const { inEnvironment, isElectron, isCordova } = require('./Environment');
 
 const trimPath = trimChars('/ ');
 
@@ -19,7 +18,7 @@ const resolveOrRejectWith = (resolve, reject) => (err, ...args) => {
   }
 };
 
-export const splitUrl = (targetPath) => {
+const splitUrl = (targetPath) => {
   const pathParts = trimPath(targetPath).split('/');
   const baseDirectory = `${pathParts.slice(0, -1).join('/')}/`;
   const directory = `${pathParts.slice(-1)}`;
@@ -34,7 +33,14 @@ const inSequence = (items, apply) =>
 
 const tempDataPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const electron = window.require('electron');
+    let electron;
+
+    if (typeof window !== 'undefined' && window) {
+      electron = window.require('electron');
+    } else {
+      // if no window object assume we are in nodejs environment (Electron main)
+      electron = require('electron');
+    }
 
     return () => (electron.app || electron.remote.app).getPath('temp');
   }
@@ -100,7 +106,7 @@ const createDirectory = inEnvironment((environment) => {
  * @return {string} the directory (path) created
  */
 
-export const makeTempDir = () => {
+const makeTempDir = () => {
   const directoryName = `temp-export-${uuid()}`;
   let directoryPath;
   if (isElectron()) {
@@ -121,7 +127,14 @@ export const makeTempDir = () => {
 
 const userDataPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const electron = window.require('electron');
+    let electron;
+
+    if (typeof window !== 'undefined' && window) {
+      electron = window.require('electron');
+    } else {
+      // if no window object assume we are in nodejs environment (Electron main)
+      electron = require('electron');
+    }
 
     return () => (electron.app || electron.remote.app).getPath('userData');
   }
@@ -133,7 +146,7 @@ const userDataPath = inEnvironment((environment) => {
   throw new Error(`userDataPath() not available on platform ${environment}`);
 });
 
-export const getFileNativePath = inEnvironment((environment) => {
+const getFileNativePath = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
     return filePath => new Promise((resolve, reject) => {
       window.resolveLocalFileSystemURL(filePath, (fileEntry) => {
@@ -166,7 +179,7 @@ const getFileEntry = (filename, fileSystem) => new Promise((resolve, reject) => 
 });
 
 
-export const getTempFileSystem = () => new Promise((resolve, reject) => {
+const getTempFileSystem = () => new Promise((resolve, reject) => {
   window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, (dirEntry) => {
     resolve(dirEntry);
   }, error => reject(error));
@@ -209,19 +222,19 @@ const readFile = inEnvironment((environment) => {
   throw new Error(`readFile() not available on platform ${environment}`);
 });
 
-export const makeFileWriter = fileEntry =>
+const makeFileWriter = fileEntry =>
   new Promise((resolve, reject) => {
     fileEntry.createWriter(resolve, reject);
   });
 
-export const createReader = fileEntry => new Promise((resolve, reject) => {
+const createReader = fileEntry => new Promise((resolve, reject) => {
   fileEntry.file(
     file => resolve(file),
     err => reject(err),
   );
 });
 
-export const newFile = (directoryEntry, filename) =>
+const newFile = (directoryEntry, filename) =>
   new Promise((resolve, reject) => {
     directoryEntry.getFile(filename, { create: true }, resolve, reject);
   });
@@ -492,7 +505,7 @@ const writeStream = inEnvironment((environment) => {
 
 // Objective here is to abstract fs.createWriteStream.
 // Needs to return a writeable stream.
-export const createWriteStream = inEnvironment((environment) => {
+const createWriteStream = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fs = require('fs');
 
@@ -672,20 +685,28 @@ const makeTmpDirCopy = inEnvironment((environment) => {
   throw new Error(`makeTmpDirCopy() not available on platform ${environment}`);
 });
 
-export {
-  getFileEntry,
-  userDataPath,
-  tempDataPath,
+module.exports = {
   appPath,
-  getNestedPaths,
-  ensurePathExists,
-  makeTmpDirCopy,
   createDirectory,
-  rename,
-  removeDirectory,
+  createReader,
+  createWriteStream,
+  ensurePathExists,
+  getFileEntry,
+  getFileNativePath,
+  getNestedPaths,
+  getTempFileSystem,
+  inSequence,
+  makeFileWriter,
+  makeTempDir,
+  makeTmpDirCopy,
+  newFile,
   readFile,
+  removeDirectory,
+  rename,
   resolveFileSystemUrl,
+  splitUrl,
+  tempDataPath,
+  userDataPath,
   writeFile,
   writeStream,
-  inSequence,
 };

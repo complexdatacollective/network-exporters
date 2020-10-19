@@ -1,4 +1,5 @@
-import {
+const { Readable } = require('stream');
+const {
   entityAttributesProperty,
   egoProperty,
   entityPrimaryKeyProperty,
@@ -6,11 +7,8 @@ import {
   ncSourceUUID,
   ncTargetUUID,
   ncUUIDProperty,
-} from '../../utils/reservedAttributes';
-import { processEntityVariables } from '../network';
-
-const { Readable } = require('stream');
-
+} = require('../../utils/reservedAttributes');
+const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
 /**
@@ -33,7 +31,7 @@ const { sanitizedCellValue, csvEOL } = require('./csv');
  *                            default: false
  * @return {Array} the edges list
  */
-export const asEdgeList = (network, codebook, exportOptions) => {
+const asEdgeList = (network, codebook, exportOptions) => {
   const directed = exportOptions.globalOptions.useDirectedEdges;
   const processedEdges = (network.edges || []).map(edge => processEntityVariables(edge, 'edge', codebook, exportOptions));
 
@@ -99,7 +97,7 @@ const getPrintableAttribute = (attribute) => {
  *
  * @return {Object} an abort controller; call the attached abort() method as needed.
  */
-export const toCSVStream = (edges, outStream) => {
+const toCSVStream = (edges, outStream) => {
   const totalChunks = edges.length;
   let chunkContent;
   let chunkIndex = 0;
@@ -159,4 +157,8 @@ class EdgeListFormatter {
   }
 }
 
-export default EdgeListFormatter;
+module.exports = {
+  EdgeListFormatter,
+  asEdgeList,
+  toCSVStream,
+};
