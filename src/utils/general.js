@@ -16,7 +16,7 @@ const verifySessionVariables = (sessionVariables) => {
     || !sessionVariables[remoteProtocolProperty]
     || !sessionVariables[sessionExportTimeProperty]
   ) {
-    return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
+    throw new ExportError(ErrorMessages.MissingParameters);
   }
 
   return true;
