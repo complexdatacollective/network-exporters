@@ -111,6 +111,7 @@ const generateKeyElements = (
   type, // 'node' or 'edge' or 'ego'
   excludeList, // Variables to exlcude
   codebook, // codebook
+  exportOptions = {},
 ) => {
   let fragment = '';
 
@@ -232,6 +233,27 @@ const generateKeyElements = (
             keyElement2.setAttribute('attr.type', 'double');
             keyElement2.setAttribute('for', keyTarget);
             fragment += `${serialize(keyElement2)}`;
+
+            if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+              // Create a third element to model the <key> for
+              // the screen space Y value
+              const keyElement3 = document.createElement('key');
+              keyElement3.setAttribute('id', `${key}_screenSpaceY`);
+              keyElement3.setAttribute('attr.name', `${keyName}_screenSpaceY`);
+              keyElement3.setAttribute('attr.type', 'double');
+              keyElement3.setAttribute('for', keyTarget);
+              fragment += `${serialize(keyElement3)}`;
+
+              // Create a fourth element to model the <key> for
+              // the screen space X value
+              const keyElement4 = document.createElement('key');
+              keyElement4.setAttribute('id', `${key}_screenSpaceX`);
+              keyElement4.setAttribute('attr.name', `${keyName}_screenSpaceX`);
+              keyElement4.setAttribute('attr.type', 'double');
+              keyElement4.setAttribute('for', keyTarget);
+              fragment += `${serialize(keyElement4)}`;
+            }
+
             break;
           }
           case VariableType.categorical: {
@@ -342,22 +364,20 @@ const generateEgoDataElements = (
       } else if (keyType && typeof entityAttributes[key] !== 'object') {
         fragment += formatAndSerialize(createDataElement(document, { key }, entityAttributes[key]));
       } else if (keyType === 'layout') {
+        // TODO: can ego have a layout?
         // Determine if we should use the normalized or the "screen space" value
-        let xCoord;
-        let yCoord;
-        if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-          xCoord = (entityAttributes[key].x * exportOptions.globalOptions.screenLayoutWidth)
-            .toFixed(2);
-
-          yCoord = ((1.0 - entityAttributes[key].y)
-            * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
-        } else {
-          xCoord = entityAttributes[key].x;
-          yCoord = entityAttributes[key].y;
-        }
+        const xCoord = entityAttributes[key].x;
+        const yCoord = entityAttributes[key].y;
 
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_X` }, xCoord));
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_Y` }, yCoord));
+
+        if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+          const screenSpaceXCoord = (xCoord * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+          const screenSpaceYCoord = ((1.0 - yCoord) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+          fragment += formatAndSerialize(createDataElement(document, { key: `${key}_screenSpaceX` }, screenSpaceXCoord));
+          fragment += formatAndSerialize(createDataElement(document, { key: `${key}_screenSpaceY` }, screenSpaceYCoord));
+        }
       } else {
         fragment += formatAndSerialize(
           createDataElement(document, { key: keyName }, entityAttributes[key]),
@@ -472,21 +492,18 @@ const generateDataElements = (
         // Handle layout variables
         } else if (keyType === 'layout') {
           // Determine if we should use the normalized or the "screen space" value
-          let xCoord;
-          let yCoord;
-          if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-            xCoord = (entityAttributes[key].x
-              * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-
-            yCoord = ((1.0 - entityAttributes[key].y)
-              * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
-          } else {
-            xCoord = entityAttributes[key].x;
-            yCoord = entityAttributes[key].y;
-          }
+          const xCoord = entityAttributes[key].x;
+          const yCoord = entityAttributes[key].y;
 
           domElement.appendChild(createDataElement(document, { key: `${key}_X` }, xCoord));
           domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, yCoord));
+
+          if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+            const screenSpaceXCoord = (xCoord * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
+            const screenSpaceYCoord = ((1.0 - yCoord) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+            domElement.appendChild(createDataElement(document, { key: `${key}screenSpaceX` }, screenSpaceXCoord));
+            domElement.appendChild(createDataElement(document, { key: `${key}screenSpaceY` }, screenSpaceYCoord));
+          }
 
         // Handle non-codebook variables
         } else {
@@ -523,6 +540,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     'ego',
     [],
     codebook,
+    exportOptions,
   );
 
   const generateNodeKeys = nodes => generateKeyElements(
@@ -531,6 +549,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     'node',
     [],
     codebook,
+    exportOptions,
   );
 
   const generateEdgeKeys = edges => generateKeyElements(

@@ -32,6 +32,7 @@ describe('buildGraphML', () => {
 
   it('produces a graphml document', () => {
     expect(xml.getElementsByTagName('graphml')).toHaveLength(1);
+    console.log(xml.toString());
   });
 
   it('creates a single graph element when not merging', () => {
@@ -84,8 +85,8 @@ describe('buildGraphML', () => {
     const nodeSansNull = xml.getElementsByTagName('node')[0];
     const anotherSansNull = xml.getElementsByTagName('node')[1];
     const nodeWithNull = xml.getElementsByTagName('node')[2];
-    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(7);
-    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(7);
+    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(9);
+    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(9);
     expect(nodeWithNull.getElementsByTagName('data').length).toEqual(5);
   });
 
