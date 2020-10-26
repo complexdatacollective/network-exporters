@@ -32,7 +32,6 @@ describe('buildGraphML', () => {
 
   it('produces a graphml document', () => {
     expect(xml.getElementsByTagName('graphml')).toHaveLength(1);
-    console.log(xml.toString());
   });
 
   it('creates a single graph element when not merging', () => {

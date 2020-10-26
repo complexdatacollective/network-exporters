@@ -372,9 +372,11 @@ const generateEgoDataElements = (
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_X` }, xCoord));
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_Y` }, yCoord));
 
+        const { screenLayoutWidth, screenLayoutHeight } = exportOptions.globalOptions;
+
         if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-          const screenSpaceXCoord = (xCoord * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-          const screenSpaceYCoord = ((1.0 - yCoord) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+          const screenSpaceXCoord = (xCoord * screenLayoutWidth).toFixed(2);
+          const screenSpaceYCoord = ((1.0 - yCoord) * screenLayoutHeight).toFixed(2);
           fragment += formatAndSerialize(createDataElement(document, { key: `${key}_screenSpaceX` }, screenSpaceXCoord));
           fragment += formatAndSerialize(createDataElement(document, { key: `${key}_screenSpaceY` }, screenSpaceYCoord));
         }
@@ -498,9 +500,11 @@ const generateDataElements = (
           domElement.appendChild(createDataElement(document, { key: `${key}_X` }, xCoord));
           domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, yCoord));
 
+          const { screenLayoutWidth, screenLayoutHeight } = exportOptions.globalOptions;
+
           if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
-            const screenSpaceXCoord = (xCoord * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-            const screenSpaceYCoord = ((1.0 - yCoord) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
+            const screenSpaceXCoord = (xCoord * screenLayoutWidth).toFixed(2);
+            const screenSpaceYCoord = ((1.0 - yCoord) * screenLayoutHeight).toFixed(2);
             domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceX` }, screenSpaceXCoord));
             domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceY` }, screenSpaceYCoord));
           }
