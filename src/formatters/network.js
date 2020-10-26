@@ -39,18 +39,17 @@ const processEntityVariables = (entity, entityType, codebook, exportOptions) => 
         const xCoord = attributeData && attributeData.x;
         const yCoord = attributeData && attributeData.y;
 
-        const screenSpaceAttributues = attributeData && exportOptions.globalOptions.useScreenLayoutCoordinates ?
+        const screenSpaceAttributes = attributeData && exportOptions.globalOptions.useScreenLayoutCoordinates ?
         {
-          [`${attributeName}screenSpaceX`]: (attributeData.x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2),
-          [`${attributeName}screenSpaceY`]: ((1.0 - attributeData.y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2),
+          [`${attributeName}_screenSpaceX`]: (attributeData.x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2),
+          [`${attributeName}_screenSpaceY`]: ((1.0 - attributeData.y) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2),
         } :
         {};
 
         const layoutAttrs = {
           [`${attributeName}_x`]: xCoord,
           [`${attributeName}_y`]: yCoord,
-          [`${attributeName}screenSpaceX`]: xCoord,
-          [`${attributeName}screenSpaceY`]: yCoord,
+          ...screenSpaceAttributes,
         };
 
         return { ...accumulatedAttributes, ...layoutAttrs };

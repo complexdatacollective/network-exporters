@@ -7,7 +7,7 @@ const {
   getAttributePropertyFromCodebook,
   formatXml,
 } = require('./helpers');
-const VariableType = require('../../utils/protocol-consts');
+const { VariableType } = require('../../utils/protocol-consts');
 const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -501,8 +501,8 @@ const generateDataElements = (
           if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
             const screenSpaceXCoord = (xCoord * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
             const screenSpaceYCoord = ((1.0 - yCoord) * exportOptions.globalOptions.screenLayoutHeight).toFixed(2);
-            domElement.appendChild(createDataElement(document, { key: `${key}screenSpaceX` }, screenSpaceXCoord));
-            domElement.appendChild(createDataElement(document, { key: `${key}screenSpaceY` }, screenSpaceYCoord));
+            domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceX` }, screenSpaceXCoord));
+            domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceY` }, screenSpaceYCoord));
           }
 
         // Handle non-codebook variables
