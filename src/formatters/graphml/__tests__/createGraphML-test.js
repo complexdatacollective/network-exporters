@@ -84,8 +84,8 @@ describe('buildGraphML', () => {
     const nodeSansNull = xml.getElementsByTagName('node')[0];
     const anotherSansNull = xml.getElementsByTagName('node')[1];
     const nodeWithNull = xml.getElementsByTagName('node')[2];
-    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(7);
-    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(7);
+    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(9);
+    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(9);
     expect(nodeWithNull.getElementsByTagName('data').length).toEqual(5);
   });
 

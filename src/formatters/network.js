@@ -36,21 +36,28 @@ const processEntityVariables = (entity, entityType, codebook, exportOptions) => 
 
       if (attributeType === 'layout') {
         // Process screenLayoutCoordinates option
-        let xCoord;
-        let yCoord;
-        if (attributeData && exportOptions.globalOptions.useScreenLayoutCoordinates) {
-          xCoord = (attributeData.x * exportOptions.globalOptions.screenLayoutWidth).toFixed(2);
-          yCoord = ((1.0 - attributeData.y) * exportOptions.globalOptions.screenLayoutHeight)
-            .toFixed(2);
-        } else {
-          xCoord = attributeData && attributeData.x;
-          yCoord = attributeData && attributeData.y;
-        }
+        const xCoord = attributeData && attributeData.x;
+        const yCoord = attributeData && attributeData.y;
+
+        const {
+          screenLayoutWidth,
+          screenLayoutHeight,
+          useScreenLayoutCoordinates,
+        } = exportOptions.globalOptions;
+
+        const screenSpaceAttributes = attributeData && useScreenLayoutCoordinates
+          ? {
+            [`${attributeName}_screenSpaceX`]: (attributeData.x * screenLayoutWidth).toFixed(2),
+            [`${attributeName}_screenSpaceY`]: ((1.0 - attributeData.y) * screenLayoutHeight).toFixed(2),
+          }
+          : {};
 
         const layoutAttrs = {
           [`${attributeName}_x`]: xCoord,
           [`${attributeName}_y`]: yCoord,
+          ...screenSpaceAttributes,
         };
+
         return { ...accumulatedAttributes, ...layoutAttrs };
       }
 
