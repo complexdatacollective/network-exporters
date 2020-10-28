@@ -10,14 +10,6 @@ const { inEnvironment, isElectron, isCordova } = require('./Environment');
 
 const trimPath = trimChars('/ ');
 
-const resolveOrRejectWith = (resolve, reject) => (err, ...args) => {
-  if (err) {
-    reject(err);
-  } else {
-    resolve(...args);
-  }
-};
-
 const splitUrl = (targetPath) => {
   const pathParts = trimPath(targetPath).split('/');
   const baseDirectory = `${pathParts.slice(0, -1).join('/')}/`;

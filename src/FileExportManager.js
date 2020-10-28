@@ -52,7 +52,7 @@ const defaultExportOptions = {
 };
 
 // Merge default and user-supplied options
-const getOptions = (exportOptions) => ({
+const getOptions = exportOptions => ({
   ...merge(defaultExportOptions, exportOptions),
   ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
 });
