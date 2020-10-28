@@ -27,35 +27,42 @@ const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
 
+
+const defaultCSVOptions = {
+  adjacencyMatrix: false,
+  attributeList: true,
+  edgeList: true,
+  // If CSV is exported, egoAttributeList must be exported
+  // as it contains session info so this option is generally
+  // ignored and only relevant for *only* exporting
+  // egoAttributeList
+  egoAttributeList: true,
+};
+
+const defaultExportOptions = {
+  exportGraphML: true,
+  exportCSV: defaultCSVOptions,
+  globalOptions: {
+    unifyNetworks: false,
+    useDirectedEdges: false, // TODO
+    useScreenLayoutCoordinates: true,
+    screenLayoutHeight: 1080,
+    screenLayoutWidth: 1920,
+  },
+};
+
+// Merge default and user-supplied options
+const getOptions = exportOptions => ({
+  ...merge(defaultExportOptions, exportOptions),
+  ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
+});
+
 /**
  * Interface for all data exports
  */
 class FileExportManager {
   constructor(exportOptions = {}) {
-    const defaultCSVOptions = {
-      adjacencyMatrix: false,
-      attributeList: true,
-      edgeList: true,
-      egoAttributeList: true,
-    };
-
-    const defaultExportOptions = {
-      exportGraphML: true,
-      exportCSV: defaultCSVOptions,
-      globalOptions: {
-        unifyNetworks: false,
-        useDirectedEdges: false, // TODO
-        useScreenLayoutCoordinates: true,
-        screenLayoutHeight: 1080,
-        screenLayoutWidth: 1920,
-      },
-    };
-
-    // Merge default and user-supplied options
-    this.exportOptions = {
-      ...merge(defaultExportOptions, exportOptions),
-      ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
-    };
+    this.exportOptions = getOptions(exportOptions);
 
     this.events = new EventEmitter();
   }
