@@ -63,19 +63,15 @@ const resolveFileSystemUrl = inEnvironment((environment) => {
 
 const createDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
     return targetPath =>
-      new Promise((resolve, reject) => {
-        try {
-          fs.mkdir(targetPath, () => {
-            resolve(targetPath);
-          });
-        } catch (error) {
-          if (error.code !== 'EEXISTS') { reject(error); }
+      fse.mkdir(targetPath)
+        .then(() => targetPath)
+        .catch((error) => {
+          if (error.code !== 'EEXISTS') { return Promise.reject(error); }
           throw error;
-        }
-      });
+        });
   }
 
   if (environment === environments.CORDOVA) {
@@ -187,15 +183,10 @@ const getTempFileSystem = () => new Promise((resolve, reject) => {
 
 const readFile = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
     return filename =>
-      new Promise((resolve, reject) => {
-        fs.readFile(filename, null, (err, data) => {
-          if (err) { reject(err); }
-          resolve(data);
-        });
-      });
+      fse.readFile(filename, null);
   }
 
   if (environment === environments.CORDOVA) {
@@ -264,15 +255,10 @@ const writeFile = inEnvironment((environment) => {
   }
 
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
     return (filePath, data) =>
-      new Promise((resolve, reject) => {
-        fs.writeFile(filePath, data, (error) => {
-          if (error) { reject(error); }
-          resolve(filePath);
-        });
-      });
+      fse.writeFile(filePath, data);
   }
 
   throw new Error(`writeFile() not available on platform ${environment}`);
@@ -280,13 +266,10 @@ const writeFile = inEnvironment((environment) => {
 
 const rename = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
-    return (oldPath, newPath) => (new Promise((resolve, reject) => {
-      try {
-        fs.rename(oldPath, newPath, resolveOrRejectWith(resolve, reject));
-      } catch (err) { reject(err); }
-    }));
+    return (oldPath, newPath) =>
+      fse.rename(oldPath, newPath);
   }
 
   if (environment === environments.CORDOVA) {
@@ -304,7 +287,7 @@ const rename = inEnvironment((environment) => {
 
 const removeDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
     return targetPath =>
       new Promise((resolve, reject) => {
@@ -313,7 +296,7 @@ const removeDirectory = inEnvironment((environment) => {
             !targetPath.includes(userDataPath())
             && !targetPath.includes(tempDataPath())
           ) { reject(new Error('Attempted to remove path outside of safe directories!')); return; }
-          fs.rmdir(targetPath, { recursive: true }, resolve);
+          fse.rmdir(targetPath, { recursive: true }, resolve);
         } catch (error) {
           if (error.code !== 'EEXISTS') { reject(error); }
           throw error;
@@ -387,13 +370,13 @@ const getNestedPaths = inEnvironment((environment) => {
 
 const writeStream = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
     return (destination, stream) =>
       new Promise((resolve, reject) => {
         try {
           stream
-            .pipe(fs.createWriteStream(destination))
+            .pipe(fse.createWriteStream(destination))
             .on('error', reject)
             .on('finish', () => {
               resolve(destination);
@@ -507,12 +490,12 @@ const writeStream = inEnvironment((environment) => {
 // Needs to return a writeable stream.
 const createWriteStream = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
-    const fs = require('fs');
+    const fse = require('fs-extra');
 
     return destination =>
       new Promise((resolve, reject) => {
         try {
-          const ws = fs.createWriteStream(destination);
+          const ws = fse.createWriteStream(destination);
           resolve(ws);
         } catch (error) {
           reject(error);
