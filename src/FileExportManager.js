@@ -181,7 +181,7 @@ class FileExportManager {
 
               const exportFormats = [
                 ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-                ...(this.exportOptions.exportCSV ? ['ego'] : []),
+                ...(this.exportOptions.exportCSV.egoAttributeList ? ['ego'] : []),
                 ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
                 ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
                 ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
