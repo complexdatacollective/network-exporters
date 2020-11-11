@@ -273,7 +273,6 @@ const generateKeyElements = (
             options.forEach((option, index) => {
               // Hash the value to ensure that it is NKTOKEN compliant
               const hashedOptionValue = sha1(option.value);
-              console.log('hashed:', option.value, hashedOptionValue);
 
               if (index === options.length - 1) {
                 keyElement.setAttribute('id', `${key}_${hashedOptionValue}`);
