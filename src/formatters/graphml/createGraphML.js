@@ -56,7 +56,7 @@ const formatAndSerialize = element => formatXml(serialize(element));
 const sha1 = (text) => {
   // eslint-disable-next-line new-cap
   const shaInstance = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
-  shaInstance.update(text);
+  shaInstance.update(text.toString());
   return shaInstance.getHash('HEX');
 };
 
