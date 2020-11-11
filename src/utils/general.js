@@ -6,6 +6,7 @@ const {
   remoteProtocolProperty,
   entityAttributesProperty,
   sessionExportTimeProperty,
+  codebookHashProperty,
 } = require('./reservedAttributes');
 
 // Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
@@ -15,6 +16,7 @@ const verifySessionVariables = (sessionVariables) => {
     || !sessionVariables[sessionProperty]
     || !sessionVariables[remoteProtocolProperty]
     || !sessionVariables[sessionExportTimeProperty]
+    || !sessionVariables[codebookHashProperty]
   ) {
     throw new ExportError(ErrorMessages.MissingParameters);
   }

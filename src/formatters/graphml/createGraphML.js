@@ -17,6 +17,7 @@ const {
   sessionExportTimeProperty,
   sessionFinishTimeProperty,
   sessionStartTimeProperty,
+  codebookHashProperty,
   protocolName,
   exportIDProperty,
   ncSourceUUID,
@@ -77,6 +78,7 @@ const getGraphHeader = ({ globalOptions: { useDirectedEdges } }, sessionVariable
   nc:sessionUUID="${sessionVariables[sessionProperty]}"
   nc:protocolName="${sessionVariables[protocolName]}"
   nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+  nc:codebookHash="${sessionVariables[codebookHashProperty]}"
   nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"`;
 
   if (sessionVariables[sessionStartTimeProperty]) {

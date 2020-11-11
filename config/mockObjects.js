@@ -1,5 +1,5 @@
 import { groupBy } from 'lodash';
-import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty } from '../src/utils/reservedAttributes';
+import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty, codebookHashProperty } from '../src/utils/reservedAttributes';
 import { insertEgoIntoSessionNetworks, resequenceIds, unionOfNetworks } from '../src/formatters/network';
 
 export const mockCodebook = {
@@ -67,6 +67,7 @@ export const mockNetwork = {
     [sessionStartTimeProperty]: 100,
     [sessionFinishTimeProperty]: 200,
     [sessionExportTimeProperty]: 300,
+    [codebookHashProperty]: '14fa461bf4b98155e82adc86532938553b4d33a9',
   },
 };
 
@@ -94,6 +95,7 @@ export const mockNetwork2 = {
     [sessionStartTimeProperty]: 1000,
     [sessionFinishTimeProperty]: 2000,
     [sessionExportTimeProperty]: 3000,
+    [codebookHashProperty]: '14fa461bf4b98155e82adc86532938553b4d33a9',
   },
 };
 
