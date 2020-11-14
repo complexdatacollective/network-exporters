@@ -17,6 +17,7 @@ const {
   sessionExportTimeProperty,
   sessionFinishTimeProperty,
   sessionStartTimeProperty,
+  codebookHashProperty,
   protocolName,
   exportIDProperty,
   ncSourceUUID,
@@ -55,7 +56,7 @@ const formatAndSerialize = element => formatXml(serialize(element));
 const sha1 = (text) => {
   // eslint-disable-next-line new-cap
   const shaInstance = new jsSHA('SHA-1', 'TEXT', { encoding: 'UTF8' });
-  shaInstance.update(text);
+  shaInstance.update(text.toString());
   return shaInstance.getHash('HEX');
 };
 
@@ -77,6 +78,7 @@ const getGraphHeader = ({ globalOptions: { useDirectedEdges } }, sessionVariable
   nc:sessionUUID="${sessionVariables[sessionProperty]}"
   nc:protocolName="${sessionVariables[protocolName]}"
   nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+  nc:codebookHash="${sessionVariables[codebookHashProperty]}"
   nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"`;
 
   if (sessionVariables[sessionStartTimeProperty]) {

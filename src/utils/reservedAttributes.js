@@ -13,6 +13,7 @@ const remoteProtocolProperty = 'remoteProtocolID';
 const sessionStartTimeProperty = 'sessionStart';
 const sessionFinishTimeProperty = 'sessionFinish';
 const sessionExportTimeProperty = 'sessionExported';
+const codebookHashProperty = 'codebookHash';
 
 // Export properties
 const exportIDProperty = 'id'; // property for auto incrementing ID number
@@ -47,4 +48,5 @@ module.exports = {
   sessionFinishTimeProperty,
   sessionProperty,
   sessionStartTimeProperty,
+  codebookHashProperty,
 };
