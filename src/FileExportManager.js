@@ -1,7 +1,6 @@
 /* eslint-disable global-require */
-const { merge, isEmpty, groupBy, flattenDeep, first } = require('lodash');
+const { merge, isEmpty, groupBy, first } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
-const sanitizeFilename = require('sanitize-filename');
 const logger = require('electron-log');
 const queue = require('async/queue');
 const {
@@ -22,7 +21,7 @@ const {
   partitionNetworkByType,
   unionOfNetworks,
 } = require('./formatters/network');
-const { verifySessionVariables } = require('./utils/general');
+const { verifySessionVariables, getFilePrefix } = require('./utils/general');
 const { isCordova, isElectron } = require('./utils/Environment');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
@@ -98,8 +97,15 @@ class FileExportManager {
    */
   exportSessions(sessions, protocols) {
     let tmpDir; // Temporary directory location
-    let promisedExports; // Will hold array of promises representing each export task
     let cancelled = false; // Top-level cancelled property used to abort promise chain
+
+    const exportFormats = [
+      ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
+      ...(this.exportOptions.exportCSV ? ['ego'] : []),
+      ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
+      ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
+      ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
+    ];
 
     // Utility function to delete temporary directory (and contents) when needed.
     const cleanUp = () => {
@@ -118,11 +124,9 @@ class FileExportManager {
       return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
     }
 
-    // exportPromise is the return value of this method
-    const exportPromise = makeTempDir() // Begin by creating temporary directory
-      .then((dir) => {
-        tmpDir = isCordova() ? dir.toInternalURL() : dir;
-      }).then(() => new Promise((resolve) => setTimeout(resolve, 2000)))
+    const exportPromise = makeTempDir().then(dir => { tmpDir = dir; })
+      // Delay for 2 seconds to give consumer UI time to render a toast
+      .then(() => new Promise((resolve) => setTimeout(resolve, 2000)))
       // Insert a reference to the ego ID into all nodes and edges
       .then(() => {
         this.emit('update', ProgressMessages.Formatting);
@@ -192,24 +196,9 @@ class FileExportManager {
                 }
         
                 const protocol = protocols[protocolUUID];
-                let prefix;
-        
-                // Determine filename prefix based on if we are exporting a single session
-                // or a unified network
-                if (this.exportOptions.globalOptions.unifyNetworks) {
-                  prefix = sanitizeFilename(protocol.name);
-                } else {
-                  prefix = `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
-                }
-        
-                const exportFormats = [
-                  ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-                  ...(this.exportOptions.exportCSV ? ['ego'] : []),
-                  ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
-                  ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
-                  ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
-                ];
-        
+                const prefix = getFilePrefix(session, protocol, this.exportOptions.globalOptions.unifyNetworks);
+
+                
                 // Returns promise resolving to filePath for each format exported
                 // ['file1', ['file1_person', 'file1_place']]
                 exportFormats.forEach((format) => {
@@ -247,7 +236,7 @@ class FileExportManager {
               });
           })
           
-          q.push(promisedExports);
+          q.push(promisedExports, (something) => console.log('push callback:', something));
           q.drain().then(() => {
             resolve(results);
           });
@@ -351,13 +340,7 @@ class FileExportManager {
       });
 
     exportPromise.abort = () => {
-      if (promisedExports) {
-        promisedExports.forEach((promise) => {
-          if (promise.abort) {
-            promise.abort();
-          }
-        });
-      }
+      q.kill();
       cancelled = true;
       cleanUp();
     };

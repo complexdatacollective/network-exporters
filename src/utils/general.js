@@ -1,4 +1,4 @@
-
+const sanitizeFilename = require('sanitize-filename');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
 const {
   caseProperty,
@@ -64,6 +64,16 @@ const getFileExtension = (formatterType) => {
   }
 };
 
+// Determine filename prefix based on if we are exporting a single session
+// or a unified network
+const getFilePrefix = (session, protocol, unifyNetworks) => {
+  if (unifyNetworks) {
+    return sanitizeFilename(protocol.name);
+  }
+
+  return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
+}
+
 const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 
 module.exports = {
@@ -72,6 +82,7 @@ module.exports = {
   extensions,
   getEntityAttributes,
   getFileExtension,
+  getFilePrefix,
   makeFilename,
   verifySessionVariables,
 };
