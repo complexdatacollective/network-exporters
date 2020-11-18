@@ -1,4 +1,4 @@
-const fs = require('fs');
+const fs = require('fs-extra');
 const path = require('path');
 const archiver = require('archiver');
 const JSZip = require('jszip');
@@ -44,7 +44,7 @@ const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
     });
 
     sourcePaths.forEach((sourcePath) => {
-      zip.append(fs.createReadStream(sourcePath), { name: path.basename(sourcePath) });
+      zip.file(sourcePath, { name: path.basename(sourcePath) });
     });
 
     zip.finalize();
