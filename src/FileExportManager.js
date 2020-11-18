@@ -2,6 +2,7 @@
 const { merge, isEmpty, groupBy, flattenDeep, first } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
 const sanitizeFilename = require('sanitize-filename');
+const queue = require('async/queue');
 const {
   caseProperty,
   sessionProperty,
@@ -99,6 +100,11 @@ class FileExportManager {
     let promisedExports; // Will hold array of promises representing each export task
     let cancelled = false; // Top-level cancelled property used to abort promise chain
 
+    let q = queue(task => {
+      console.log('processing task');
+      return new Promise(r => setTimeout(r, 2000)).then(task);
+    }, 2);
+
     // Utility function to delete temporary directory (and contents) when needed.
     const cleanUp = () => {
       if (tmpDir) {
@@ -154,7 +160,7 @@ class FileExportManager {
           ? Object.keys(unifiedSessions).length : sessions.length;
 
         promisedExports = flattenDeep(
-          Object.keys(unifiedSessions).map((protocolUUID) => {
+          Object.keys(unifiedSessions).map((protocolUUID) => () => {
             // Reject if no protocol was provided for this session
             if (!protocols[protocolUUID]) {
               return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
@@ -233,8 +239,11 @@ class FileExportManager {
             });
           }),
         );
-
-        return Promise.allSettled(promisedExports);
+        
+        q.push(promisedExports);
+        await q.drain();
+        console.log('got here', promisedExports);
+        return promisedExports;
       })
       // Then, Zip the result.
       .then((exportedPaths) => {
