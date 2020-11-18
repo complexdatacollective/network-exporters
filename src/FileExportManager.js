@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { merge, isEmpty, groupBy, flattenDeep, first } = require('lodash');
+const { merge, isEmpty, groupBy, first } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
 const sanitizeFilename = require('sanitize-filename');
 const logger = require('electron-log');
@@ -22,7 +22,7 @@ const {
   partitionNetworkByType,
   unionOfNetworks,
 } = require('./formatters/network');
-const { verifySessionVariables } = require('./utils/general');
+const { verifySessionVariables, sleep } = require('./utils/general');
 const { isCordova, isElectron } = require('./utils/Environment');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
@@ -98,7 +98,7 @@ class FileExportManager {
    */
   exportSessions(sessions, protocols) {
     let tmpDir; // Temporary directory location
-    let promisedExports; // Will hold array of promises representing each export task
+    const promisedExports = []; // Will hold array of promises representing each export task
     let cancelled = false; // Top-level cancelled property used to abort promise chain
 
     // Utility function to delete temporary directory (and contents) when needed.
@@ -122,10 +122,10 @@ class FileExportManager {
     const exportPromise = makeTempDir() // Begin by creating temporary directory
       .then((dir) => {
         tmpDir = isCordova() ? dir.toInternalURL() : dir;
-      }).then(() => new Promise((resolve) => setTimeout(resolve, 2000)))
-      // Insert a reference to the ego ID into all nodes and edges
+      }).then(sleep(2000)) // This is to give consuming UI a chance to render a toast
       .then(() => {
         this.emit('update', ProgressMessages.Formatting);
+        // Insert a reference to the ego ID into all nodes and edges
         return insertEgoIntoSessionNetworks(sessions);
       })
       // Resequence IDs for this export
@@ -150,108 +150,106 @@ class FileExportManager {
           return Promise.reject(new UserCancelledExport());
         }
 
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           const results = [];
-          const promisedExports = [];
-
-          let q = queue((task, callback) => {
-            task().then(result => {
+          const q = queue((task, callback) => {
+            task().then((result) => {
               results.push(result);
               callback();
             }).catch((result) => {
-              console.log('task result (fail)');
+              logger.log('task result (fail):', result);
               callback();
             });
           }, 1000);
-  
+
           // Create an array of promises representing each session in each export format
           const finishedSessions = [];
           const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
             ? Object.keys(unifiedSessions).length : sessions.length;
 
           Object.keys(unifiedSessions).forEach((protocolUUID) => {
-              // Reject if no protocol was provided for this session
-              if (!protocols[protocolUUID]) {
-                throw new ExportError(ErrorMessages.MissingParameters);
+            // Reject if no protocol was provided for this session
+            if (!protocols[protocolUUID]) {
+              throw new ExportError(ErrorMessages.MissingParameters);
+            }
+
+            unifiedSessions[protocolUUID].forEach((session) => {
+              // Skip if sessions don't have required sessionVariables
+              try {
+                if (this.exportOptions.globalOptions.unifyNetworks) {
+                  Object.values(session.sessionVariables)
+                    .forEach((sessionVariables) => {
+                      verifySessionVariables(sessionVariables);
+                    });
+                } else {
+                  verifySessionVariables(session.sessionVariables);
+                }
+              } catch (e) {
+                logger.log('Export error:', e);
+                return;
               }
 
-              unifiedSessions[protocolUUID].forEach((session) => {
-                // Skip if sessions don't have required sessionVariables
-                try {
-                  if (this.exportOptions.globalOptions.unifyNetworks) {
-                    Object.values(session.sessionVariables)
-                      .forEach((sessionVariables) => {
-                        verifySessionVariables(sessionVariables);
-                      });
-                  } else {
-                    verifySessionVariables(session.sessionVariables);
-                  }
-                } catch (e) {
-                  logger.log('Export error:', e);
-                  return;
-                }
-        
-                const protocol = protocols[protocolUUID];
-                let prefix;
-        
-                // Determine filename prefix based on if we are exporting a single session
-                // or a unified network
-                if (this.exportOptions.globalOptions.unifyNetworks) {
-                  prefix = sanitizeFilename(protocol.name);
-                } else {
-                  prefix = `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
-                }
-        
-                const exportFormats = [
-                  ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-                  ...(this.exportOptions.exportCSV ? ['ego'] : []),
-                  ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
-                  ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
-                  ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
-                ];
-        
-                // Returns promise resolving to filePath for each format exported
-                // ['file1', ['file1_person', 'file1_place']]
-                exportFormats.forEach((format) => {
-                  // partitioning network based on node and edge type so we can create
-                  // an individual export file for each type
-                  const partitionedNetworks = partitionNetworkByType(
-                    protocol.codebook,
-                    session,
+              const protocol = protocols[protocolUUID];
+              let prefix;
+
+              // Determine filename prefix based on if we are exporting a single session
+              // or a unified network
+              if (this.exportOptions.globalOptions.unifyNetworks) {
+                prefix = sanitizeFilename(protocol.name);
+              } else {
+                prefix = `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
+              }
+
+              const exportFormats = [
+                ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
+                ...(this.exportOptions.exportCSV ? ['ego'] : []),
+                ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
+                ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
+                ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
+              ];
+
+              // Returns promise resolving to filePath for each format exported
+              // ['file1', ['file1_person', 'file1_place']]
+              exportFormats.forEach((format) => {
+                // partitioning network based on node and edge type so we can create
+                // an individual export file for each type
+                const partitionedNetworks = partitionNetworkByType(
+                  protocol.codebook,
+                  session,
+                  format,
+                );
+
+                partitionedNetworks.forEach((partitionedNetwork) => {
+                  const partitionedEntity = partitionedNetwork.partitionEntity;
+                  promisedExports.push(() => exportFile(
+                    prefix,
+                    partitionedEntity,
                     format,
-                  );
-        
-                  partitionedNetworks.forEach((partitionedNetwork) => {
-                    const partitionedEntity = partitionedNetwork.partitionEntity;
-                    promisedExports.push(() => exportFile(
-                      prefix,
-                      partitionedEntity,
-                      format,
-                      tmpDir,
-                      partitionedNetwork,
-                      protocol.codebook,
-                      this.exportOptions,
-                    ).then(result => {
-                      if (!finishedSessions.includes(prefix)) {
-                        this.emit('session-exported', session.sessionVariables.sessionId);
-                        this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                        finishedSessions.push(prefix);
-                      }
-                      return result;
-                    }).catch((error) => {
-                      this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
-                      return Promise.reject(error);
-                    }));
-                  });
+                    tmpDir,
+                    partitionedNetwork,
+                    protocol.codebook,
+                    this.exportOptions,
+                  ).then((result) => {
+                    if (!finishedSessions.includes(prefix)) {
+                      this.emit('session-exported', session.sessionVariables.sessionId);
+                      this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                      finishedSessions.push(prefix);
+                    }
+                    return result;
+                  }).catch((error) => {
+                    this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
+                    return Promise.reject(error);
+                  }));
                 });
               });
-          })
-          
+            });
+          });
+
           q.push(promisedExports);
           q.drain().then(() => {
             resolve(results);
           });
-        })
+        });
       })
       // Then, Zip the result.
       .then((exportedPaths) => {
