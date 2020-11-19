@@ -28,6 +28,8 @@ const getEntityAttributes = entity => (entity && entity[entityAttributesProperty
 
 const escapeFilePart = part => part.replace(/\W/g, '');
 
+const sleep = (time = 2000) => () => new Promise(resolve => setTimeout(resolve, time));
+
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
   if (extension !== `.${exportFormat}`) {
@@ -85,4 +87,5 @@ module.exports = {
   getFilePrefix,
   makeFilename,
   verifySessionVariables,
+  sleep,
 };
