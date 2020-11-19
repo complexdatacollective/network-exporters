@@ -95,8 +95,6 @@ class FileExportManager {
    */
   exportSessions(sessions, protocols) {
     let tmpDir; // Temporary directory location
-    let cancelled = false; // Top-level cancelled property used to abort promise chain
-    let q; // Will contain async.queue in exportPromise;
 
     const exportFormats = [
       ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
@@ -123,233 +121,239 @@ class FileExportManager {
       return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
     }
 
-    const exportPromise = makeTempDir().then((dir) => { tmpDir = dir; })
-      // Delay for 2 seconds to give consumer UI time to render a toast
-      .then(sleep)
-      // Insert a reference to the ego ID into all nodes and edges
-      .then(() => {
-        this.emit('update', ProgressMessages.Formatting);
+    const exportPromise = new Promise((resolve) => {
+      let cancelled = false;
+      const results = [];
+      const q = queue((task, callback) => {
+        task().then(sleep(2000)).then((result) => {
+          results.push(result);
+          callback();
+        }).catch((result) => {
+          logger.log('task result (fail):', result);
+          callback();
+        });
+      }, 1);
+
+      const run = () =>
+        makeTempDir().then((dir) => { tmpDir = dir; })
+        // Delay for 2 seconds to give consumer UI time to render a toast
+        .then(sleep)
         // Insert a reference to the ego ID into all nodes and edges
-        return insertEgoIntoSessionNetworks(sessions);
-      })
-      // Resequence IDs for this export
-      .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
-      // Group sessions by protocol UUID
-      .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
-      // Then, process the union option
-      .then((sessionsByProtocol) => {
-        if (cancelled) {
-          return Promise.reject(new UserCancelledExport());
-        }
+        .then(() => {
+          this.emit('update', ProgressMessages.Formatting);
+          // Insert a reference to the ego ID into all nodes and edges
+          return insertEgoIntoSessionNetworks(sessions);
+        })
+        // Resequence IDs for this export
+        .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
+        // Group sessions by protocol UUID
+        .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
+        // Then, process the union option
+        .then((sessionsByProtocol) => {
+          if (cancelled) {
+            return Promise.reject(new UserCancelledExport());
+          }
 
-        if (!this.exportOptions.globalOptions.unifyNetworks) {
-          return sessionsByProtocol;
-        }
+          if (!this.exportOptions.globalOptions.unifyNetworks) {
+            return sessionsByProtocol;
+          }
 
-        this.emit('update', ProgressMessages.Merging);
-        return unionOfNetworks(sessionsByProtocol);
-      })
-      .then((unifiedSessions) => {
-        if (cancelled) {
-          return Promise.reject(new UserCancelledExport());
-        }
+          this.emit('update', ProgressMessages.Merging);
+          return unionOfNetworks(sessionsByProtocol);
+        })
+        .then((unifiedSessions) => {
+          if (cancelled) {
+            return Promise.reject(new UserCancelledExport());
+          }
 
-        return new Promise((resolve) => {
-          const results = [];
-          const promisedExports = [];
+          return new Promise((resolve) => {
+            const promisedExports = [];
 
-          q = queue((task, callback) => {
-            task().then(sleep(2000)).then((result) => {
-              results.push(result);
-              callback();
-            }).catch((result) => {
-              logger.log('task result (fail):', result);
-              callback();
-            });
-          }, 1);
+            // Create an array of promises representing each session in each export format
+            const finishedSessions = [];
+            const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
+              ? Object.keys(unifiedSessions).length : sessions.length;
 
-          // Create an array of promises representing each session in each export format
-          const finishedSessions = [];
-          const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
-            ? Object.keys(unifiedSessions).length : sessions.length;
-
-          Object.keys(unifiedSessions).forEach((protocolUUID) => {
-            // Reject if no protocol was provided for this session
-            if (!protocols[protocolUUID]) {
-              throw new ExportError(ErrorMessages.MissingParameters);
-            }
-
-            unifiedSessions[protocolUUID].forEach((session) => {
-              // Skip if sessions don't have required sessionVariables
-              try {
-                if (this.exportOptions.globalOptions.unifyNetworks) {
-                  Object.values(session.sessionVariables)
-                    .forEach((sessionVariables) => {
-                      verifySessionVariables(sessionVariables);
-                    });
-                } else {
-                  verifySessionVariables(session.sessionVariables);
-                }
-              } catch (e) {
-                logger.log('Export error:', e);
-                return;
+            Object.keys(unifiedSessions).forEach((protocolUUID) => {
+              // Reject if no protocol was provided for this session
+              if (!protocols[protocolUUID]) {
+                throw new ExportError(ErrorMessages.MissingParameters);
               }
 
-              const protocol = protocols[protocolUUID];
-              const prefix = getFilePrefix(
-                session,
-                protocol,
-                this.exportOptions.globalOptions.unifyNetworks,
-              );
+              unifiedSessions[protocolUUID].forEach((session) => {
+                // Skip if sessions don't have required sessionVariables
+                try {
+                  if (this.exportOptions.globalOptions.unifyNetworks) {
+                    Object.values(session.sessionVariables)
+                      .forEach((sessionVariables) => {
+                        verifySessionVariables(sessionVariables);
+                      });
+                  } else {
+                    verifySessionVariables(session.sessionVariables);
+                  }
+                } catch (e) {
+                  logger.log('Export error:', e);
+                  return;
+                }
 
-              // Returns promise resolving to filePath for each format exported
-              // ['file1', ['file1_person', 'file1_place']]
-              exportFormats.forEach((format) => {
-                // partitioning network based on node and edge type so we can create
-                // an individual export file for each type
-                const partitionedNetworks = partitionNetworkByType(
-                  protocol.codebook,
+                const protocol = protocols[protocolUUID];
+                const prefix = getFilePrefix(
                   session,
-                  format,
+                  protocol,
+                  this.exportOptions.globalOptions.unifyNetworks,
                 );
 
-                partitionedNetworks.forEach((partitionedNetwork) => {
-                  const partitionedEntity = partitionedNetwork.partitionEntity;
-                  promisedExports.push(() => exportFile(
-                    prefix,
-                    partitionedEntity,
-                    format,
-                    tmpDir,
-                    partitionedNetwork,
+                // Returns promise resolving to filePath for each format exported
+                // ['file1', ['file1_person', 'file1_place']]
+                exportFormats.forEach((format) => {
+                  // partitioning network based on node and edge type so we can create
+                  // an individual export file for each type
+                  const partitionedNetworks = partitionNetworkByType(
                     protocol.codebook,
-                    this.exportOptions,
-                  ).then((result) => {
-                    if (!finishedSessions.includes(prefix)) {
-                      this.emit('session-exported', session.sessionVariables.sessionId);
-                      this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                      finishedSessions.push(prefix);
-                    }
-                    return result;
-                  }).catch((error) => {
-                    this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
-                    return Promise.reject(error);
-                  }));
+                    session,
+                    format,
+                  );
+
+                  partitionedNetworks.forEach((partitionedNetwork) => {
+                    const partitionedEntity = partitionedNetwork.partitionEntity;
+                    promisedExports.push(() => exportFile(
+                      prefix,
+                      partitionedEntity,
+                      format,
+                      tmpDir,
+                      partitionedNetwork,
+                      protocol.codebook,
+                      this.exportOptions,
+                    ).then((result) => {
+                      if (!finishedSessions.includes(prefix)) {
+                        this.emit('session-exported', session.sessionVariables.sessionId);
+                        this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                        finishedSessions.push(prefix);
+                      }
+                      return result;
+                    }).catch((error) => {
+                      this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
+                      return Promise.reject(error);
+                    }));
+                  });
                 });
               });
             });
+
+
+            q.push(promisedExports, something => logger.log('push callback:', something)); // Update status with queue callback?
+            // q.push(promisedExports);
+            q.drain().then(() => {
+              resolve(results);
+            });
           });
+        })
+        // Then, Zip the result.
+        .then((exportedPaths) => {
+          if (cancelled) {
+            return Promise.reject(new UserCancelledExport());
+          }
 
-          
-          q.push(promisedExports, something => logger.log('push callback:', something)); // Update status with queue callback?
-          // q.push(promisedExports);
-          q.drain().then(() => {
-            resolve(results);
+          // FatalError if no sessions survived the cull
+          if (exportedPaths.length === 0) {
+            throw new ExportError(ErrorMessages.NothingToExport);
+          }
+
+          // Start the zip process, and attach a callback to the update
+          // progress event.
+          this.emit('update', ProgressMessages.ZipStart);
+          return archive(exportedPaths, tmpDir, (percent) => {
+            this.emit('update', ProgressMessages.ZipProgress(percent));
           });
-        });
-      })
-      // Then, Zip the result.
-      .then((exportedPaths) => {
-        if (cancelled) {
-          return Promise.reject(new UserCancelledExport());
-        }
+        })
+        .then((zipLocation) => {
+          if (cancelled) {
+            return Promise.reject(new UserCancelledExport());
+          }
 
-        // FatalError if no sessions survived the cull
-        if (exportedPaths.length === 0) {
-          throw new ExportError(ErrorMessages.NothingToExport);
-        }
+          // Prompt the user for a path to save the ZIP (electron)
+          // or open the share dialog (cordova)
+          this.emit('update', ProgressMessages.Saving);
+          return new Promise((resolve, reject) => {
+            if (isElectron()) {
+              let electron;
 
-        // Start the zip process, and attach a callback to the update
-        // progress event.
-        this.emit('update', ProgressMessages.ZipStart);
-        return archive(exportedPaths, tmpDir, (percent) => {
-          this.emit('update', ProgressMessages.ZipProgress(percent));
-        });
-      })
-      .then((zipLocation) => {
-        if (cancelled) {
-          return Promise.reject(new UserCancelledExport());
-        }
+              if (typeof window !== 'undefined' && window) {
+                electron = window.require('electron').remote;
+              } else {
+                // if no window object assume we are in nodejs environment (Electron main)
+                // no remote needed
+                electron = require('electron');
+              }
 
-        // Prompt the user for a path to save the ZIP (electron)
-        // or open the share dialog (cordova)
-        this.emit('update', ProgressMessages.Saving);
-        return new Promise((resolve, reject) => {
-          if (isElectron()) {
-            let electron;
+              const { dialog } = electron;
+              const browserWindow = first(electron.BrowserWindow.getAllWindows());
 
-            if (typeof window !== 'undefined' && window) {
-              electron = window.require('electron').remote;
-            } else {
-              // if no window object assume we are in nodejs environment (Electron main)
-              // no remote needed
-              electron = require('electron');
+              dialog.showSaveDialog(
+                browserWindow,
+                {
+                  filters: [{ name: 'zip', extensions: ['zip'] }],
+                  defaultPath: 'networkCanvasExport.zip',
+                },
+              )
+                .then(({ canceled, filePath }) => {
+                  if (canceled) {
+                    this.emit('cancelled', ProgressMessages.Cancelled);
+                    resolve();
+                  }
+
+                  rename(zipLocation, filePath)
+                    .then(() => {
+                      const { shell } = electron;
+                      shell.showItemInFolder(filePath);
+                      resolve();
+                    })
+                    .catch(reject);
+                });
             }
 
-            const { dialog } = electron;
-            const browserWindow = first(electron.BrowserWindow.getAllWindows());
-
-            dialog.showSaveDialog(
-              browserWindow,
-              {
-                filters: [{ name: 'zip', extensions: ['zip'] }],
-                defaultPath: 'networkCanvasExport.zip',
-              },
-            )
-              .then(({ canceled, filePath }) => {
-                if (canceled) {
-                  this.emit('cancelled', ProgressMessages.Cancelled);
-                  resolve();
-                }
-
-                rename(zipLocation, filePath)
-                  .then(() => {
-                    const { shell } = electron;
-                    shell.showItemInFolder(filePath);
-                    resolve();
-                  })
-                  .catch(reject);
-              });
+            if (isCordova()) {
+              getFileNativePath(zipLocation)
+                .then((nativePath) => {
+                  window.plugins.socialsharing.shareWithOptions({
+                    message: 'Your zipped network canvas data.', // not supported on some apps
+                    subject: 'network canvas export',
+                    files: [nativePath],
+                    chooserTitle: 'Share zip file via', // Android only
+                  }, resolve, reject);
+                });
+            }
+          });
+        })
+        .then(() => {
+          if (cancelled) {
+            return Promise.reject(new UserCancelledExport());
           }
 
-          if (isCordova()) {
-            getFileNativePath(zipLocation)
-              .then((nativePath) => {
-                window.plugins.socialsharing.shareWithOptions({
-                  message: 'Your zipped network canvas data.', // not supported on some apps
-                  subject: 'network canvas export',
-                  files: [nativePath],
-                  chooserTitle: 'Share zip file via', // Android only
-                }, resolve, reject);
-              });
+          this.emit('finished', ProgressMessages.Finished);
+          cleanUp();
+
+          return Promise.resolve();
+        })
+        .catch((err) => {
+          // We don't throw if this is an error from user cancelling
+          if (err instanceof UserCancelledExport) {
+            return;
           }
+
+          cleanUp();
+          throw err;
         });
-      })
-      .then(() => {
-        if (cancelled) {
-          return Promise.reject(new UserCancelledExport());
-        }
 
-        this.emit('finished', ProgressMessages.Finished);
+      const abort = () => {
+        logger.log('export promise abort', q.length());
+        q.kill();
+        cancelled = true;
         cleanUp();
+      };
 
-        return Promise.resolve();
-      })
-      .catch((err) => {
-        // We don't throw if this is an error from user cancelling
-        if (err instanceof UserCancelledExport) {
-          return;
-        }
-
-        cleanUp();
-        throw err;
-      });
-
-    exportPromise.abort = () => {
-      logger.log('export promise abort', q.length());
-      q.kill();
-      cancelled = true;
-      cleanUp();
-    };
+      resolve({ run, abort });
+    });
 
     logger.log('about to return exportPromise', exportPromise, exportPromise.abort);
 
