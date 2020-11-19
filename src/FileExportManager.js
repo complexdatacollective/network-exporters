@@ -159,14 +159,14 @@ class FileExportManager {
           const promisedExports = [];
 
           q = queue((task, callback) => {
-            task().then((result) => {
+            task().then(sleep(2000)).then((result) => {
               results.push(result);
               callback();
             }).catch((result) => {
               logger.log('task result (fail):', result);
               callback();
             });
-          }, 1000);
+          }, 1);
 
           // Create an array of promises representing each session in each export format
           const finishedSessions = [];
@@ -239,7 +239,9 @@ class FileExportManager {
             });
           });
 
-          q.push(promisedExports, something => logger.log('push callback:', something));
+          
+          q.push(promisedExports, something => logger.log('push callback:', something)); // Update status with queue callback?
+          // q.push(promisedExports);
           q.drain().then(() => {
             resolve(results);
           });
@@ -343,10 +345,13 @@ class FileExportManager {
       });
 
     exportPromise.abort = () => {
+      logger.log('export promise abort', q.length());
       q.kill();
       cancelled = true;
       cleanUp();
     };
+
+    logger.log('about to return exportPromise', exportPromise, exportPromise.abort);
 
     return exportPromise;
   }
