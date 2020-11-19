@@ -74,7 +74,7 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
   }
 
   return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
-}
+};
 
 const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 

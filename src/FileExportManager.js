@@ -4,8 +4,6 @@ const { EventEmitter } = require('eventemitter3');
 const logger = require('electron-log');
 const queue = require('async/queue');
 const {
-  caseProperty,
-  sessionProperty,
   protocolProperty,
 } = require('./utils/reservedAttributes');
 const {
@@ -21,11 +19,7 @@ const {
   partitionNetworkByType,
   unionOfNetworks,
 } = require('./formatters/network');
-<<<<<<< HEAD
 const { verifySessionVariables, getFilePrefix, sleep } = require('./utils/general');
-=======
-const { verifySessionVariables, sleep } = require('./utils/general');
->>>>>>> 416fd86763d05bb0f65abdae978bf85a703d7a73
 const { isCordova, isElectron } = require('./utils/Environment');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
@@ -101,11 +95,8 @@ class FileExportManager {
    */
   exportSessions(sessions, protocols) {
     let tmpDir; // Temporary directory location
-<<<<<<< HEAD
-=======
-    const promisedExports = []; // Will hold array of promises representing each export task
->>>>>>> 416fd86763d05bb0f65abdae978bf85a703d7a73
     let cancelled = false; // Top-level cancelled property used to abort promise chain
+    let q; // Will contain async.queue in exportPromise;
 
     const exportFormats = [
       ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
@@ -132,7 +123,7 @@ class FileExportManager {
       return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
     }
 
-    const exportPromise = makeTempDir().then(dir => { tmpDir = dir; })
+    const exportPromise = makeTempDir().then((dir) => { tmpDir = dir; })
       // Delay for 2 seconds to give consumer UI time to render a toast
       .then(sleep)
       // Insert a reference to the ego ID into all nodes and edges
@@ -165,7 +156,9 @@ class FileExportManager {
 
         return new Promise((resolve) => {
           const results = [];
-          const q = queue((task, callback) => {
+          const promisedExports = [];
+
+          q = queue((task, callback) => {
             task().then((result) => {
               results.push(result);
               callback();
@@ -203,7 +196,11 @@ class FileExportManager {
               }
 
               const protocol = protocols[protocolUUID];
-              const prefix = getFilePrefix(session, protocol, this.exportOptions.globalOptions.unifyNetworks);
+              const prefix = getFilePrefix(
+                session,
+                protocol,
+                this.exportOptions.globalOptions.unifyNetworks,
+              );
 
               // Returns promise resolving to filePath for each format exported
               // ['file1', ['file1_person', 'file1_place']]
@@ -242,7 +239,7 @@ class FileExportManager {
             });
           });
 
-          q.push(promisedExports, (something) => console.log('push callback:', something));
+          q.push(promisedExports, something => logger.log('push callback:', something));
           q.drain().then(() => {
             resolve(results);
           });
