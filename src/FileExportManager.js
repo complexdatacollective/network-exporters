@@ -70,7 +70,7 @@ class FileExportManager {
         .catch((result) => {
           logger.log('task result (fail):', result);
         });
-    }, 1);
+    }, 10);
 
     this.events = new EventEmitter();
   }
@@ -161,7 +161,7 @@ class FileExportManager {
             this.emit('update', ProgressMessages.Merging);
             return unionOfNetworks(sessionsByProtocol);
           })
-          .then(async (unifiedSessions) => {
+          .then((unifiedSessions) => {
             if (cancelled) {
               return Promise.reject(new UserCancelledExport());
             }
@@ -244,9 +244,8 @@ class FileExportManager {
               results.push(result);
             });
 
-            await this.q.drain();
-
-            return results;
+            return new Promise((resolve, reject) =>
+              this.q.drain().then(() => resolve(results)).catch(reject));
           })
           // Then, Zip the result.
           .then((exportedPaths) => {
