@@ -31,10 +31,6 @@ const ProgressMessages = {
     progress: 100,
     statusText: 'Export finished.',
   },
-  Cancelled: {
-    progress: 100,
-    statusText: 'Export cancelled.',
-  },
 };
 
 module.exports = ProgressMessages;

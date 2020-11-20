@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { merge, isEmpty, groupBy, first } = require('lodash');
+const { merge, isEmpty, groupBy } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
 const logger = require('electron-log');
 const queue = require('async/queue');
@@ -7,8 +7,6 @@ const {
   protocolProperty,
 } = require('./utils/reservedAttributes');
 const {
-  getFileNativePath,
-  rename,
   removeDirectory,
   makeTempDir,
 } = require('./utils/filesystem');
@@ -19,8 +17,7 @@ const {
   partitionNetworkByType,
   unionOfNetworks,
 } = require('./formatters/network');
-const { verifySessionVariables, getFilePrefix, sleep } = require('./utils/general');
-const { isCordova, isElectron } = require('./utils/Environment');
+const { verifySessionVariables, getFilePrefix, sleep, handlePlatformSaveDialog } = require('./utils/general');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
@@ -62,16 +59,6 @@ const getOptions = exportOptions => ({
 class FileExportManager {
   constructor(exportOptions = {}) {
     this.exportOptions = getOptions(exportOptions);
-
-    // This queue instance accepts one or more promises and limits their
-    // concurrency for better usability in consuming apps
-    this.q = queue((task, callback) => {
-      task().then(callback)
-        .catch((result) => {
-          logger.log('task result (fail):', result);
-        });
-    }, 10);
-
     this.events = new EventEmitter();
   }
 
@@ -94,9 +81,11 @@ class FileExportManager {
   }
 
   /**
-   * Main export method. Returns a promise.
-   * Rejections from the main promise chain emit a fatal error, but rejections
-   * within the promisedExports task only fail that specific task.
+   * Main export method. Returns a promise that resolves an to an object
+   * containing an object with run() and abort() methods that control the task.
+   *
+   * Rejections from this method are fatal errors, but errors within
+   * the run() task only fail that specific task.
    *
    * @param {*} sessions    collection of session objects
    * @param {*} protocols   collection of protocol objects, containing all protocols
@@ -104,6 +93,15 @@ class FileExportManager {
    */
   exportSessions(sessions, protocols) {
     let tmpDir; // Temporary directory location
+
+    // This queue instance accepts one or more promises and limits their
+    // concurrency for better usability in consuming apps
+    // https://caolan.github.io/async/v3/docs.html#queue
+    const q = queue((task, callback) => {
+      task()
+        .then(result => callback(null, result))
+        .catch(error => callback(error));
+    }, 100);
 
     const exportFormats = [
       ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
@@ -113,8 +111,10 @@ class FileExportManager {
       ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
     ];
 
-    // Utility function to delete temporary directory (and contents) when needed.
+    // Cleanup function called by abort method, after fatal errors, and after
+    // the export promise resolves.
     const cleanUp = () => {
+      q.kill();
       if (tmpDir) {
         removeDirectory(tmpDir);
       }
@@ -130,14 +130,18 @@ class FileExportManager {
       return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
     }
 
-    const exportPromise = new Promise((resolveExport) => {
+    // Will resolve with an object containing run() and abort() methods
+    return new Promise((resolveExportPromise) => {
+      // State variables for this export
       let cancelled = false;
-      const results = [];
+      const succeeded = [];
+      const failed = [];
 
-      const run = () =>
+      // Main work of the process happens here
+      const run = () => new Promise((resolveRun, rejectRun) => {
         makeTempDir().then((dir) => { tmpDir = dir; })
           // Delay for 2 seconds to give consumer UI time to render a toast
-          .then(sleep)
+          .then(sleep(2000))
           // Insert a reference to the ego ID into all nodes and edges
           .then(() => {
             this.emit('update', ProgressMessages.Formatting);
@@ -151,7 +155,7 @@ class FileExportManager {
           // Then, process the union option
           .then((sessionsByProtocol) => {
             if (cancelled) {
-              return Promise.reject(new UserCancelledExport());
+              throw new UserCancelledExport();
             }
 
             if (!this.exportOptions.globalOptions.unifyNetworks) {
@@ -163,7 +167,7 @@ class FileExportManager {
           })
           .then((unifiedSessions) => {
             if (cancelled) {
-              return Promise.reject(new UserCancelledExport());
+              throw new UserCancelledExport();
             }
 
             const promisedExports = [];
@@ -192,6 +196,7 @@ class FileExportManager {
                   }
                 } catch (e) {
                   logger.log('Export error:', e);
+                  failed.push(e);
                   return;
                 }
 
@@ -203,9 +208,8 @@ class FileExportManager {
                 );
 
                 // Returns promise resolving to filePath for each format exported
-                // ['file1', ['file1_person', 'file1_place']]
                 exportFormats.forEach((format) => {
-                  // partitioning network based on node and edge type so we can create
+                  // Partitioning the network based on node and edge type so we can create
                   // an individual export file for each type
                   const partitionedNetworks = partitionNetworkByType(
                     protocol.codebook,
@@ -239,18 +243,23 @@ class FileExportManager {
               });
             });
 
-            this.q.push(promisedExports, (result) => {
-              logger.log('Task finished:', result);
-              results.push(result);
+            q.push(promisedExports, (err, result) => {
+              if (err) {
+                logger.log('Task failed:', err);
+                failed.push(err);
+                return;
+              }
+              succeeded.push(result);
             });
 
-            return new Promise((resolve, reject) =>
-              this.q.drain().then(() => resolve(results)).catch(reject));
+            return new Promise((resolve, reject) => q.drain()
+              .then(() => resolve({ exportedPaths: succeeded, failedExports: failed }))
+              .catch(reject));
           })
           // Then, Zip the result.
-          .then((exportedPaths) => {
+          .then(({ exportedPaths }) => {
             if (cancelled) {
-              return Promise.reject(new UserCancelledExport());
+              throw new UserCancelledExport();
             }
 
             // FatalError if no sessions survived the cull
@@ -267,93 +276,36 @@ class FileExportManager {
           })
           .then((zipLocation) => {
             if (cancelled) {
-              return Promise.reject(new UserCancelledExport());
+              throw new UserCancelledExport();
             }
-
-            // Prompt the user for a path to save the ZIP (electron)
-            // or open the share dialog (cordova)
             this.emit('update', ProgressMessages.Saving);
-            return new Promise((resolve, reject) => {
-              if (isElectron()) {
-                let electron;
-
-                if (typeof window !== 'undefined' && window) {
-                  electron = window.require('electron').remote;
-                } else {
-                  // if no window object assume we are in nodejs environment (Electron main)
-                  // no remote needed
-                  electron = require('electron');
-                }
-
-                const { dialog } = electron;
-                const browserWindow = first(electron.BrowserWindow.getAllWindows());
-
-                dialog.showSaveDialog(
-                  browserWindow,
-                  {
-                    filters: [{ name: 'zip', extensions: ['zip'] }],
-                    defaultPath: 'networkCanvasExport.zip',
-                  },
-                )
-                  .then(({ canceled, filePath }) => {
-                    if (canceled) {
-                      this.emit('cancelled', ProgressMessages.Cancelled);
-                      resolve();
-                    }
-
-                    rename(zipLocation, filePath)
-                      .then(() => {
-                        const { shell } = electron;
-                        shell.showItemInFolder(filePath);
-                        resolve();
-                      })
-                      .catch(reject);
-                  });
-              }
-
-              if (isCordova()) {
-                getFileNativePath(zipLocation)
-                  .then((nativePath) => {
-                    window.plugins.socialsharing.shareWithOptions({
-                      message: 'Your zipped network canvas data.', // not supported on some apps
-                      subject: 'network canvas export',
-                      files: [nativePath],
-                      chooserTitle: 'Share zip file via', // Android only
-                    }, resolve, reject);
-                  });
-              }
-            });
+            return handlePlatformSaveDialog(zipLocation);
           })
           .then(() => {
             if (cancelled) {
-              return Promise.reject(new UserCancelledExport());
+              throw new UserCancelledExport();
             }
 
             this.emit('finished', ProgressMessages.Finished);
             cleanUp();
-
-            return Promise.resolve();
+            resolveRun();
           })
           .catch((err) => {
-            // We don't throw if this is an error from user cancelling
-            if (err instanceof UserCancelledExport) {
-              return;
-            }
-
             cleanUp();
-            throw err;
+            // We don't throw if this is an error from user cancelling
+            if (!(err instanceof UserCancelledExport)) {
+              rejectRun(err);
+            }
           });
+      }); // End run()
 
       const abort = () => {
-        this.q.kill();
         cancelled = true;
         cleanUp();
       };
 
-      resolveExport({ run, abort });
+      resolveExportPromise({ run, abort });
     });
-
-    return exportPromise;
   }
 }
 
