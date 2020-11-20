@@ -22,6 +22,7 @@ const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
+const { isElectron } = require('./utils/Environment');
 
 
 const defaultCSVOptions = {
@@ -97,11 +98,15 @@ class FileExportManager {
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
     // https://caolan.github.io/async/v3/docs.html#queue
+
+    // Set concurrency to conservative values for now, based on platform
+    const QUEUE_CONCURRENCY = isElectron() ? 50 : 1;
+
     const q = queue((task, callback) => {
       task()
         .then(result => callback(null, result))
         .catch(error => callback(error));
-    }, 100);
+    }, QUEUE_CONCURRENCY);
 
     const exportFormats = [
       ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
@@ -219,25 +224,37 @@ class FileExportManager {
 
                   partitionedNetworks.forEach((partitionedNetwork) => {
                     const partitionedEntity = partitionedNetwork.partitionEntity;
-                    promisedExports.push(() => exportFile(
-                      prefix,
-                      partitionedEntity,
-                      format,
-                      tmpDir,
-                      partitionedNetwork,
-                      protocol.codebook,
-                      this.exportOptions,
-                    ).then((result) => {
-                      if (!finishedSessions.includes(prefix)) {
-                        this.emit('session-exported', session.sessionVariables.sessionId);
-                        this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                        finishedSessions.push(prefix);
-                      }
-                      return result;
-                    }).catch((error) => {
-                      this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
-                      return Promise.reject(error);
-                    }));
+                    promisedExports.push(() => {
+                      return new Promise((resolve, reject) => {
+                        try {
+                          // Randomly fail some exports for testing
+                          if (Math.random() >= 0.99) {
+                            throw new Error('Error happened!');
+                          }
+
+                          exportFile(
+                            prefix,
+                            partitionedEntity,
+                            format,
+                            tmpDir,
+                            partitionedNetwork,
+                            protocol.codebook,
+                            this.exportOptions,
+                          ).then((result) => {
+                            if (!finishedSessions.includes(prefix)) {
+                              this.emit('session-exported', session.sessionVariables.sessionId);
+                              this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                              finishedSessions.push(prefix);
+                            }
+                            resolve(result);
+                          }).catch(e => reject);
+                        } catch(error) {
+                          this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
+                          this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                          reject(error);
+                        }
+                      });
+                    });
                   });
                 });
               });
@@ -245,7 +262,6 @@ class FileExportManager {
 
             q.push(promisedExports, (err, result) => {
               if (err) {
-                logger.log('Task failed:', err);
                 failed.push(err);
                 return;
               }
@@ -292,8 +308,9 @@ class FileExportManager {
           })
           .catch((err) => {
             cleanUp();
-            // We don't throw if this is an error from user cancelling
+            // We don't reject if this is an error from user cancelling
             if (!(err instanceof UserCancelledExport)) {
+              this.emit('cancelled', ProgressMessages.Cancelled);
               rejectRun(err);
             }
           });
