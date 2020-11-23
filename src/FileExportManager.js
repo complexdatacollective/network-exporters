@@ -224,37 +224,30 @@ class FileExportManager {
 
                   partitionedNetworks.forEach((partitionedNetwork) => {
                     const partitionedEntity = partitionedNetwork.partitionEntity;
-                    promisedExports.push(() => {
-                      return new Promise((resolve, reject) => {
-                        try {
-                          // Randomly fail some exports for testing
-                          if (Math.random() >= 0.99) {
-                            throw new Error('Error happened!');
+                    promisedExports.push(() => new Promise((resolve, reject) => {
+                      try {
+                        exportFile(
+                          prefix,
+                          partitionedEntity,
+                          format,
+                          tmpDir,
+                          partitionedNetwork,
+                          protocol.codebook,
+                          this.exportOptions,
+                        ).then((result) => {
+                          if (!finishedSessions.includes(prefix)) {
+                            this.emit('session-exported', session.sessionVariables.sessionId);
+                            this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                            finishedSessions.push(prefix);
                           }
-
-                          exportFile(
-                            prefix,
-                            partitionedEntity,
-                            format,
-                            tmpDir,
-                            partitionedNetwork,
-                            protocol.codebook,
-                            this.exportOptions,
-                          ).then((result) => {
-                            if (!finishedSessions.includes(prefix)) {
-                              this.emit('session-exported', session.sessionVariables.sessionId);
-                              this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                              finishedSessions.push(prefix);
-                            }
-                            resolve(result);
-                          }).catch(e => reject);
-                        } catch(error) {
-                          this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
-                          this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                          reject(error);
-                        }
-                      });
-                    });
+                          resolve(result);
+                        }).catch(e => reject(e));
+                      } catch (error) {
+                        this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
+                        this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                        reject(error);
+                      }
+                    }));
                   });
                 });
               });
