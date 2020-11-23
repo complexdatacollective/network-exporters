@@ -1,3 +1,4 @@
+/* eslint-disable global-require */
 const path = require('path');
 const JSZip = require('jszip');
 const { getEnvironment, isElectron, isCordova } = require('./Environment');
