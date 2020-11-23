@@ -1,7 +1,6 @@
 /* eslint-disable global-require */
 const { merge, isEmpty, groupBy } = require('lodash');
 const { EventEmitter } = require('eventemitter3');
-const logger = require('electron-log');
 const queue = require('async/queue');
 const {
   protocolProperty,
@@ -23,7 +22,6 @@ const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
 const { isElectron } = require('./utils/Environment');
-
 
 const defaultCSVOptions = {
   adjacencyMatrix: false,
@@ -200,7 +198,6 @@ class FileExportManager {
                     verifySessionVariables(session.sessionVariables);
                   }
                 } catch (e) {
-                  logger.log('Export error:', e);
                   failed.push(e);
                   return;
                 }

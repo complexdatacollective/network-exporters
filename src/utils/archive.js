@@ -1,6 +1,4 @@
-const fs = require('fs-extra');
 const path = require('path');
-const archiver = require('archiver');
 const JSZip = require('jszip');
 const { getEnvironment, isElectron, isCordova } = require('./Environment');
 const { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } = require('./filesystem');
@@ -24,6 +22,8 @@ const archiveOptions = {
  */
 const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
   new Promise((resolve, reject) => {
+    const fs = require('fs-extra');
+    const archiver = require('archiver');
     const output = fs.createWriteStream(destinationPath);
     const zip = archiver('zip', archiveOptions);
 
