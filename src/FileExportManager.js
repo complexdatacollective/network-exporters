@@ -263,14 +263,22 @@ class FileExportManager {
               .catch(reject));
           })
           // Then, Zip the result.
-          .then(({ exportedPaths }) => {
+          .then(({ exportedPaths, failedExports }) => {
             if (cancelled) {
               throw new UserCancelledExport();
             }
 
-            // FatalError if no sessions survived the cull
-            if (exportedPaths.length === 0) {
+            // FatalError if there are no sessions to encode and no errors
+            if (exportedPaths.length === 0 && failedExports.length === 0) {
               throw new ExportError(ErrorMessages.NothingToExport);
+            }
+
+            // If we have no files to encode (but we do have errors), finish
+            // the task here so the user can see the errors
+            if (exportedPaths.length === 0) {
+              this.emit('finished', ProgressMessages.Finished);
+              cleanUp();
+              resolveRun();
             }
 
             // Start the zip process, and attach a callback to the update
