@@ -13,7 +13,7 @@ const {
   entityPrimaryKeyProperty,
   caseProperty,
   sessionProperty,
-  remoteProtocolProperty,
+  protocolProperty,
   sessionExportTimeProperty,
   sessionFinishTimeProperty,
   sessionStartTimeProperty,
@@ -77,7 +77,7 @@ const getGraphHeader = ({ globalOptions: { useDirectedEdges } }, sessionVariable
   let metaAttributes = `nc:caseId="${sessionVariables[caseProperty]}"
   nc:sessionUUID="${sessionVariables[sessionProperty]}"
   nc:protocolName="${sessionVariables[protocolName]}"
-  nc:remoteProtocolID="${sessionVariables[remoteProtocolProperty]}"
+  nc:protocolUID="${sessionVariables[protocolProperty]}"
   nc:codebookHash="${sessionVariables[codebookHashProperty]}"
   nc:sessionExportTime="${sessionVariables[sessionExportTimeProperty]}"`;
 

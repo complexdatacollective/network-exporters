@@ -7,7 +7,7 @@ const { getFileNativePath, rename } = require('./filesystem');
 const {
   caseProperty,
   sessionProperty,
-  remoteProtocolProperty,
+  protocolProperty,
   entityAttributesProperty,
   sessionExportTimeProperty,
   codebookHashProperty,
@@ -18,7 +18,7 @@ const verifySessionVariables = (sessionVariables) => {
   if (
     !sessionVariables[caseProperty]
     || !sessionVariables[sessionProperty]
-    || !sessionVariables[remoteProtocolProperty]
+    || !sessionVariables[protocolProperty]
     || !sessionVariables[sessionExportTimeProperty]
     || !sessionVariables[codebookHashProperty]
   ) {
@@ -35,6 +35,7 @@ const escapeFilePart = part => part.replace(/\W/g, '');
 const sleep = (time = 2000) => passThrough =>
   new Promise(resolve => setTimeout(() => resolve(passThrough), time));
 
+// Utility method for use during testing.
 const randomFail = passThrough => new Promise((resolve, reject) => {
   if (Math.random() >= 0.5) {
     reject(new Error('Error happened!'));

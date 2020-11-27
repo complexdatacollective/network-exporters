@@ -87,11 +87,13 @@ class FileExportManager {
    * the run() task only fail that specific task.
    *
    * @param {*} sessions    collection of session objects
-   * @param {*} protocols   collection of protocol objects, containing all protocols
-   *                        mentioned in sessions collection.
+   * @param {*} protocols   object keyed by protocolUID (SHA of protocol.name), where each
+   *                        protocols[protocolUID] is a complete protocol object,
+   *                        including codebook. Must contain a key for every session
+   *                        protocol in the sessions collection.
    */
   exportSessions(sessions, protocols) {
-    let tmpDir; // Temporary directory location
+    let tmpDir; // will hold temporary directory location
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
@@ -180,13 +182,17 @@ class FileExportManager {
             const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
               ? Object.keys(unifiedSessions).length : sessions.length;
 
-            Object.keys(unifiedSessions).forEach((protocolUUID) => {
+            Object.keys(unifiedSessions).forEach((protocolUID) => {
               // Reject if no protocol was provided for this session
-              if (!protocols[protocolUUID]) {
-                throw new ExportError(ErrorMessages.MissingParameters);
+              if (!protocols[protocolUID]) {
+                const error = `No protocol was provided for the session. Looked for protocolUID ${protocolUID}`;
+                this.emit('error', error);
+                failed.push(error);
+                return;
+                // throw new ExportError(ErrorMessages.MissingParameters);
               }
 
-              unifiedSessions[protocolUUID].forEach((session) => {
+              unifiedSessions[protocolUID].forEach((session) => {
                 // Skip if sessions don't have required sessionVariables
                 try {
                   if (this.exportOptions.globalOptions.unifyNetworks) {
@@ -198,11 +204,12 @@ class FileExportManager {
                     verifySessionVariables(session.sessionVariables);
                   }
                 } catch (e) {
+                  console.log('caught under verify');
                   failed.push(e);
                   return;
                 }
 
-                const protocol = protocols[protocolUUID];
+                const protocol = protocols[protocolUID];
                 const prefix = getFilePrefix(
                   session,
                   protocol,

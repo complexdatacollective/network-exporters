@@ -188,8 +188,8 @@ const resequenceIds = (sessions) => {
 // We add the sessionID to each entity so that we can groupBy on it within
 // the exporter to reconstruct the sessions.
 const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
-  .reduce((sessions, protocolUUID) => {
-    const protocolSessions = sessionsByProtocol[protocolUUID]
+  .reduce((sessions, protocolUID) => {
+    const protocolSessions = sessionsByProtocol[protocolUID]
       .reduce((union, session) => ({
       // Merge node list when union option is selected
         nodes: [...union.nodes, ...session.nodes.map(node => ({
@@ -211,7 +211,7 @@ const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
       }), { nodes: [], edges: [], ego: {}, sessionVariables: {} });
     return {
       ...sessions,
-      [protocolUUID]: Array(protocolSessions),
+      [protocolUID]: Array(protocolSessions),
     };
   }, {});
 
