@@ -182,6 +182,7 @@ class FileExportManager {
             const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
               ? Object.keys(unifiedSessions).length : sessions.length;
 
+
             Object.keys(unifiedSessions).forEach((protocolUID) => {
               // Reject if no protocol was provided for this session
               if (!protocols[protocolUID]) {
@@ -189,7 +190,6 @@ class FileExportManager {
                 this.emit('error', error);
                 failed.push(error);
                 return;
-                // throw new ExportError(ErrorMessages.MissingParameters);
               }
 
               unifiedSessions[protocolUID].forEach((session) => {
@@ -204,7 +204,6 @@ class FileExportManager {
                     verifySessionVariables(session.sessionVariables);
                   }
                 } catch (e) {
-                  console.log('caught under verify');
                   failed.push(e);
                   return;
                 }
@@ -286,6 +285,8 @@ class FileExportManager {
               this.emit('finished', ProgressMessages.Finished);
               cleanUp();
               resolveRun();
+              cancelled = true;
+              return Promise.resolve();
             }
 
             // Start the zip process, and attach a callback to the update
@@ -299,6 +300,7 @@ class FileExportManager {
             if (cancelled) {
               throw new UserCancelledExport();
             }
+
             this.emit('update', ProgressMessages.Saving);
             return handlePlatformSaveDialog(zipLocation);
           })

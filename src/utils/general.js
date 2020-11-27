@@ -93,6 +93,9 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
 const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 
 const handlePlatformSaveDialog = zipLocation => new Promise((resolve, reject) => {
+  if (!zipLocation) {
+    reject();
+  }
   if (isElectron()) {
     let electron;
 
