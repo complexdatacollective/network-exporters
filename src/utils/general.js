@@ -1,5 +1,9 @@
-
+/* eslint-disable global-require */
+const { first } = require('lodash');
+const sanitizeFilename = require('sanitize-filename');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
+const { isCordova, isElectron } = require('./Environment');
+const { getFileNativePath, rename } = require('./filesystem');
 const {
   caseProperty,
   sessionProperty,
@@ -27,6 +31,17 @@ const verifySessionVariables = (sessionVariables) => {
 const getEntityAttributes = entity => (entity && entity[entityAttributesProperty]) || {};
 
 const escapeFilePart = part => part.replace(/\W/g, '');
+
+const sleep = (time = 2000) => passThrough =>
+  new Promise(resolve => setTimeout(() => resolve(passThrough), time));
+
+const randomFail = passThrough => new Promise((resolve, reject) => {
+  if (Math.random() >= 0.5) {
+    reject(new Error('Error happened!'));
+  }
+
+  resolve(passThrough);
+});
 
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
@@ -64,7 +79,67 @@ const getFileExtension = (formatterType) => {
   }
 };
 
+// Determine filename prefix based on if we are exporting a single session
+// or a unified network
+const getFilePrefix = (session, protocol, unifyNetworks) => {
+  if (unifyNetworks) {
+    return sanitizeFilename(protocol.name);
+  }
+
+  return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
+};
+
 const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
+
+const handlePlatformSaveDialog = zipLocation => new Promise((resolve, reject) => {
+  if (isElectron()) {
+    let electron;
+
+    if (typeof window !== 'undefined' && window) {
+      electron = window.require('electron').remote;
+    } else {
+      // if no window object assume we are in nodejs environment (Electron main)
+      // no remote needed
+      electron = require('electron');
+    }
+
+    const { dialog } = electron;
+    const browserWindow = first(electron.BrowserWindow.getAllWindows());
+
+    dialog.showSaveDialog(
+      browserWindow,
+      {
+        filters: [{ name: 'zip', extensions: ['zip'] }],
+        defaultPath: 'networkCanvasExport.zip',
+      },
+    )
+      .then(({ canceled, filePath }) => {
+        if (canceled) {
+          resolve();
+        }
+
+        rename(zipLocation, filePath)
+          .then(() => {
+            const { shell } = electron;
+            shell.showItemInFolder(filePath);
+            resolve();
+          })
+          .catch(reject);
+      });
+  }
+
+  if (isCordova()) {
+    getFileNativePath(zipLocation)
+      .then((nativePath) => {
+        window.plugins.socialsharing.shareWithOptions({
+          message: 'Your zipped network canvas data.', // not supported on some apps
+          subject: 'network canvas export',
+          files: [nativePath],
+          chooserTitle: 'Share zip file via', // Android only
+        }, resolve, reject);
+      });
+  }
+});
 
 module.exports = {
   escapeFilePart,
@@ -72,6 +147,10 @@ module.exports = {
   extensions,
   getEntityAttributes,
   getFileExtension,
+  getFilePrefix,
   makeFilename,
   verifySessionVariables,
+  sleep,
+  randomFail,
+  handlePlatformSaveDialog,
 };

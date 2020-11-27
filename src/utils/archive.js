@@ -1,6 +1,5 @@
-const fs = require('fs');
+/* eslint-disable global-require */
 const path = require('path');
-const archiver = require('archiver');
 const JSZip = require('jszip');
 const { getEnvironment, isElectron, isCordova } = require('./Environment');
 const { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } = require('./filesystem');
@@ -24,6 +23,8 @@ const archiveOptions = {
  */
 const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
   new Promise((resolve, reject) => {
+    const fs = require('fs-extra');
+    const archiver = require('archiver');
     const output = fs.createWriteStream(destinationPath);
     const zip = archiver('zip', archiveOptions);
 
@@ -44,7 +45,7 @@ const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
     });
 
     sourcePaths.forEach((sourcePath) => {
-      zip.append(fs.createReadStream(sourcePath), { name: path.basename(sourcePath) });
+      zip.file(sourcePath, { name: path.basename(sourcePath) });
     });
 
     zip.finalize();

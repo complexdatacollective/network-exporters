@@ -110,7 +110,7 @@ const makeTempDir = () => {
     return Promise.reject(new ExportError(ErrorMessages.NoTmpFS));
   }
 
-  return createDirectory(directoryPath);
+  return createDirectory(directoryPath).then(dir => (isCordova() ? dir.toInternalURL() : dir));
 };
 
 const userDataPath = inEnvironment((environment) => {
