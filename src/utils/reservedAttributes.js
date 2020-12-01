@@ -9,7 +9,6 @@ const caseProperty = 'caseId';
 const sessionProperty = 'sessionId';
 const protocolProperty = 'protocolUID';
 const protocolName = 'protocolName';
-const remoteProtocolProperty = 'remoteProtocolID';
 const sessionStartTimeProperty = 'sessionStart';
 const sessionFinishTimeProperty = 'sessionFinish';
 const sessionExportTimeProperty = 'sessionExported';
@@ -43,7 +42,6 @@ module.exports = {
   ncUUIDProperty,
   protocolName,
   protocolProperty,
-  remoteProtocolProperty,
   sessionExportTimeProperty,
   sessionFinishTimeProperty,
   sessionProperty,
