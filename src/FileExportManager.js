@@ -204,7 +204,6 @@ class FileExportManager {
                     verifySessionVariables(session.sessionVariables);
                   }
                 } catch (e) {
-                  console.log('caught under verify');
                   failed.push(e);
                   return;
                 }
@@ -240,9 +239,8 @@ class FileExportManager {
                           this.exportOptions,
                         ).then((result) => {
                           if (!finishedSessions.includes(prefix)) {
-
-                            // If we unified the networks, we need to iterate sessionVariables and emit
-                            // a 'session-exported' event for each sessionID
+                            // If we unified the networks, we need to iterate sessionVariables and
+                            // emit a 'session-exported' event for each sessionID
                             if (this.exportOptions.globalOptions.unifyNetworks) {
                               Object.values(session.sessionVariables)
                                 .forEach((sessionVariables) => {
