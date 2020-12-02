@@ -151,35 +151,39 @@ const partitionNetworkByType = (codebook, session, format) => {
 // Iterates sessions and adds an automatically incrementing counter to
 // allow for human readable IDs
 const resequenceIds = (sessions) => {
-  let resequencedId = 0;
-  const IDLookupMap = {}; // Create a lookup object { [oldID] -> [incrementedID] }
-  const resequencedEntities = sessions.map(session => ({
-    ...session,
-    nodes: session.nodes.map(
-      (node) => {
-        resequencedId += 1;
-        IDLookupMap[node[entityPrimaryKeyProperty]] = resequencedId;
-        return {
-          [exportIDProperty]: resequencedId,
-          ...node,
-        };
-      },
-    ),
-    edges: session.edges.map(
-      (edge) => {
-        resequencedId += 1;
-        IDLookupMap[edge[entityPrimaryKeyProperty]] = resequencedId;
-        return {
-          ...edge,
-          [ncSourceUUID]: edge[edgeSourceProperty],
-          [ncTargetUUID]: edge[edgeTargetProperty],
-          [exportIDProperty]: resequencedId,
-          from: IDLookupMap[edge[edgeSourceProperty]],
-          to: IDLookupMap[edge[edgeTargetProperty]],
-        };
-      },
-    ),
-  }));
+  const resequencedEntities = sessions.map((session) => {
+    let resequencedNodeId = 0;
+    let resequencedEdgeId = 0;
+    const IDLookupMap = {}; // Create a lookup object { [oldID] -> [incrementedID] }
+
+    return {
+      ...session,
+      nodes: session.nodes.map(
+        (node) => {
+          resequencedNodeId += 1;
+          IDLookupMap[node[entityPrimaryKeyProperty]] = resequencedNodeId;
+          return {
+            [exportIDProperty]: resequencedNodeId,
+            ...node,
+          };
+        },
+      ),
+      edges: session.edges.map(
+        (edge) => {
+          resequencedEdgeId += 1;
+          IDLookupMap[edge[entityPrimaryKeyProperty]] = resequencedEdgeId;
+          return {
+            ...edge,
+            [ncSourceUUID]: edge[edgeSourceProperty],
+            [ncTargetUUID]: edge[edgeTargetProperty],
+            [exportIDProperty]: resequencedEdgeId,
+            from: IDLookupMap[edge[edgeSourceProperty]],
+            to: IDLookupMap[edge[edgeTargetProperty]],
+          };
+        },
+      ),
+    };
+  });
 
   return resequencedEntities;
 };
