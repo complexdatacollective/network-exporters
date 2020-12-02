@@ -240,7 +240,18 @@ class FileExportManager {
                           this.exportOptions,
                         ).then((result) => {
                           if (!finishedSessions.includes(prefix)) {
-                            this.emit('session-exported', session.sessionVariables.sessionId);
+
+                            // If we unified the networks, we need to iterate sessionVariables and emit
+                            // a 'session-exported' event for each sessionID
+                            if (this.exportOptions.globalOptions.unifyNetworks) {
+                              Object.values(session.sessionVariables)
+                                .forEach((sessionVariables) => {
+                                  this.emit('session-exported', sessionVariables.sessionId);
+                                });
+                            } else {
+                              this.emit('session-exported', session.sessionVariables.sessionId);
+                            }
+
                             this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
                             finishedSessions.push(prefix);
                           }
