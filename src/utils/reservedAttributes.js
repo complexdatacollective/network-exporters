@@ -15,7 +15,8 @@ const sessionExportTimeProperty = 'sessionExported';
 const codebookHashProperty = 'codebookHash';
 
 // Export properties
-const exportIDProperty = 'id'; // property for auto incrementing ID number
+const nodeExportIDProperty = 'nodeID'; // Incrementing ID number for nodes
+const edgeExportIDProperty = 'edgeID'; // Incrementing ID number for edges
 const egoProperty = 'networkCanvasEgoUUID';
 const ncTypeProperty = 'networkCanvasType';
 const ncProtocolNameProperty = 'networkCanvasProtocolName';
@@ -32,7 +33,8 @@ module.exports = {
   egoProperty,
   entityAttributesProperty,
   entityPrimaryKeyProperty,
-  exportIDProperty, // property for auto incrementing ID number
+  nodeExportIDProperty,
+  edgeExportIDProperty,
   ncCaseProperty,
   ncProtocolNameProperty,
   ncSessionProperty,

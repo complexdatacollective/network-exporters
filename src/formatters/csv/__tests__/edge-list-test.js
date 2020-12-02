@@ -1,7 +1,7 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { entityPrimaryKeyProperty, edgeSourceProperty, edgeTargetProperty, entityAttributesProperty, exportIDProperty, egoProperty, ncUUIDProperty, ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
+import { entityPrimaryKeyProperty, edgeSourceProperty, edgeTargetProperty, entityAttributesProperty, edgeExportIDProperty, egoProperty, ncUUIDProperty, ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 import { EdgeListFormatter, asEdgeList, toCSVStream } from '../edge-list';
 
 const nodes = [
@@ -74,7 +74,7 @@ describe('toCSVStream', () => {
       {
         [entityPrimaryKeyProperty]: 123,
         [egoProperty]: 456,
-        [exportIDProperty]: 1,
+        [edgeExportIDProperty]: 1,
         [ncSourceUUID]: 1,
         [ncTargetUUID]: 2,
         [edgeSourceProperty]: 1,
@@ -87,7 +87,7 @@ describe('toCSVStream', () => {
     toCSVStream(list, writable);
     const csv = await writable.asString();
     const result = [
-      exportIDProperty,
+      edgeExportIDProperty,
       edgeSourceProperty,
       edgeTargetProperty,
       egoProperty,
