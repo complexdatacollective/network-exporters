@@ -3,7 +3,7 @@ const {
   entityAttributesProperty,
   egoProperty,
   entityPrimaryKeyProperty,
-  exportIDProperty,
+  nodeExportIDProperty,
   ncUUIDProperty,
 } = require('../../utils/reservedAttributes');
 const { processEntityVariables } = require('../network');
@@ -25,7 +25,7 @@ const asAttributeList = (network, codebook, exportOptions) => {
  */
 const attributeHeaders = (nodes) => {
   const initialHeaderSet = new Set([]);
-  initialHeaderSet.add(exportIDProperty);
+  initialHeaderSet.add(nodeExportIDProperty);
   initialHeaderSet.add(egoProperty);
   initialHeaderSet.add(entityPrimaryKeyProperty);
 
@@ -71,7 +71,7 @@ const toCSVStream = (nodes, outStream) => {
           if (
             attrName === entityPrimaryKeyProperty
             || attrName === egoProperty
-            || attrName === exportIDProperty
+            || attrName === nodeExportIDProperty
           ) {
             value = node[attrName];
           } else {

@@ -3,7 +3,7 @@ const {
   entityAttributesProperty,
   egoProperty,
   entityPrimaryKeyProperty,
-  exportIDProperty,
+  edgeExportIDProperty,
   ncSourceUUID,
   ncTargetUUID,
   ncUUIDProperty,
@@ -56,7 +56,7 @@ const asEdgeList = (network, codebook, exportOptions) => {
  */
 const attributeHeaders = (edges) => {
   const initialHeaderSet = new Set([]);
-  initialHeaderSet.add(exportIDProperty);
+  initialHeaderSet.add(edgeExportIDProperty);
   initialHeaderSet.add('from');
   initialHeaderSet.add('to');
   initialHeaderSet.add(egoProperty);
@@ -117,7 +117,7 @@ const toCSVStream = (edges, outStream) => {
           let value;
           if (
             attrName === entityPrimaryKeyProperty
-            || attrName === exportIDProperty
+            || attrName === edgeExportIDProperty
             || attrName === egoProperty
             || attrName === 'to'
             || attrName === 'from'

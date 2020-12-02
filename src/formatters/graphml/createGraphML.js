@@ -19,13 +19,14 @@ const {
   sessionStartTimeProperty,
   codebookHashProperty,
   protocolName,
-  exportIDProperty,
   ncSourceUUID,
   ncTargetUUID,
   edgeSourceProperty,
   edgeTargetProperty,
   ncTypeProperty,
   ncUUIDProperty,
+  nodeExportIDProperty,
+  edgeExportIDProperty,
 } = require('../../utils/reservedAttributes');
 
 // In a browser process, window provides a globalContext;
@@ -413,7 +414,7 @@ const generateDataElements = (
     const entityAttributes = getEntityAttributes(entity);
 
     // Set the id of the entity element to the export ID property
-    domElement.setAttribute('id', entity[exportIDProperty]);
+    domElement.setAttribute('id', type === 'node' ? entity[nodeExportIDProperty] : entity[edgeExportIDProperty]);
 
     // Create data element for entity UUID
     domElement.appendChild(
@@ -460,7 +461,6 @@ const generateDataElements = (
           return entity[entityAttributesProperty][variableCalledName];
         }
 
-        domElement.setAttribute('id', entity[exportIDProperty]);
         return 'Node';
       };
 

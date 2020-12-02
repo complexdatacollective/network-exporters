@@ -4,7 +4,8 @@ const {
   entityPrimaryKeyProperty,
   sessionProperty,
   egoProperty,
-  exportIDProperty,
+  nodeExportIDProperty,
+  edgeExportIDProperty,
   ncSourceUUID,
   ncTargetUUID,
   edgeSourceProperty,
@@ -163,7 +164,7 @@ const resequenceIds = (sessions) => {
           resequencedNodeId += 1;
           IDLookupMap[node[entityPrimaryKeyProperty]] = resequencedNodeId;
           return {
-            [exportIDProperty]: resequencedNodeId,
+            [nodeExportIDProperty]: resequencedNodeId,
             ...node,
           };
         },
@@ -176,7 +177,7 @@ const resequenceIds = (sessions) => {
             ...edge,
             [ncSourceUUID]: edge[edgeSourceProperty],
             [ncTargetUUID]: edge[edgeTargetProperty],
-            [exportIDProperty]: resequencedEdgeId,
+            [edgeExportIDProperty]: resequencedEdgeId,
             from: IDLookupMap[edge[edgeSourceProperty]],
             to: IDLookupMap[edge[edgeTargetProperty]],
           };
