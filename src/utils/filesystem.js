@@ -285,16 +285,6 @@ const copy = inEnvironment((environment) => {
       fse.copy(oldPath, newPath);
   }
 
-  if (environment === environments.CORDOVA) {
-    return (oldPath, newPath) =>
-      new Promise(async (resolve, reject) => {
-        const [parent, name] = splitUrl(newPath);
-        const toDirectory = await resolveFileSystemUrl(parent);
-        const fromDirectory = await resolveFileSystemUrl(oldPath);
-        return fromDirectory.copyTo(toDirectory, name, resolve, reject);
-      });
-  }
-
   throw new Error(`copy() not available on platform ${environment}`);
 });
 
