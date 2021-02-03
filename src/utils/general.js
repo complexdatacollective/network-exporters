@@ -3,7 +3,7 @@ const { first } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
 const { isCordova, isElectron } = require('./Environment');
-const { getFileNativePath, rename } = require('./filesystem');
+const { getFileNativePath, copy } = require('./filesystem');
 const {
   caseProperty,
   sessionProperty,
@@ -122,7 +122,7 @@ const handlePlatformSaveDialog = zipLocation => new Promise((resolve, reject) =>
           resolve();
         }
 
-        rename(zipLocation, filePath)
+        copy(zipLocation, filePath)
           .then(() => {
             const { shell } = electron;
             shell.showItemInFolder(filePath);
