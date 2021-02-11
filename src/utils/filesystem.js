@@ -277,6 +277,17 @@ const rename = inEnvironment((environment) => {
   throw new Error(`rename() not available on platform ${environment}`);
 });
 
+const copy = inEnvironment((environment) => {
+  if (environment === environments.ELECTRON) {
+    const fse = require('fs-extra');
+
+    return (oldPath, newPath) =>
+      fse.copy(oldPath, newPath);
+  }
+
+  throw new Error(`copy() not available on platform ${environment}`);
+});
+
 const removeDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
@@ -662,6 +673,7 @@ const makeTmpDirCopy = inEnvironment((environment) => {
 
 module.exports = {
   appPath,
+  copy,
   createDirectory,
   createReader,
   createWriteStream,
