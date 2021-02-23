@@ -621,7 +621,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
       yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
 
       // Add ego to graph
-      if (network.ego[sessionID]) {
+      if (network.ego[sessionID] && codebook.ego) {
         yield generateEgoElements(network.ego[sessionID]);
       }
 
@@ -646,7 +646,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     yield getGraphHeader(exportOptions, network.sessionVariables);
 
     // Add ego to graph
-    if (network.ego) {
+    if (network.ego && codebook.ego) {
       yield generateEgoElements(network.ego);
     }
 

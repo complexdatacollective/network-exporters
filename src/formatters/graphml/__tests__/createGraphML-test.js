@@ -4,14 +4,20 @@ import { DOMParser } from 'xmldom';
 import { mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2 } from '../../../../config/mockObjects';
 import graphMLGenerator from '../createGraphML';
 
+const getChildElements = (parentEl, elements) =>
+  Array.from(elements)
+    .filter(el => el.parentNode === parentEl);
+
+const buildXML = (...args) => {
+  let xmlString = '';
+  for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax, no-unused-vars, max-len
+    xmlString += chunk;
+  }
+  return (new DOMParser()).parseFromString(xmlString);
+};
+
 describe('buildGraphML', () => {
-  const buildXML = (...args) => {
-    let xmlString = '';
-    for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax, no-unused-vars, max-len
-      xmlString += chunk;
-    }
-    return (new DOMParser()).parseFromString(xmlString);
-  };
+
   const edgeType = mockCodebook.edge['mock-edge-type'].name;
   const nodeType = mockCodebook.node['mock-node-type'].name;
   const codebook = mockCodebook;
@@ -58,6 +64,43 @@ describe('buildGraphML', () => {
 
   it('adds edges', () => {
     expect(xml.getElementsByTagName('edge')).toHaveLength(1);
+  });
+
+  describe('ego', () => {
+    it('adds ego data', () => {
+      const graphData = getChildElements(
+        xml.getElementsByTagName('graph')[0],
+        xml.getElementsByTagName('data'),
+      )
+        .reduce((acc, node) => ({
+          ...acc,
+          [node.getAttribute('key')]: node.textContent,
+        }), {});
+
+      expect(graphData).toMatchObject({
+        networkCanvasUUID: 'ego-id-1',
+        'mock-uuid-1': 'Dee',
+        'mock-uuid-2': '40',
+        'mock-uuid-3': 'false',
+      });
+    });
+
+    it('omits networkCanvasUUID data element when network.codebook.ego is empty', () => {
+      const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
+      const protocolNetwork = processedNetworks['protocol-uid-1'][0];
+      const { ego, ...egolessCodebook } = codebook;
+      const egolessNetwork = { ...protocolNetwork, ego: {} };
+      const noEgoXML = buildXML(egolessNetwork, egolessCodebook, exportOptions);
+      const graphData = getChildElements(
+        noEgoXML.getElementsByTagName('graph')[0],
+        noEgoXML.getElementsByTagName('data'),
+      )
+        .reduce((acc, node) => ({
+          ...acc,
+          [node.getAttribute('key')]: node.textContent,
+        }), {});
+      expect(graphData).not.toHaveProperty('networkCanvasUUID');
+    });
   });
 
   it('infers int types', () => { // This indicates that transposition worked for nodes
