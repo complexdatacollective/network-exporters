@@ -19,15 +19,14 @@ const containsDifficultCharacters = (string) => {
     '\n', // carriage return
   ];
 
-  return difficultCharacters.some(character => string.includes(character));
+  return difficultCharacters.some((character) => string.includes(character));
 };
-
 
 /**
  * @param  {string} value a string potentially containing quotes
  * @return {string} a quote-delimited string, with internal quotation marks escaped (as '""')
  */
-const quoteValue = value => `"${value.replace(/"/g, '""')}"`;
+const quoteValue = (value) => `"${value.replace(/"/g, '""')}"`;
 
 /**
  * Returned strings are already quote-escaped as needed.

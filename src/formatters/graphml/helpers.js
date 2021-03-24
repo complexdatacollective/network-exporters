@@ -2,7 +2,7 @@ const { isNil } = require('lodash');
 const { VariableType } = require('../../utils/protocol-consts');
 const { entityAttributesProperty } = require('../../utils/reservedAttributes');
 
-const getEntityAttributes = node => (node && node[entityAttributesProperty]) || {};
+const getEntityAttributes = (node) => (node && node[entityAttributesProperty]) || {};
 
 // Gephi does not support long lines in graphML, meaning we need to "beautify" the output
 const formatXml = (xml, tab = '\t') => { // tab = optional indent value, default is tab (\t)

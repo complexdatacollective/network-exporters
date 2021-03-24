@@ -46,7 +46,7 @@ const tempDataPath = inEnvironment((environment) => {
 
 const resolveFileSystemUrl = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
-    return path => new Promise((resolve, reject) =>
+    return (path) => new Promise((resolve, reject) =>
       window.resolveLocalFileSystemURL(path, resolve, reject));
   }
 
@@ -57,7 +57,7 @@ const createDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return targetPath =>
+    return (targetPath) =>
       fse.mkdir(targetPath)
         .then(() => targetPath)
         .catch((error) => {
@@ -81,7 +81,7 @@ const createDirectory = inEnvironment((environment) => {
       const [baseDirectory, directoryToAppend] = splitUrl(targetUrl);
 
       return resolveFileSystemUrl(baseDirectory)
-        .then(directoryEntry => appendDirectory(directoryEntry, directoryToAppend));
+        .then((directoryEntry) => appendDirectory(directoryEntry, directoryToAppend));
     };
   }
 
@@ -110,7 +110,7 @@ const makeTempDir = () => {
     return Promise.reject(new ExportError(ErrorMessages.NoTmpFS));
   }
 
-  return createDirectory(directoryPath).then(dir => (isCordova() ? dir.toInternalURL() : dir));
+  return createDirectory(directoryPath).then((dir) => (isCordova() ? dir.toInternalURL() : dir));
 };
 
 const userDataPath = inEnvironment((environment) => {
@@ -136,10 +136,10 @@ const userDataPath = inEnvironment((environment) => {
 
 const getFileNativePath = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
-    return filePath => new Promise((resolve, reject) => {
+    return (filePath) => new Promise((resolve, reject) => {
       window.resolveLocalFileSystemURL(filePath, (fileEntry) => {
         resolve(fileEntry.toURL());
-      }, error => reject(error));
+      }, (error) => reject(error));
     });
   }
 
@@ -162,27 +162,26 @@ const appPath = inEnvironment((environment) => {
 
 const getFileEntry = (filename, fileSystem) => new Promise((resolve, reject) => {
   fileSystem.root.getFile(filename, { create: true, exclusive: false },
-    fileEntry => resolve(fileEntry),
-    err => reject(err));
+    (fileEntry) => resolve(fileEntry),
+    (err) => reject(err));
 });
-
 
 const getTempFileSystem = () => new Promise((resolve, reject) => {
   window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, (dirEntry) => {
     resolve(dirEntry);
-  }, error => reject(error));
+  }, (error) => reject(error));
 });
 
 const readFile = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return filename =>
+    return (filename) =>
       fse.readFile(filename, null);
   }
 
   if (environment === environments.CORDOVA) {
-    const fileReader = fileEntry =>
+    const fileReader = (fileEntry) =>
       new Promise((resolve, reject) => {
         fileEntry.file((file) => {
           const reader = new FileReader();
@@ -191,13 +190,13 @@ const readFile = inEnvironment((environment) => {
             resolve(Buffer.from(event.target.result));
           };
 
-          reader.onerror = error => reject(error);
+          reader.onerror = (error) => reject(error);
 
           reader.readAsArrayBuffer(file);
         }, reject);
       });
 
-    return filename =>
+    return (filename) =>
       resolveFileSystemUrl(filename)
         .then(fileReader);
   }
@@ -205,15 +204,15 @@ const readFile = inEnvironment((environment) => {
   throw new Error(`readFile() not available on platform ${environment}`);
 });
 
-const makeFileWriter = fileEntry =>
+const makeFileWriter = (fileEntry) =>
   new Promise((resolve, reject) => {
     fileEntry.createWriter(resolve, reject);
   });
 
-const createReader = fileEntry => new Promise((resolve, reject) => {
+const createReader = (fileEntry) => new Promise((resolve, reject) => {
   fileEntry.file(
-    file => resolve(file),
-    err => reject(err),
+    (file) => resolve(file),
+    (err) => reject(err),
   );
 });
 
@@ -235,12 +234,12 @@ const writeFile = inEnvironment((environment) => {
       const [baseDirectory, filename] = splitUrl(fileUrl);
 
       return resolveFileSystemUrl(baseDirectory)
-        .then(directoryEntry => newFile(directoryEntry, filename))
+        .then((directoryEntry) => newFile(directoryEntry, filename))
         .then(makeFileWriter)
-        .then(fileWriter =>
+        .then((fileWriter) =>
           new Promise((resolve, reject) => {
             fileWriter.onwriteend = () => resolve(fileUrl); // eslint-disable-line no-param-reassign
-            fileWriter.onerror = error => reject(error); // eslint-disable-line no-param-reassign
+            fileWriter.onerror = (error) => reject(error); // eslint-disable-line no-param-reassign
             fileWriter.write(data);
           }));
     };
@@ -265,13 +264,14 @@ const rename = inEnvironment((environment) => {
   }
 
   if (environment === environments.CORDOVA) {
-    return (oldPath, newPath) =>
-      new Promise(async (resolve, reject) => {
-        const [parent, name] = splitUrl(newPath);
-        const toDirectory = await resolveFileSystemUrl(parent);
-        const fromDirectory = await resolveFileSystemUrl(oldPath);
-        return fromDirectory.moveTo(toDirectory, name, resolve, reject);
+    return async (oldPath, newPath) => {
+      const [parent, name] = splitUrl(newPath);
+      const toDirectory = await resolveFileSystemUrl(parent);
+      const fromDirectory = await resolveFileSystemUrl(oldPath);
+      return new Promise((resolve, reject) => {
+        fromDirectory.moveTo(toDirectory, name, resolve, reject);
       });
+    };
   }
 
   throw new Error(`rename() not available on platform ${environment}`);
@@ -292,7 +292,7 @@ const removeDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return targetPath =>
+    return (targetPath) =>
       new Promise((resolve, reject) => {
         try {
           if (
@@ -308,19 +308,19 @@ const removeDirectory = inEnvironment((environment) => {
   }
 
   if (environment === environments.CORDOVA) {
-    const removeRecursively = directoryEntry =>
+    const removeRecursively = (directoryEntry) =>
       new Promise((resolve, reject) => {
         directoryEntry.removeRecursively(resolve, reject);
       });
 
     // If folder doesn't exist that's fine
-    const ignoreMissingEntry = e => (
+    const ignoreMissingEntry = (e) => (
       e.code === FileError.NOT_FOUND_ERR
         ? Promise.resolve()
         : Promise.reject(e)
     );
 
-    return targetUrl =>
+    return (targetUrl) =>
       resolveFileSystemUrl(targetUrl)
         .then(removeRecursively)
         .catch(ignoreMissingEntry);
@@ -333,7 +333,7 @@ const getNestedPaths = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const path = require('path');
 
-    return targetPath =>
+    return (targetPath) =>
       targetPath
         .split(path.sep)
         .reduce(
@@ -409,7 +409,7 @@ const writeStream = inEnvironment((environment) => {
       const [baseDirectory, filename] = splitUrl(destUrl);
       return new Promise((resolve, reject) => {
         resolveFileSystemUrl(baseDirectory)
-          .then(directoryEntry => newFile(directoryEntry, filename))
+          .then((directoryEntry) => newFile(directoryEntry, filename))
           .then(makeFileWriter)
           .then((fileWriter) => {
             let bufferedChunkBytes = new Uint8Array();
@@ -495,7 +495,7 @@ const createWriteStream = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return destination =>
+    return (destination) =>
       new Promise((resolve, reject) => {
         try {
           const ws = fse.createWriteStream(destination);
@@ -525,7 +525,7 @@ const createWriteStream = inEnvironment((environment) => {
       const [baseDirectory, filename] = splitUrl(destUrl);
       return new Promise((resolve, reject) => {
         resolveFileSystemUrl(baseDirectory)
-          .then(directoryEntry => newFile(directoryEntry, filename))
+          .then((directoryEntry) => newFile(directoryEntry, filename))
           .then(makeFileWriter)
           .then((fileWriter) => {
             let bufferedChunkBytes = new Uint8Array();
@@ -620,7 +620,7 @@ const ensurePathExists = inEnvironment((environment) => {
     return (targetPath) => {
       const relativePath = path.relative(userDataPath(), targetPath);
       const nestedPaths = getNestedPaths(relativePath)
-        .map(pathSegment => path.join(userDataPath(), pathSegment));
+        .map((pathSegment) => path.join(userDataPath(), pathSegment));
 
       return inSequence(
         nestedPaths,
@@ -630,7 +630,7 @@ const ensurePathExists = inEnvironment((environment) => {
   }
 
   if (environment === environments.CORDOVA) {
-    return targetUrl =>
+    return (targetUrl) =>
       inSequence(
         getNestedPaths(targetUrl),
         createDirectory,

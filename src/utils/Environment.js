@@ -44,7 +44,7 @@ const getEnvironment = () => {
   return environments.WEB;
 };
 
-const inEnvironment = tree =>
+const inEnvironment = (tree) =>
   (...args) =>
     tree(getEnvironment())(...args);
 

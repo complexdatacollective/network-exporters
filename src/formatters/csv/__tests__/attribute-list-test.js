@@ -19,7 +19,6 @@ const baseCSVAttributes = [
   ncUUIDProperty,
 ];
 
-
 describe('asAttributeList', () => {
   it('transforms a network to nodes', () => {
     const network = { nodes: [{ id: 1 }], edges: [] };

@@ -3,7 +3,7 @@ import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { AdjacencyMatrixFormatter, asAdjacencyMatrix } from '../matrix';
 import { ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
 
-const mockNetwork = edges => ({
+const mockNetwork = (edges) => ({
   edges,
   nodes: Object.values(edges.reduce((acc, val) => {
     acc[val[ncSourceUUID]] = ({ _uid: val[ncSourceUUID] });

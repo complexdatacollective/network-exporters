@@ -6,7 +6,7 @@ import graphMLGenerator from '../createGraphML';
 
 const getChildElements = (parentEl, elements) =>
   Array.from(elements)
-    .filter(el => el.parentNode === parentEl);
+    .filter((el) => el.parentNode === parentEl);
 
 const buildXML = (...args) => {
   let xmlString = '';
@@ -17,7 +17,6 @@ const buildXML = (...args) => {
 };
 
 describe('buildGraphML', () => {
-
   const edgeType = mockCodebook.edge['mock-edge-type'].name;
   const nodeType = mockCodebook.node['mock-node-type'].name;
   const codebook = mockCodebook;

@@ -51,7 +51,6 @@ const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
     zip.finalize();
   });
 
-
 /**
  * Write a bundled (zip) from source files
  * @param {object} filesystem filesystem to use for reading files in to zip
@@ -67,7 +66,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
     (sourcePath) => {
       const [, filename] = splitUrl(sourcePath);
       return readFile(sourcePath)
-        .then(fileContent => zip.file(filename, fileContent));
+        .then((fileContent) => zip.file(filename, fileContent));
     },
   );
 
@@ -75,7 +74,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
     Promise.all(promisedExports).then(() => {
       const [baseDirectory, filename] = splitUrl(targetFileName);
       resolveFileSystemUrl(baseDirectory)
-        .then(directoryEntry => newFile(directoryEntry, filename))
+        .then((directoryEntry) => newFile(directoryEntry, filename))
         .then(makeFileWriter)
         .then((fileWriter) => {
           zip.generateAsync({ type: 'blob' }, (update) => {
@@ -85,7 +84,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
             fileWriter.onwrite = () => { // eslint-disable-line no-param-reassign
               resolve(targetFileName);
             };
-            fileWriter.onerror = err => reject(err); // eslint-disable-line no-param-reassign
+            fileWriter.onerror = (err) => reject(err); // eslint-disable-line no-param-reassign
             fileWriter.write(blob);
           });
         });
