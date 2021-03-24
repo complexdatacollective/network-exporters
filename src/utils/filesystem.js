@@ -264,14 +264,14 @@ const rename = inEnvironment((environment) => {
   }
 
   if (environment === environments.CORDOVA) {
-    return async (oldPath, newPath) => {
-      const [parent, name] = splitUrl(newPath);
-      const toDirectory = await resolveFileSystemUrl(parent);
-      const fromDirectory = await resolveFileSystemUrl(oldPath);
-      return new Promise((resolve, reject) => {
-        fromDirectory.moveTo(toDirectory, name, resolve, reject);
+    return (oldPath, newPath) =>
+      // eslint-disable-next-line no-async-promise-executor
+      new Promise(async (resolve, reject) => {
+        const [parent, name] = splitUrl(newPath);
+        const toDirectory = await resolveFileSystemUrl(parent);
+        const fromDirectory = await resolveFileSystemUrl(oldPath);
+        return fromDirectory.moveTo(toDirectory, name, resolve, reject);
       });
-    };
   }
 
   throw new Error(`rename() not available on platform ${environment}`);
