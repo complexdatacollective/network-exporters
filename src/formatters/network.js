@@ -212,7 +212,9 @@ const unionOfNetworks = (sessionsByProtocol) => Object.keys(sessionsByProtocol)
           ...union.sessionVariables,
           [session.sessionVariables[sessionProperty]]: session.sessionVariables,
         },
-      }), { nodes: [], edges: [], ego: {}, sessionVariables: {} });
+      }), {
+        nodes: [], edges: [], ego: {}, sessionVariables: {},
+      });
     return {
       ...sessions,
       [protocolUID]: Array(protocolSessions),

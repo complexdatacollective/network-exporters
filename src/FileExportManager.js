@@ -16,7 +16,9 @@ const {
   partitionNetworkByType,
   unionOfNetworks,
 } = require('./formatters/network');
-const { verifySessionVariables, getFilePrefix, sleep, handlePlatformSaveDialog } = require('./utils/general');
+const {
+  verifySessionVariables, getFilePrefix, sleep, handlePlatformSaveDialog,
+} = require('./utils/general');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');

@@ -17,11 +17,10 @@ const splitUrl = (targetPath) => {
   return [baseDirectory, directory];
 };
 
-const inSequence = (items, apply) =>
-  items.reduce(
-    (result, item) => result.then(() => apply(item)),
-    Promise.resolve(),
-  );
+const inSequence = (items, apply) => items.reduce(
+  (result, item) => result.then(() => apply(item)),
+  Promise.resolve(),
+);
 
 const tempDataPath = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
@@ -46,8 +45,9 @@ const tempDataPath = inEnvironment((environment) => {
 
 const resolveFileSystemUrl = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
-    return (path) => new Promise((resolve, reject) =>
-      window.resolveLocalFileSystemURL(path, resolve, reject));
+    return (path) => new Promise((resolve, reject) => (
+      window.resolveLocalFileSystemURL(path, resolve, reject)
+    ));
   }
 
   throw new Error(`resolveFileSystemUrl() not available on platform ${environment}`);
@@ -57,17 +57,16 @@ const createDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (targetPath) =>
-      fse.mkdir(targetPath)
-        .then(() => targetPath)
-        .catch((error) => {
-          if (error.code !== 'EEXISTS') { return Promise.reject(error); }
-          throw error;
-        });
+    return (targetPath) => fse.mkdir(targetPath)
+      .then(() => targetPath)
+      .catch((error) => {
+        if (error.code !== 'EEXISTS') { return Promise.reject(error); }
+        throw error;
+      });
   }
 
   if (environment === environments.CORDOVA) {
-    const appendDirectory = (directoryEntry, directoryToAppend) =>
+    const appendDirectory = (directoryEntry, directoryToAppend) => (
       new Promise((resolve, reject) => {
         directoryEntry.getDirectory(
           directoryToAppend,
@@ -75,7 +74,8 @@ const createDirectory = inEnvironment((environment) => {
           resolve,
           reject,
         );
-      });
+      })
+    );
 
     return (targetUrl) => {
       const [baseDirectory, directoryToAppend] = splitUrl(targetUrl);
@@ -176,38 +176,34 @@ const readFile = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (filename) =>
-      fse.readFile(filename, null);
+    return (filename) => fse.readFile(filename, null);
   }
 
   if (environment === environments.CORDOVA) {
-    const fileReader = (fileEntry) =>
-      new Promise((resolve, reject) => {
-        fileEntry.file((file) => {
-          const reader = new FileReader();
+    const fileReader = (fileEntry) => new Promise((resolve, reject) => {
+      fileEntry.file((file) => {
+        const reader = new FileReader();
 
-          reader.onloadend = (event) => {
-            resolve(Buffer.from(event.target.result));
-          };
+        reader.onloadend = (event) => {
+          resolve(Buffer.from(event.target.result));
+        };
 
-          reader.onerror = (error) => reject(error);
+        reader.onerror = (error) => reject(error);
 
-          reader.readAsArrayBuffer(file);
-        }, reject);
-      });
+        reader.readAsArrayBuffer(file);
+      }, reject);
+    });
 
-    return (filename) =>
-      resolveFileSystemUrl(filename)
-        .then(fileReader);
+    return (filename) => resolveFileSystemUrl(filename)
+      .then(fileReader);
   }
 
   throw new Error(`readFile() not available on platform ${environment}`);
 });
 
-const makeFileWriter = (fileEntry) =>
-  new Promise((resolve, reject) => {
-    fileEntry.createWriter(resolve, reject);
-  });
+const makeFileWriter = (fileEntry) => new Promise((resolve, reject) => {
+  fileEntry.createWriter(resolve, reject);
+});
 
 const createReader = (fileEntry) => new Promise((resolve, reject) => {
   fileEntry.file(
@@ -216,10 +212,9 @@ const createReader = (fileEntry) => new Promise((resolve, reject) => {
   );
 });
 
-const newFile = (directoryEntry, filename) =>
-  new Promise((resolve, reject) => {
-    directoryEntry.getFile(filename, { create: true }, resolve, reject);
-  });
+const newFile = (directoryEntry, filename) => new Promise((resolve, reject) => {
+  directoryEntry.getFile(filename, { create: true }, resolve, reject);
+});
 
 const concatTypedArrays = (a, b) => {
   const combined = new Uint8Array(a.byteLength + b.byteLength);
@@ -236,20 +231,18 @@ const writeFile = inEnvironment((environment) => {
       return resolveFileSystemUrl(baseDirectory)
         .then((directoryEntry) => newFile(directoryEntry, filename))
         .then(makeFileWriter)
-        .then((fileWriter) =>
-          new Promise((resolve, reject) => {
-            fileWriter.onwriteend = () => resolve(fileUrl); // eslint-disable-line no-param-reassign
-            fileWriter.onerror = (error) => reject(error); // eslint-disable-line no-param-reassign
-            fileWriter.write(data);
-          }));
+        .then((fileWriter) => new Promise((resolve, reject) => {
+          fileWriter.onwriteend = () => resolve(fileUrl); // eslint-disable-line no-param-reassign
+          fileWriter.onerror = (error) => reject(error); // eslint-disable-line no-param-reassign
+          fileWriter.write(data);
+        }));
     };
   }
 
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (filePath, data) =>
-      fse.writeFile(filePath, data);
+    return (filePath, data) => fse.writeFile(filePath, data);
   }
 
   throw new Error(`writeFile() not available on platform ${environment}`);
@@ -259,19 +252,17 @@ const rename = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (oldPath, newPath) =>
-      fse.rename(oldPath, newPath);
+    return (oldPath, newPath) => fse.rename(oldPath, newPath);
   }
 
   if (environment === environments.CORDOVA) {
-    return (oldPath, newPath) =>
-      // eslint-disable-next-line no-async-promise-executor
-      new Promise(async (resolve, reject) => {
-        const [parent, name] = splitUrl(newPath);
-        const toDirectory = await resolveFileSystemUrl(parent);
-        const fromDirectory = await resolveFileSystemUrl(oldPath);
-        return fromDirectory.moveTo(toDirectory, name, resolve, reject);
-      });
+    // eslint-disable-next-line no-async-promise-executor
+    return (oldPath, newPath) => new Promise(async (resolve, reject) => {
+      const [parent, name] = splitUrl(newPath);
+      const toDirectory = await resolveFileSystemUrl(parent);
+      const fromDirectory = await resolveFileSystemUrl(oldPath);
+      return fromDirectory.moveTo(toDirectory, name, resolve, reject);
+    });
   }
 
   throw new Error(`rename() not available on platform ${environment}`);
@@ -281,8 +272,7 @@ const copy = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (oldPath, newPath) =>
-      fse.copy(oldPath, newPath);
+    return (oldPath, newPath) => fse.copy(oldPath, newPath);
   }
 
   throw new Error(`copy() not available on platform ${environment}`);
@@ -292,26 +282,24 @@ const removeDirectory = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (targetPath) =>
-      new Promise((resolve, reject) => {
-        try {
-          if (
-            !targetPath.includes(userDataPath())
+    return (targetPath) => new Promise((resolve, reject) => {
+      try {
+        if (
+          !targetPath.includes(userDataPath())
             && !targetPath.includes(tempDataPath())
-          ) { reject(new Error('Attempted to remove path outside of safe directories!')); return; }
-          fse.rmdir(targetPath, { recursive: true }, resolve);
-        } catch (error) {
-          if (error.code !== 'EEXISTS') { reject(error); }
-          throw error;
-        }
-      });
+        ) { reject(new Error('Attempted to remove path outside of safe directories!')); return; }
+        fse.rmdir(targetPath, { recursive: true }, resolve);
+      } catch (error) {
+        if (error.code !== 'EEXISTS') { reject(error); }
+        throw error;
+      }
+    });
   }
 
   if (environment === environments.CORDOVA) {
-    const removeRecursively = (directoryEntry) =>
-      new Promise((resolve, reject) => {
-        directoryEntry.removeRecursively(resolve, reject);
-      });
+    const removeRecursively = (directoryEntry) => new Promise((resolve, reject) => {
+      directoryEntry.removeRecursively(resolve, reject);
+    });
 
     // If folder doesn't exist that's fine
     const ignoreMissingEntry = (e) => (
@@ -320,10 +308,9 @@ const removeDirectory = inEnvironment((environment) => {
         : Promise.reject(e)
     );
 
-    return (targetUrl) =>
-      resolveFileSystemUrl(targetUrl)
-        .then(removeRecursively)
-        .catch(ignoreMissingEntry);
+    return (targetUrl) => resolveFileSystemUrl(targetUrl)
+      .then(removeRecursively)
+      .catch(ignoreMissingEntry);
   }
 
   throw new Error(`removeDirectory() not available on platform ${environment}`);
@@ -333,17 +320,16 @@ const getNestedPaths = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const path = require('path');
 
-    return (targetPath) =>
-      targetPath
-        .split(path.sep)
-        .reduce(
-          (memo, dir) => (
-            memo.length === 0
-              ? [dir]
-              : [...memo, path.join(memo[memo.length - 1], dir)]
-          ),
-          [],
-        );
+    return (targetPath) => targetPath
+      .split(path.sep)
+      .reduce(
+        (memo, dir) => (
+          memo.length === 0
+            ? [dir]
+            : [...memo, path.join(memo[memo.length - 1], dir)]
+        ),
+        [],
+      );
   }
 
   if (environment === environments.CORDOVA) {
@@ -375,19 +361,18 @@ const writeStream = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (destination, stream) =>
-      new Promise((resolve, reject) => {
-        try {
-          stream
-            .pipe(fse.createWriteStream(destination))
-            .on('error', reject)
-            .on('finish', () => {
-              resolve(destination);
-            });
-        } catch (error) {
-          reject(error);
-        }
-      });
+    return (destination, stream) => new Promise((resolve, reject) => {
+      try {
+        stream
+          .pipe(fse.createWriteStream(destination))
+          .on('error', reject)
+          .on('finish', () => {
+            resolve(destination);
+          });
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   if (environment === environments.CORDOVA) {
@@ -495,15 +480,14 @@ const createWriteStream = inEnvironment((environment) => {
   if (environment === environments.ELECTRON) {
     const fse = require('fs-extra');
 
-    return (destination) =>
-      new Promise((resolve, reject) => {
-        try {
-          const ws = fse.createWriteStream(destination);
-          resolve(ws);
-        } catch (error) {
-          reject(error);
-        }
-      });
+    return (destination) => new Promise((resolve, reject) => {
+      try {
+        const ws = fse.createWriteStream(destination);
+        resolve(ws);
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   if (environment === environments.CORDOVA) {
@@ -630,11 +614,10 @@ const ensurePathExists = inEnvironment((environment) => {
   }
 
   if (environment === environments.CORDOVA) {
-    return (targetUrl) =>
-      inSequence(
-        getNestedPaths(targetUrl),
-        createDirectory,
-      );
+    return (targetUrl) => inSequence(
+      getNestedPaths(targetUrl),
+      createDirectory,
+    );
   }
 
   throw new Error(`ensurePathExists() not available on platform ${environment}`);

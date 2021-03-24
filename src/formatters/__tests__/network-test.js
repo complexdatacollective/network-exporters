@@ -4,7 +4,9 @@ import {
   insertEgoIntoSessionNetworks,
 } from '../network';
 import { getEntityAttributes } from '../../utils/general';
-import { egoProperty, entityAttributesProperty, entityPrimaryKeyProperty, sessionProperty } from '../../utils/reservedAttributes';
+import {
+  egoProperty, entityAttributesProperty, entityPrimaryKeyProperty, sessionProperty,
+} from '../../utils/reservedAttributes';
 
 // todo: add resequence ID test
 const protocolID = 123;
@@ -41,12 +43,14 @@ describe('network format helpers', () => {
     });
 
     it('joins egos of two networks', () => {
-      const a = { nodes: [],
+      const a = {
+        nodes: [],
         edges: [],
         ego: { id: 1 },
         sessionVariables: { [sessionProperty]: 456 },
       };
-      const b = { nodes: [],
+      const b = {
+        nodes: [],
         edges: [],
         ego: { id: 2 },
         sessionVariables: { [sessionProperty]: 789 },

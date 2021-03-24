@@ -3,7 +3,13 @@
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
 import { AttributeListFormatter, asAttributeList, toCSVStream } from '../attribute-list';
-import { entityPrimaryKeyProperty, entityAttributesProperty, egoProperty, nodeExportIDProperty, ncUUIDProperty } from '../../../utils/reservedAttributes';
+import {
+  entityPrimaryKeyProperty,
+  entityAttributesProperty,
+  egoProperty,
+  nodeExportIDProperty,
+  ncUUIDProperty,
+} from '../../../utils/reservedAttributes';
 
 const node = {
   [egoProperty]: 123,
