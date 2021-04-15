@@ -17,6 +17,9 @@ export const mockCodebook = {
         'mock-uuid-1': { name: 'firstName', type: 'string' },
         'mock-uuid-2': { name: 'age', type: 'number' },
         'mock-uuid-3': { name: 'layout', type: 'layout' },
+        'mock-uuid-4': { name: 'boolWithValues', type: 'boolean' },
+        'mock-uuid-5': { name: 'nullBool', type: 'boolean' },
+        'mock-uuid-6': { name: 'unusedBool', type: 'boolean' },
       },
     },
   },
@@ -44,9 +47,10 @@ export const mockExportOptions = {
 
 export const mockNetwork = {
   nodes: [
-    { [entityPrimaryKeyProperty]: '1', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 } } },
-    { [entityPrimaryKeyProperty]: '2', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 0, 'mock-uuid-3': { x: 0, y: 0 } } },
-    { [entityPrimaryKeyProperty]: '3', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jumbo', 'mock-uuid-2': 50, 'mock-uuid-3': null } },
+    { [entityPrimaryKeyProperty]: '1', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': true, 'mock-uuid-5': null } },
+    { [entityPrimaryKeyProperty]: '2', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 0, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': false, 'mock-uuid-5': null } },
+    { [entityPrimaryKeyProperty]: '3', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jumbo', 'mock-uuid-2': 50, 'mock-uuid-3': null, 'mock-uuid-4': true, 'mock-uuid-5': null } },
+    { [entityPrimaryKeyProperty]: '4', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Francis', 'mock-uuid-2': 10, 'mock-uuid-3': {x: 0, y: 0 }, 'mock-uuid-4': null, 'mock-uuid-5': null } },
   ],
   edges: [
     { from: '1', to: '2', type: 'mock-edge-type' },
