@@ -19,7 +19,7 @@ const { sanitizedCellValue, csvEOL } = require('./csv');
 const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
   if (exportOptions.globalOptions.unifyNetworks) {
     // If unified networks is enabled, network.ego is an object keyed by sessionID.
-    return Object.keys(network.ego).map(sessionID => (
+    return Object.keys(network.ego).map((sessionID) => (
       processEntityVariables({
         ...network.ego[sessionID],
         ...network.sessionVariables[sessionID],
@@ -89,7 +89,7 @@ const toCSVStream = (egos, outStream) => {
   const inStream = new Readable({
     read(/* size */) {
       if (!headerWritten) {
-        this.push(`${attrNames.map(attr => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
+        this.push(`${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
         headerWritten = true;
       } else if (rowIndex < totalRows) {
         ego = egos[rowIndex] || {};

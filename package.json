@@ -9,7 +9,7 @@
   },
   "engines": {
     "node": "12.14.1",
-    "npm": "6.13.4"
+    "npm": "7.6.3"
   },
   "repository": {
     "type": "git",
@@ -22,6 +22,7 @@
   "homepage": "https://github.com/codaco/network-exporters#readme",
   "devDependencies": {
     "@babel/core": "^7.10.1",
+    "@babel/eslint-parser": "^7.13.10",
     "@babel/plugin-proposal-class-properties": "^7.7.4",
     "@babel/plugin-proposal-json-strings": "^7.7.4",
     "@babel/plugin-syntax-dynamic-import": "^7.7.4",
@@ -36,9 +37,11 @@
     "electron": "^9.3.1",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "^1.15.2",
-    "eslint": "^7.0.0",
-    "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.14.0",
+    "eslint": "^7.22.0",
+    "eslint-config-airbnb": "^18.2.1",
+    "eslint-plugin-import": "2.22.1",
+    "eslint-plugin-jsx-a11y": "6.4.1",
+    "eslint-plugin-react": "^7.20.6",
     "eventemitter3": "^4.0.4",
     "jest": "^26.0.1",
     "lodash": "^4.17.19",

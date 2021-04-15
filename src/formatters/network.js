@@ -73,20 +73,20 @@ const processEntityVariables = (entity, entityType, codebook, exportOptions) => 
 
 // Iterates a network, and adds an attribute to nodes and edges
 // that references the ego ID that nominated it
-const insertNetworkEgo = session => (
+const insertNetworkEgo = (session) => (
   {
     ...session,
-    nodes: session.nodes.map(node => (
+    nodes: session.nodes.map((node) => (
       { [egoProperty]: session.ego[entityPrimaryKeyProperty], ...node }
     )),
-    edges: session.edges.map(edge => (
+    edges: session.edges.map((edge) => (
       { [egoProperty]: session.ego[entityPrimaryKeyProperty], ...edge }
     )),
   }
 );
 
-const insertEgoIntoSessionNetworks = sessions => (
-  sessions.map(session => insertNetworkEgo(session))
+const insertEgoIntoSessionNetworks = (sessions) => (
+  sessions.map((session) => insertNetworkEgo(session))
 );
 
 /**
@@ -148,7 +148,6 @@ const partitionNetworkByType = (codebook, session, format) => {
   }
 };
 
-
 // Iterates sessions and adds an automatically incrementing counter to
 // allow for human readable IDs
 const resequenceIds = (sessions) => {
@@ -192,16 +191,16 @@ const resequenceIds = (sessions) => {
 // Result is a SINGLE session, with MULTIPLE ego and sessionVariables
 // We add the sessionID to each entity so that we can groupBy on it within
 // the exporter to reconstruct the sessions.
-const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
+const unionOfNetworks = (sessionsByProtocol) => Object.keys(sessionsByProtocol)
   .reduce((sessions, protocolUID) => {
     const protocolSessions = sessionsByProtocol[protocolUID]
       .reduce((union, session) => ({
       // Merge node list when union option is selected
-        nodes: [...union.nodes, ...session.nodes.map(node => ({
+        nodes: [...union.nodes, ...session.nodes.map((node) => ({
           ...node,
           [sessionProperty]: session.sessionVariables[sessionProperty],
         }))],
-        edges: [...union.edges, ...session.edges.map(edge => ({
+        edges: [...union.edges, ...session.edges.map((edge) => ({
           ...edge,
           [sessionProperty]: session.sessionVariables[sessionProperty],
         }))],
@@ -213,7 +212,9 @@ const unionOfNetworks = sessionsByProtocol => Object.keys(sessionsByProtocol)
           ...union.sessionVariables,
           [session.sessionVariables[sessionProperty]]: session.sessionVariables,
         },
-      }), { nodes: [], edges: [], ego: {}, sessionVariables: {} });
+      }), {
+        nodes: [], edges: [], ego: {}, sessionVariables: {},
+      });
     return {
       ...sessions,
       [protocolUID]: Array(protocolSessions),

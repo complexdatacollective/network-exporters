@@ -1,7 +1,17 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { entityPrimaryKeyProperty, edgeSourceProperty, edgeTargetProperty, entityAttributesProperty, edgeExportIDProperty, egoProperty, ncUUIDProperty, ncSourceUUID, ncTargetUUID } from '../../../utils/reservedAttributes';
+import {
+  entityPrimaryKeyProperty,
+  edgeSourceProperty,
+  edgeTargetProperty,
+  entityAttributesProperty,
+  edgeExportIDProperty,
+  egoProperty,
+  ncUUIDProperty,
+  ncSourceUUID,
+  ncTargetUUID,
+} from '../../../utils/reservedAttributes';
 import { EdgeListFormatter, asEdgeList, toCSVStream } from '../edge-list';
 
 const nodes = [
@@ -22,11 +32,15 @@ describe('asEdgeList', () => {
   it('takes a network as input', () => {
     const network = {
       nodes: [],
-      edges: [{ [entityPrimaryKeyProperty]: 456, [edgeSourceProperty]: 'nodeA', [edgeTargetProperty]: 'nodeB', type: 'type', [entityAttributesProperty]: {} }],
+      edges: [{
+        [entityPrimaryKeyProperty]: 456, [edgeSourceProperty]: 'nodeA', [edgeTargetProperty]: 'nodeB', type: 'type', [entityAttributesProperty]: {},
+      }],
       ego: { [entityPrimaryKeyProperty]: 123 },
     };
     expect(asEdgeList(network, mockCodebook, mockExportOptions)[0]).toEqual(
-      { [entityPrimaryKeyProperty]: 456, [edgeTargetProperty]: 'nodeB', [edgeSourceProperty]: 'nodeA', type: 'type', [entityAttributesProperty]: {} },
+      {
+        [entityPrimaryKeyProperty]: 456, [edgeTargetProperty]: 'nodeB', [edgeSourceProperty]: 'nodeA', type: 'type', [entityAttributesProperty]: {},
+      },
     );
   });
 
