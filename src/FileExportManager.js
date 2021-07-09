@@ -1,5 +1,6 @@
 /* eslint-disable global-require */
 const { merge, isEmpty, groupBy } = require('lodash');
+const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
 const {
@@ -38,6 +39,7 @@ const defaultExportOptions = {
   exportGraphML: true,
   exportCSV: defaultCSVOptions,
   globalOptions: {
+    exportFilename: 'networkCanvasExport',
     unifyNetworks: false,
     useDirectedEdges: false, // TODO
     useScreenLayoutCoordinates: true,
@@ -145,8 +147,8 @@ class FileExportManager {
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
         makeTempDir().then((dir) => { tmpDir = dir; })
-          // Delay for 2 seconds to give consumer UI time to render a toast
-          .then(sleep(2000))
+          // Delay for 2 seconds to give consumer UI time to render
+          .then(sleep(1000))
           // Insert a reference to the ego ID into all nodes and edges
           .then(() => {
             this.emit('update', ProgressMessages.Formatting);
@@ -302,7 +304,7 @@ class FileExportManager {
             // Start the zip process, and attach a callback to the update
             // progress event.
             this.emit('update', ProgressMessages.ZipStart);
-            return archive(exportedPaths, tmpDir, (percent) => {
+            return archive(exportedPaths, tmpDir, sanitizeFilename(this.exportOptions.globalOptions.exportFilename), (percent) => {
               this.emit('update', ProgressMessages.ZipProgress(percent));
             });
           })
@@ -312,7 +314,14 @@ class FileExportManager {
             }
 
             this.emit('update', ProgressMessages.Saving);
-            return handlePlatformSaveDialog(zipLocation);
+            return zipLocation
+          })
+          .then(sleep(1000)) // Wait before showing save to give UI time to catch up
+          .then((zipLocation) => {
+            if (cancelled) {
+              throw new UserCancelledExport();
+            }
+            return handlePlatformSaveDialog(zipLocation, sanitizeFilename(this.exportOptions.globalOptions.exportFilename));
           })
           .then(() => {
             if (cancelled) {

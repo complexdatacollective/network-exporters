@@ -101,16 +101,15 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
  * @param {object} filesystem filesystem to use for reading files in to zip
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archive = (sourcePaths, tempDir, updateCallback) => {
-  const defaultFileName = 'networkCanvasExport.zip';
+const archive = (sourcePaths, tempDir, filename, updateCallback) => {
   let writePath;
   if (isElectron()) {
-    writePath = path.join(tempDir, defaultFileName);
+    writePath = path.join(tempDir, filename);
     return archiveElectron(sourcePaths, writePath, updateCallback);
   }
 
   if (isCordova()) {
-    writePath = `${tempDir}${defaultFileName}`;
+    writePath = `${tempDir}${filename}`;
     return archiveCordova(sourcePaths, writePath, updateCallback);
   }
 
