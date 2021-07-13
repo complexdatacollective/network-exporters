@@ -21,7 +21,7 @@ const archiveOptions = {
  * @param {string[]} sourcePaths
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
+const archiveElectron = (sourcePaths, destinationPath, updateCallback, shouldContinue) =>
   new Promise((resolve, reject) => {
     const fs = require('fs-extra');
     const archiver = require('archiver');
@@ -40,6 +40,12 @@ const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
     zip.on('warning', reject);
     zip.on('error', reject);
     zip.on('progress', (progress) => {
+      // Check if the process has been cancelled by the user
+      if (!shouldContinue()) {
+        zip.abort();
+        resolve();
+      }
+
       const percent = progress.entries.processed / progress.entries.total * 100;
       updateCallback(percent);
     });
@@ -60,18 +66,21 @@ const archiveElectron = (sourcePaths, destinationPath, updateCallback) =>
  * @param {string[]} sourcePaths
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
+const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldContinue) => {
   const zip = new JSZip();
 
-  const promisedExports = sourcePaths.map(
-    (sourcePath) => {
-      const [, filename] = splitUrl(sourcePath);
-      return readFile(sourcePath)
-        .then(fileContent => zip.file(filename, fileContent));
-    },
-  );
-
   return new Promise((resolve, reject) => {
+    const promisedExports = sourcePaths.map(
+      (sourcePath) => {
+        const [, filename] = splitUrl(sourcePath);
+        return readFile(sourcePath)
+          .then((fileContent) => {
+            if (!shouldContinue()) { resolve() };
+            return zip.file(filename, fileContent)
+          });
+      },
+    );
+
     Promise.all(promisedExports).then(() => {
       const [baseDirectory, filename] = splitUrl(targetFileName);
       resolveFileSystemUrl(baseDirectory)
@@ -101,16 +110,16 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback) => {
  * @param {object} filesystem filesystem to use for reading files in to zip
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archive = (sourcePaths, tempDir, filename, updateCallback) => {
+const archive = (sourcePaths, tempDir, filename, updateCallback, shouldContinue) => {
   let writePath;
   if (isElectron()) {
     writePath = path.join(tempDir, filename);
-    return archiveElectron(sourcePaths, writePath, updateCallback);
+    return archiveElectron(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 
   if (isCordova()) {
     writePath = `${tempDir}${filename}`;
-    return archiveCordova(sourcePaths, writePath, updateCallback);
+    return archiveCordova(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 
   throw new Error(`zip archiving not available on platform ${getEnvironment()}`);

@@ -123,7 +123,11 @@ class FileExportManager {
     const cleanUp = () => {
       q.kill();
       if (tmpDir) {
-        removeDirectory(tmpDir);
+        try {
+          removeDirectory(tmpDir);
+        } catch(error) {
+          console.error('Error removing temp directory:', error);
+        }
       }
     };
 
@@ -144,11 +148,22 @@ class FileExportManager {
       const succeeded = [];
       const failed = [];
 
+      const shouldContinue = () => {
+        return !cancelled;
+      }
+
+
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
         makeTempDir().then((dir) => { tmpDir = dir; })
-          // Delay for 2 seconds to give consumer UI time to render
+          // Short delay to give consumer UI time to render
           .then(sleep(1000))
+          .then(() => {
+            if (cancelled) {
+              throw new UserCancelledExport();
+            }
+            return;
+          })
           // Insert a reference to the ego ID into all nodes and edges
           .then(() => {
             this.emit('update', ProgressMessages.Formatting);
@@ -301,12 +316,19 @@ class FileExportManager {
               return Promise.resolve();
             }
 
+
+            const emitZipProgress = (percent) => this.emit('update', ProgressMessages.ZipProgress(percent));
+
             // Start the zip process, and attach a callback to the update
             // progress event.
             this.emit('update', ProgressMessages.ZipStart);
-            return archive(exportedPaths, tmpDir, sanitizeFilename(this.exportOptions.globalOptions.exportFilename), (percent) => {
-              this.emit('update', ProgressMessages.ZipProgress(percent));
-            });
+            return archive(
+              exportedPaths,
+              tmpDir,
+              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
+              emitZipProgress,
+              shouldContinue,
+            );
           })
           .then((zipLocation) => {
             if (cancelled) {
@@ -316,7 +338,6 @@ class FileExportManager {
             this.emit('update', ProgressMessages.Saving);
             return zipLocation
           })
-          .then(sleep(1000)) // Wait before showing save to give UI time to catch up
           .then((zipLocation) => {
             if (cancelled) {
               throw new UserCancelledExport();
@@ -343,8 +364,12 @@ class FileExportManager {
       }); // End run()
 
       const abort = () => {
+        console.log('running abort!')
+        if (cancelled) {
+          console.log('already aborted. cancelling!');
+          return;
+        }
         cancelled = true;
-        cleanUp();
       };
 
       resolveExportPromise({ run, abort });
