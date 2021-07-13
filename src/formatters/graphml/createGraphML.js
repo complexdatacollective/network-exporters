@@ -48,10 +48,10 @@ const eol = '\n';
 
 // Create a serializer for reuse below.
 const serializer = new globalContext.XMLSerializer();
-const serialize = fragment => `${serializer.serializeToString(fragment)}${eol}`;
+const serialize = (fragment) => `${serializer.serializeToString(fragment)}${eol}`;
 
 // Utility function for indenting and serializing XML element
-const formatAndSerialize = element => formatXml(serialize(element));
+const formatAndSerialize = (element) => formatXml(serialize(element));
 
 // Utility sha1 function that returns hashed text
 const sha1 = (text) => {
@@ -455,7 +455,7 @@ const generateDataElements = (
     } else {
       // For nodes, add a <data> element for the label using the name property
       const entityLabel = () => {
-        const variableCalledName = findKey(codebook[type][entity.type].variables, variable => variable.name.toLowerCase() === 'name');
+        const variableCalledName = findKey(codebook[type][entity.type].variables, (variable) => variable.name.toLowerCase() === 'name');
 
         if (variableCalledName && entity[entityAttributesProperty][variableCalledName]) {
           return entity[entityAttributesProperty][variableCalledName];
@@ -540,7 +540,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
 
   const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
 
-  const generateEgoKeys = ego => generateKeyElements(
+  const generateEgoKeys = (ego) => generateKeyElements(
     xmlDoc,
     [ego],
     'ego',
@@ -549,7 +549,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     exportOptions,
   );
 
-  const generateNodeKeys = nodes => generateKeyElements(
+  const generateNodeKeys = (nodes) => generateKeyElements(
     xmlDoc,
     nodes,
     'node',
@@ -558,14 +558,14 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     exportOptions,
   );
 
-  const generateEdgeKeys = edges => generateKeyElements(
+  const generateEdgeKeys = (edges) => generateKeyElements(
     xmlDoc,
     edges,
     'edge',
     [],
     codebook,
   );
-  const generateNodeElements = nodes => generateDataElements(
+  const generateNodeElements = (nodes) => generateDataElements(
     xmlDoc,
     nodes,
     'node',
@@ -574,7 +574,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     exportOptions,
   );
 
-  const generateEdgeElements = edges => generateDataElements(
+  const generateEdgeElements = (edges) => generateDataElements(
     xmlDoc,
     edges,
     'edge',
@@ -583,7 +583,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     exportOptions,
   );
 
-  const generateEgoElements = ego => generateEgoDataElements(
+  const generateEgoElements = (ego) => generateEgoDataElements(
     xmlDoc,
     ego,
     [],

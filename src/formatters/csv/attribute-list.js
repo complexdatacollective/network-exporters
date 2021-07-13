@@ -61,7 +61,7 @@ const toCSVStream = (nodes, outStream) => {
   const inStream = new Readable({
     read(/* size */) {
       if (!headerWritten) {
-        this.push(`${attrNames.map(attr => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
+        this.push(`${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
         headerWritten = true;
       } else if (rowIndex < totalRows) {
         node = nodes[rowIndex];

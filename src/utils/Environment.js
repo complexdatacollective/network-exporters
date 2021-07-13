@@ -44,9 +44,7 @@ const getEnvironment = () => {
   return environments.WEB;
 };
 
-const inEnvironment = tree =>
-  (...args) =>
-    tree(getEnvironment())(...args);
+const inEnvironment = (tree) => (...args) => tree(getEnvironment())(...args);
 
 module.exports = {
   inEnvironment,

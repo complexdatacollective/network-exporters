@@ -2,7 +2,9 @@
 const path = require('path');
 const JSZip = require('jszip');
 const { getEnvironment, isElectron, isCordova } = require('./Environment');
-const { resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter } = require('./filesystem');
+const {
+  resolveFileSystemUrl, splitUrl, readFile, newFile, makeFileWriter,
+} = require('./filesystem');
 
 // const zlibFastestCompression = 1;
 // const zlibBestCompression = 9;
@@ -21,42 +23,44 @@ const archiveOptions = {
  * @param {string[]} sourcePaths
  * @return Returns a promise that resolves to (sourcePath, destinationPath)
  */
-const archiveElectron = (sourcePaths, destinationPath, updateCallback, shouldContinue) =>
-  new Promise((resolve, reject) => {
-    const fs = require('fs-extra');
-    const archiver = require('archiver');
-    const output = fs.createWriteStream(destinationPath);
-    const zip = archiver('zip', archiveOptions);
+const archiveElectron = (
+  sourcePaths,
+  destinationPath,
+  updateCallback,
+  shouldContinue,
+) => new Promise((resolve, reject) => {
+  const fs = require('fs-extra');
+  const archiver = require('archiver');
+  const output = fs.createWriteStream(destinationPath);
+  const zip = archiver('zip', archiveOptions);
 
-    output.on('close', () => {
-      resolve(destinationPath);
-    });
-
-    output.on('warning', reject);
-    output.on('error', reject);
-
-    zip.pipe(output);
-
-    zip.on('warning', reject);
-    zip.on('error', reject);
-    zip.on('progress', (progress) => {
-      // Check if the process has been cancelled by the user
-      if (!shouldContinue()) {
-        zip.abort();
-        resolve();
-      }
-
-      const percent = progress.entries.processed / progress.entries.total * 100;
-      updateCallback(percent);
-    });
-
-    sourcePaths.forEach((sourcePath) => {
-      zip.file(sourcePath, { name: path.basename(sourcePath) });
-    });
-
-    zip.finalize();
+  output.on('close', () => {
+    resolve(destinationPath);
   });
 
+  output.on('warning', reject);
+  output.on('error', reject);
+
+  zip.pipe(output);
+
+  zip.on('warning', reject);
+  zip.on('error', reject);
+  zip.on('progress', (progress) => {
+    // Check if the process has been cancelled by the user
+    if (!shouldContinue()) {
+      zip.abort();
+      resolve();
+    }
+    const percent = progress.entries.processed / progress.entries.total * 100;
+    updateCallback(percent);
+  });
+
+  sourcePaths.forEach((sourcePath) => {
+    zip.file(sourcePath, { name: path.basename(sourcePath) });
+  });
+
+  zip.finalize();
+});
 
 /**
  * Write a bundled (zip) from source files
@@ -84,7 +88,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldConti
     Promise.all(promisedExports).then(() => {
       const [baseDirectory, filename] = splitUrl(targetFileName);
       resolveFileSystemUrl(baseDirectory)
-        .then(directoryEntry => newFile(directoryEntry, filename))
+        .then((directoryEntry) => newFile(directoryEntry, filename))
         .then(makeFileWriter)
         .then((fileWriter) => {
           zip.generateAsync({ type: 'blob' }, (update) => {
@@ -94,7 +98,7 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldConti
             fileWriter.onwrite = () => { // eslint-disable-line no-param-reassign
               resolve(targetFileName);
             };
-            fileWriter.onerror = err => reject(err); // eslint-disable-line no-param-reassign
+            fileWriter.onerror = (err) => reject(err); // eslint-disable-line no-param-reassign
             fileWriter.write(blob);
           });
         });

@@ -17,7 +17,9 @@ const {
   partitionNetworkByType,
   unionOfNetworks,
 } = require('./formatters/network');
-const { verifySessionVariables, getFilePrefix, sleep, handlePlatformSaveDialog } = require('./utils/general');
+const {
+  verifySessionVariables, getFilePrefix, sleep, handlePlatformSaveDialog,
+} = require('./utils/general');
 const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
@@ -49,7 +51,7 @@ const defaultExportOptions = {
 };
 
 // Merge default and user-supplied options
-const getOptions = exportOptions => ({
+const getOptions = (exportOptions) => ({
   ...merge(defaultExportOptions, exportOptions),
   ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
 });
@@ -106,8 +108,8 @@ class FileExportManager {
 
     const q = queue((task, callback) => {
       task()
-        .then(result => callback(null, result))
-        .catch(error => callback(error));
+        .then((result) => callback(null, result))
+        .catch((error) => callback(error));
     }, QUEUE_CONCURRENCY);
 
     const exportFormats = [
@@ -171,9 +173,9 @@ class FileExportManager {
             return insertEgoIntoSessionNetworks(sessions);
           })
           // Resequence IDs for this export
-          .then(sessionsWithEgo => resequenceIds(sessionsWithEgo))
+          .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
           // Group sessions by protocol UUID
-          .then(sessionsWithResequencedIDs => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
+          .then((sessionsWithResequencedIDs) => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
           // Then, process the union option
           .then((sessionsByProtocol) => {
             if (cancelled) {
@@ -198,7 +200,6 @@ class FileExportManager {
             const finishedSessions = [];
             const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
               ? Object.keys(unifiedSessions).length : sessions.length;
-
 
             Object.keys(unifiedSessions).forEach((protocolUID) => {
               // Reject if no protocol was provided for this session
@@ -271,7 +272,7 @@ class FileExportManager {
                             finishedSessions.push(prefix);
                           }
                           resolve(result);
-                        }).catch(e => reject(e));
+                        }).catch((e) => reject(e));
                       } catch (error) {
                         this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
                         this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));

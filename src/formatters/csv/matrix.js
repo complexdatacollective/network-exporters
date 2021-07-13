@@ -1,4 +1,4 @@
-/* eslint-disable no-bitwise */
+/* eslint-disable no-bitwise,max-classes-per-file */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
 const { Readable } = require('stream');
 const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require('../../utils/reservedAttributes');
@@ -55,7 +55,7 @@ class AdjacencyMatrix {
     // Track only unique IDs (duplicates are discarded). The ordering here provides the ordering for
     // both header and data output.
     const nodes = network.nodes || [];
-    const uniqueNodeIds = [...new Set(nodes.map(node => node[entityPrimaryKeyProperty]))];
+    const uniqueNodeIds = [...new Set(nodes.map((node) => node[entityPrimaryKeyProperty]))];
     this.uniqueNodeIds = uniqueNodeIds;
 
     const dimension = uniqueNodeIds.length;
@@ -124,7 +124,7 @@ class AdjacencyMatrix {
     // cannot be used directly to index into arrayViews.
     let matrixIndex = 0;
 
-    const decimals = uniqueNodeIds.map(id => id);
+    const decimals = uniqueNodeIds.map((id) => id);
     const headerRowContent = `,${decimals.join(',')}${csvEOL}`;
 
     // TODO: escape headerLabels (if not already) & quote

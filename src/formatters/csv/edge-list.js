@@ -33,7 +33,7 @@ const { sanitizedCellValue, csvEOL } = require('./csv');
  */
 const asEdgeList = (network, codebook, exportOptions) => {
   const directed = exportOptions.globalOptions.useDirectedEdges;
-  const processedEdges = (network.edges || []).map(edge => processEntityVariables(edge, 'edge', codebook, exportOptions));
+  const processedEdges = (network.edges || []).map((edge) => processEntityVariables(edge, 'edge', codebook, exportOptions));
 
   // This code block duplicated the edges when directed mode was off.
   // It has been disabled pending full directed mode support:
@@ -108,7 +108,7 @@ const toCSVStream = (edges, outStream) => {
   const inStream = new Readable({
     read(/* size */) {
       if (!headerWritten) {
-        this.push(`${attrNames.map(attr => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
+        this.push(`${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`);
         headerWritten = true;
       } else if (chunkIndex < totalChunks) {
         edge = edges[chunkIndex];

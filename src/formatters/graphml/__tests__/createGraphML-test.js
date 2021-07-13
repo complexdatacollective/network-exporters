@@ -1,12 +1,13 @@
 /* eslint-env jest */
 
 import { DOMParser } from 'xmldom';
-import { mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2 } from '../../../../config/mockObjects';
+import {
+  mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
+} from '../../../../config/mockObjects';
 import graphMLGenerator from '../createGraphML';
 
-const getChildElements = (parentEl, elements) =>
-  Array.from(elements)
-    .filter(el => el.parentNode === parentEl);
+const getChildElements = (parentEl, elements) => Array.from(elements)
+  .filter((el) => el.parentNode === parentEl);
 
 const buildXML = (...args) => {
   let xmlString = '';
@@ -17,7 +18,6 @@ const buildXML = (...args) => {
 };
 
 describe('buildGraphML', () => {
-
   const edgeType = mockCodebook.edge['mock-edge-type'].name;
   const nodeType = mockCodebook.node['mock-node-type'].name;
   const codebook = mockCodebook;
@@ -49,7 +49,7 @@ describe('buildGraphML', () => {
   });
 
   it('adds nodes', () => {
-    expect(xml.getElementsByTagName('node')).toHaveLength(3);
+    expect(xml.getElementsByTagName('node')).toHaveLength(4);
   });
 
   it('adds node type', () => {
@@ -127,9 +127,31 @@ describe('buildGraphML', () => {
     const nodeSansNull = xml.getElementsByTagName('node')[0];
     const anotherSansNull = xml.getElementsByTagName('node')[1];
     const nodeWithNull = xml.getElementsByTagName('node')[2];
-    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(9);
-    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(9);
-    expect(nodeWithNull.getElementsByTagName('data').length).toEqual(5);
+    const nodeWithNullBoolean = xml.getElementsByTagName('node')[3];
+    expect(nodeSansNull.getElementsByTagName('data').length).toEqual(10);
+    expect(anotherSansNull.getElementsByTagName('data').length).toEqual(10);
+    expect(nodeWithNull.getElementsByTagName('data').length).toEqual(6);
+    expect(nodeWithNullBoolean.getElementsByTagName('data').length).toEqual(9);
+  });
+
+  it('includes keys for all used variables', () => {
+    const graphData = Array.from(xml.getElementsByTagName('key'))
+      .filter(node => node.getAttribute('for') === 'node')
+      .reduce((acc, node) => ({
+        ...acc,
+        [node.getAttribute('id')]: node.getAttribute('for'),
+      }), {});
+
+    expect(graphData).toMatchObject({
+      'mock-uuid-1': 'node',
+      'mock-uuid-2': 'node',
+      'mock-uuid-3_X': 'node',
+      'mock-uuid-3_screenSpaceY': 'node',
+      'mock-uuid-3_screenSpaceX': 'node',
+      'mock-uuid-3_Y': 'node',
+      'mock-uuid-4': 'node',
+      'mock-uuid-5': 'node',
+    });
   });
 
   describe('with directed edge option', () => {

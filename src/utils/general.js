@@ -28,15 +28,16 @@ const verifySessionVariables = (sessionVariables) => {
   return true;
 };
 
-const getEntityAttributes = entity => (entity && entity[entityAttributesProperty]) || {};
+const getEntityAttributes = (entity) => (entity && entity[entityAttributesProperty]) || {};
 
-const escapeFilePart = part => part.replace(/\W/g, '');
+const escapeFilePart = (part) => part.replace(/\W/g, '');
 
-const sleep = (time = 2000) => passThrough =>
-  new Promise(resolve => setTimeout(() => resolve(passThrough), time));
+const sleep = (time = 2000) => (passThrough) => (
+  new Promise((resolve) => setTimeout(() => resolve(passThrough), time))
+);
 
 // Utility method for use during testing.
-const randomFail = passThrough => new Promise((resolve, reject) => {
+const randomFail = (passThrough) => new Promise((resolve, reject) => {
   if (Math.random() >= 0.5) {
     reject(new Error('Error happened!'));
   }
