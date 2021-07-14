@@ -93,7 +93,7 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
 
 const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 
-const handlePlatformSaveDialog = (zipLocation) => new Promise((resolve, reject) => {
+const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve, reject) => {
   if (!zipLocation) {
     reject();
   }
@@ -115,7 +115,7 @@ const handlePlatformSaveDialog = (zipLocation) => new Promise((resolve, reject) 
       browserWindow,
       {
         filters: [{ name: 'zip', extensions: ['zip'] }],
-        defaultPath: 'networkCanvasExport.zip',
+        defaultPath: filename,
       },
     )
       .then(({ canceled, filePath }) => {

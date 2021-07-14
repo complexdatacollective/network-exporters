@@ -136,7 +136,7 @@ describe('buildGraphML', () => {
 
   it('includes keys for all used variables', () => {
     const graphData = Array.from(xml.getElementsByTagName('key'))
-      .filter(node => node.getAttribute('for') === 'node')
+      .filter((node) => node.getAttribute('for') === 'node')
       .reduce((acc, node) => ({
         ...acc,
         [node.getAttribute('id')]: node.getAttribute('for'),

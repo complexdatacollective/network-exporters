@@ -1,5 +1,6 @@
 /* eslint-disable global-require */
 const { merge, isEmpty, groupBy } = require('lodash');
+const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
 const {
@@ -40,6 +41,7 @@ const defaultExportOptions = {
   exportGraphML: true,
   exportCSV: defaultCSVOptions,
   globalOptions: {
+    exportFilename: 'networkCanvasExport',
     unifyNetworks: false,
     useDirectedEdges: false, // TODO
     useScreenLayoutCoordinates: true,
@@ -123,7 +125,12 @@ class FileExportManager {
     const cleanUp = () => {
       q.kill();
       if (tmpDir) {
-        removeDirectory(tmpDir);
+        try {
+          removeDirectory(tmpDir);
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.error('Error removing temp directory:', error);
+        }
       }
     };
 
@@ -144,11 +151,18 @@ class FileExportManager {
       const succeeded = [];
       const failed = [];
 
+      const shouldContinue = () => !cancelled;
+
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
         makeTempDir().then((dir) => { tmpDir = dir; })
-          // Delay for 2 seconds to give consumer UI time to render a toast
-          .then(sleep(2000))
+          // Short delay to give consumer UI time to render
+          .then(sleep(1000))
+          .then(() => {
+            if (cancelled) {
+              throw new UserCancelledExport();
+            }
+          })
           // Insert a reference to the ego ID into all nodes and edges
           .then(() => {
             this.emit('update', ProgressMessages.Formatting);
@@ -300,12 +314,18 @@ class FileExportManager {
               return Promise.resolve();
             }
 
+            const emitZipProgress = (percent) => this.emit('update', ProgressMessages.ZipProgress(percent));
+
             // Start the zip process, and attach a callback to the update
             // progress event.
             this.emit('update', ProgressMessages.ZipStart);
-            return archive(exportedPaths, tmpDir, (percent) => {
-              this.emit('update', ProgressMessages.ZipProgress(percent));
-            });
+            return archive(
+              exportedPaths,
+              tmpDir,
+              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
+              emitZipProgress,
+              shouldContinue,
+            );
           })
           .then((zipLocation) => {
             if (cancelled) {
@@ -313,7 +333,16 @@ class FileExportManager {
             }
 
             this.emit('update', ProgressMessages.Saving);
-            return handlePlatformSaveDialog(zipLocation);
+            return zipLocation;
+          })
+          .then((zipLocation) => {
+            if (cancelled) {
+              throw new UserCancelledExport();
+            }
+            return handlePlatformSaveDialog(
+              zipLocation,
+              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
+            );
           })
           .then(() => {
             if (cancelled) {
@@ -335,8 +364,14 @@ class FileExportManager {
       }); // End run()
 
       const abort = () => {
+        // eslint-disable-next-line no-console
+        console.info('Aborting file export.');
+        if (cancelled) {
+          // eslint-disable-next-line no-console
+          console.warn('This export already aborted. Cancelling abort!');
+          return;
+        }
         cancelled = true;
-        cleanUp();
       };
 
       resolveExportPromise({ run, abort });
