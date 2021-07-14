@@ -127,7 +127,8 @@ class FileExportManager {
       if (tmpDir) {
         try {
           removeDirectory(tmpDir);
-        } catch(error) {
+        } catch (error) {
+          // eslint-disable-next-line no-console
           console.error('Error removing temp directory:', error);
         }
       }
@@ -150,10 +151,7 @@ class FileExportManager {
       const succeeded = [];
       const failed = [];
 
-      const shouldContinue = () => {
-        return !cancelled;
-      }
-
+      const shouldContinue = () => !cancelled;
 
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
@@ -164,7 +162,6 @@ class FileExportManager {
             if (cancelled) {
               throw new UserCancelledExport();
             }
-            return;
           })
           // Insert a reference to the ego ID into all nodes and edges
           .then(() => {
@@ -317,7 +314,6 @@ class FileExportManager {
               return Promise.resolve();
             }
 
-
             const emitZipProgress = (percent) => this.emit('update', ProgressMessages.ZipProgress(percent));
 
             // Start the zip process, and attach a callback to the update
@@ -337,13 +333,16 @@ class FileExportManager {
             }
 
             this.emit('update', ProgressMessages.Saving);
-            return zipLocation
+            return zipLocation;
           })
           .then((zipLocation) => {
             if (cancelled) {
               throw new UserCancelledExport();
             }
-            return handlePlatformSaveDialog(zipLocation, sanitizeFilename(this.exportOptions.globalOptions.exportFilename));
+            return handlePlatformSaveDialog(
+              zipLocation,
+              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
+            );
           })
           .then(() => {
             if (cancelled) {
@@ -365,9 +364,11 @@ class FileExportManager {
       }); // End run()
 
       const abort = () => {
-        console.log('running abort!')
+        // eslint-disable-next-line no-console
+        console.info('Aborting file export.');
         if (cancelled) {
-          console.log('already aborted. cancelling!');
+          // eslint-disable-next-line no-console
+          console.warn('This export already aborted. Cancelling abort!');
           return;
         }
         cancelled = true;

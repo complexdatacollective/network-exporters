@@ -79,8 +79,8 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldConti
         const [, filename] = splitUrl(sourcePath);
         return readFile(sourcePath)
           .then((fileContent) => {
-            if (!shouldContinue()) { resolve() };
-            return zip.file(filename, fileContent)
+            if (!shouldContinue()) { resolve(); }
+            return zip.file(filename, fileContent);
           });
       },
     );
