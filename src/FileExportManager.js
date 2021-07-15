@@ -355,6 +355,9 @@ class FileExportManager {
 
               // Attach a value change listener to our ObservableProperty
               consideringCancel.registerListener(resolveWhenReady);
+
+              // Call test once on first run
+              resolveWhenReady(consideringCancel.value);
             });
 
             return waitWhileConsideringAbort().then(() => handlePlatformSaveDialog(
