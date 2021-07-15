@@ -349,14 +349,13 @@ class FileExportManager {
             // If the user is considering aborting, don't show the save dialog
             const waitWhileConsideringAbort = () => new Promise((resolve, reject) => {
               const resolveWhenReady = (value) => {
-                if (!shouldContinue()) {reject(); }
+                if (!shouldContinue()) { reject(); }
                 if (value === false) { resolve(); }
-              }
+              };
 
               // Attach a value change listener to our ObservableProperty
               consideringCancel.registerListener(resolveWhenReady);
             });
-
 
             return waitWhileConsideringAbort().then(() => handlePlatformSaveDialog(
               zipLocation,
@@ -395,7 +394,7 @@ class FileExportManager {
 
       const setConsideringAbort = (value) => {
         consideringCancel.value = value;
-      }
+      };
 
       resolveExportPromise({ run, abort, setConsideringAbort });
     });

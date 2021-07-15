@@ -151,7 +151,7 @@ const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve
 class ObservableValue {
   constructor(value) {
     this.valueInternal = value;
-    this.valueListener = function(val) {};
+    this.valueListener = () => {};
   }
 
   set value(val) {
