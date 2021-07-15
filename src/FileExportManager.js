@@ -362,12 +362,15 @@ class FileExportManager {
               sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
             ));
           })
-          .then(() => {
+          .then((saveCancelled) => {
             if (!shouldContinue()) {
               throw new UserCancelledExport();
             }
 
-            this.emit('finished', ProgressMessages.Finished);
+            if (!saveCancelled) {
+              this.emit('finished', ProgressMessages.Finished);
+            }
+
             cleanUp();
             resolveRun();
           })

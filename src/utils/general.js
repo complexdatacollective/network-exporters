@@ -120,7 +120,7 @@ const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve
     )
       .then(({ canceled, filePath }) => {
         if (canceled) {
-          resolve();
+          resolve(true);
         }
 
         copy(zipLocation, filePath)
