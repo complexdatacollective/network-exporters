@@ -116,13 +116,15 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldConti
  */
 const archive = (sourcePaths, tempDir, filename, updateCallback, shouldContinue) => {
   let writePath;
+  const filenameWithExtension = `${filename}.zip`;
+
   if (isElectron()) {
-    writePath = path.join(tempDir, filename);
+    writePath = path.join(tempDir, filenameWithExtension);
     return archiveElectron(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 
   if (isCordova()) {
-    writePath = `${tempDir}${filename}`;
+    writePath = `${tempDir}${filenameWithExtension}`;
     return archiveCordova(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 
