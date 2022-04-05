@@ -7,7 +7,7 @@ const {
   getAttributePropertyFromCodebook,
   formatXml,
 } = require('./helpers');
-const { VariableType } = require('../../utils/protocol-consts');
+const { VariableType } = require('../../consts/protocol-consts');
 const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -27,7 +27,7 @@ const {
   ncUUIDProperty,
   nodeExportIDProperty,
   edgeExportIDProperty,
-} = require('../../utils/reservedAttributes');
+} = require('../../consts/reservedAttributes');
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals

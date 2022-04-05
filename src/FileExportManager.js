@@ -5,7 +5,7 @@ const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
 const {
   protocolProperty,
-} = require('./utils/reservedAttributes');
+} = require('./consts/reservedAttributes');
 const {
   removeDirectory,
   makeTempDir,

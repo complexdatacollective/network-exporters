@@ -11,7 +11,7 @@ import {
   ncUUIDProperty,
   ncSourceUUID,
   ncTargetUUID,
-} from '../../../utils/reservedAttributes';
+} from '../../../consts/reservedAttributes';
 import { EdgeListFormatter, asEdgeList, toCSVStream } from '../edge-list';
 
 const nodes = [

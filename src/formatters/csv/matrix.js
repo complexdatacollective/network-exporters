@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise,max-classes-per-file */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
 const { Readable } = require('stream');
-const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require('../../utils/reservedAttributes');
+const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require('../../consts/reservedAttributes');
 const { csvEOL } = require('./csv');
 
 /**

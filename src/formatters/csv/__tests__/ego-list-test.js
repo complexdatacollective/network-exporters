@@ -15,7 +15,7 @@ import {
   protocolName,
   ncCaseProperty,
   sessionProperty,
-} from '../../../utils/reservedAttributes';
+} from '../../../consts/reservedAttributes';
 
 const ego = {
   [egoProperty]: 123,

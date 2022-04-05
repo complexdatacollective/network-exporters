@@ -11,7 +11,7 @@ const {
   entityAttributesProperty,
   sessionExportTimeProperty,
   codebookHashProperty,
-} = require('./reservedAttributes');
+} = require('../consts/reservedAttributes');
 
 // Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
 const verifySessionVariables = (sessionVariables) => {

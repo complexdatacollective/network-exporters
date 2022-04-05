@@ -5,7 +5,7 @@ const {
   entityPrimaryKeyProperty,
   nodeExportIDProperty,
   ncUUIDProperty,
-} = require('../../utils/reservedAttributes');
+} = require('../../consts/reservedAttributes');
 const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 

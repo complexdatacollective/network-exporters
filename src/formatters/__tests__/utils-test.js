@@ -1,7 +1,7 @@
 /* eslint-env jest */
 import GraphMLFormatter from '../graphml/GraphMLFormatter';
 import { mockCodebook } from '../../../config/mockObjects';
-import { entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
+import { entityPrimaryKeyProperty } from '../../consts/reservedAttributes';
 import {
   extensions,
   getFileExtension,

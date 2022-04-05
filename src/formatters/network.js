@@ -10,7 +10,7 @@ const {
   ncTargetUUID,
   edgeSourceProperty,
   edgeTargetProperty,
-} = require('../utils/reservedAttributes');
+} = require('../consts/reservedAttributes');
 const { getEntityAttributes } = require('../utils/general');
 const { getAttributePropertyFromCodebook } = require('./graphml/helpers');
 

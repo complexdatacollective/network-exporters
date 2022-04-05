@@ -1,6 +1,6 @@
 const { isNil } = require('lodash');
-const { VariableType } = require('../../utils/protocol-consts');
-const { entityAttributesProperty } = require('../../utils/reservedAttributes');
+const { VariableType } = require('../../consts/protocol-consts');
+const { entityAttributesProperty } = require('../../consts/reservedAttributes');
 
 const getEntityAttributes = (node) => (node && node[entityAttributesProperty]) || {};
 

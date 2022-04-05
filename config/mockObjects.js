@@ -1,5 +1,5 @@
 import { groupBy } from 'lodash';
-import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty, codebookHashProperty } from '../src/utils/reservedAttributes';
+import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty, codebookHashProperty } from '../src/consts/reservedAttributes';
 import { insertEgoIntoSessionNetworks, resequenceIds, unionOfNetworks } from '../src/formatters/network';
 
 export const mockCodebook = {

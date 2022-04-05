@@ -9,7 +9,7 @@ import {
   egoProperty,
   nodeExportIDProperty,
   ncUUIDProperty,
-} from '../../../utils/reservedAttributes';
+} from '../../../consts/reservedAttributes';
 
 const node = {
   [egoProperty]: 123,
