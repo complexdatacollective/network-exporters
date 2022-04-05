@@ -37,7 +37,7 @@ let globalContext;
 if (typeof window !== 'undefined' && window.DOMParser && window.XMLSerializer) {
   globalContext = window;
 } else {
-  const dom = require('xmldom');
+  const dom = require('@xmldom/xmldom');
   globalContext = {};
   globalContext.DOMParser = dom.DOMParser;
   globalContext.XMLSerializer = dom.XMLSerializer;

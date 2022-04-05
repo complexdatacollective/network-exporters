@@ -1,6 +1,6 @@
 /* eslint-disable global-require */
 /* global FileWriter, FileError, cordova */
-const uuid = require('uuid/v4');
+const uuid = require('uuid').v4;
 const { Writable } = require('stream');
 const { trimChars } = require('lodash/fp');
 const { Buffer } = require('buffer/');

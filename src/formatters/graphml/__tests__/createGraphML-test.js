@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { DOMParser } from 'xmldom';
+import { DOMParser } from '@xmldom/xmldom';
 import {
   mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
 } from '../../../../config/mockObjects';
