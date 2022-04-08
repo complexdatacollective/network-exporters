@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
+import { mockCodebook, mockExportSettings } from '../../../../config/mockObjects';
 import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from '../ego-list';
 import {
   entityPrimaryKeyProperty,
@@ -47,7 +47,7 @@ describe('asEgoAndSessionVariablesList', () => {
     expect(asEgoAndSessionVariablesList(
       network,
       mockCodebook,
-      mockExportOptions,
+      mockExportSettings,
     )).toEqual([network.ego]);
   });
 });
@@ -233,7 +233,7 @@ describe('EgoListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new EgoListFormatter({}, mockCodebook, mockExportOptions);
+    const formatter = new EgoListFormatter({}, mockCodebook, mockExportSettings);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

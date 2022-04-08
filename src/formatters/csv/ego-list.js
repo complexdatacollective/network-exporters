@@ -16,21 +16,21 @@ const {
 const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 
-const asEgoAndSessionVariablesList = (network, codebook, exportOptions) => {
-  if (exportOptions.globalOptions.unifyNetworks) {
+const asEgoAndSessionVariablesList = (network, codebook, exportSettings) => {
+  if (exportSettings.unifyNetworks) {
     // If unified networks is enabled, network.ego is an object keyed by sessionID.
     return Object.keys(network.ego).map((sessionID) => (
       processEntityVariables({
         ...network.ego[sessionID],
         ...network.sessionVariables[sessionID],
-      }, 'ego', codebook, exportOptions)
+      }, 'ego', codebook, exportSettings)
     ));
   }
 
   return [processEntityVariables({
     ...network.ego,
     ...network.sessionVariables,
-  }, 'ego', codebook, exportOptions)];
+  }, 'ego', codebook, exportSettings)];
 };
 
 /**
@@ -129,8 +129,8 @@ const toCSVStream = (egos, outStream) => {
 };
 
 class EgoListFormatter {
-  constructor(network, codebook, exportOptions) {
-    this.list = asEgoAndSessionVariablesList(network, codebook, exportOptions) || [];
+  constructor(network, codebook, exportSettings) {
+    this.list = asEgoAndSessionVariablesList(network, codebook, exportSettings) || [];
   }
 
   writeToStream(outStream) {

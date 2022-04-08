@@ -31,14 +31,15 @@ const { sanitizedCellValue, csvEOL } = require('./csv');
  *                            default: false
  * @return {Array} the edges list
  */
-const asEdgeList = (network, codebook, exportOptions) => {
-  const directed = exportOptions.globalOptions.useDirectedEdges;
-  const processedEdges = (network.edges || []).map((edge) => processEntityVariables(edge, 'edge', codebook, exportOptions));
+const asEdgeList = (network, codebook, exportSettings) => {
+  const { useDirectedEdges } = exportSettings;
+
+  const processedEdges = (network.edges || []).map((edge) => processEntityVariables(edge, 'edge', codebook, exportSettings));
 
   // This code block duplicated the edges when directed mode was off.
   // It has been disabled pending full directed mode support:
   // https://netcanvasteam.slack.com/archives/G1Q262J3Y/p1589465079036100
-  if (directed === false) {
+  if (useDirectedEdges === false) {
     // // this may change if we have support for directed vs undirected edges in NC
     // return (processedEdges || []).reduce((arr, edge) => (
     //   arr.concat(
@@ -148,8 +149,8 @@ const toCSVStream = (edges, outStream) => {
 };
 
 class EdgeListFormatter {
-  constructor(data, codebook, exportOptions) {
-    this.list = asEdgeList(data, codebook, exportOptions);
+  constructor(data, codebook, exportSettings) {
+    this.list = asEdgeList(data, codebook, exportSettings);
   }
 
   writeToStream(outStream) {

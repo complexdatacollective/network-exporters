@@ -16,58 +16,61 @@ const { getAttributePropertyFromCodebook } = require('./graphml/helpers');
 
 // Determine which variables to include
 // TODO: Move this to CSV formatter, since only CSV uses it
-const processEntityVariables = (entity, entityType, codebook, exportOptions) => ({
+const processEntityVariables = (entity, entityType, codebook, exportSettings) => ({
   ...entity,
-  attributes: Object.keys(getEntityAttributes(entity)).reduce(
-    (accumulatedAttributes, attributeUUID) => {
-      const attributeName = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'name');
-      const attributeType = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'type');
-      const attributeData = getEntityAttributes(entity)[attributeUUID];
+  attributes: Object.keys(getEntityAttributes(entity)).reduce((
+    accumulatedAttributes,
+    attributeUUID,
+  ) => {
+    const attributeName = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'name');
+    const attributeType = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'type');
+    const attributeData = getEntityAttributes(entity)[attributeUUID];
 
-      if (attributeType === 'categorical') {
-        const attributeOptions = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'options') || [];
-        const optionData = attributeOptions.reduce((accumulatedOptions, optionName) => (
-          {
-            ...accumulatedOptions,
-            [`${attributeName}_${optionName.value}`]: !!attributeData && includes(attributeData, optionName.value),
-          }
-        ), {});
-        return { ...accumulatedAttributes, ...optionData };
-      }
+    if (attributeType === 'categorical') {
+      const attributeOptions = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'options') || [];
+      const optionData = attributeOptions.reduce((accumulatedOptions, optionName) => (
+        {
+          ...accumulatedOptions,
+          [`${attributeName}_${optionName.value}`]: !!attributeData && includes(attributeData, optionName.value),
+        }
+      ), {});
+      return { ...accumulatedAttributes, ...optionData };
+    }
 
-      if (attributeType === 'layout') {
-        // Process screenLayoutCoordinates option
-        const xCoord = attributeData && attributeData.x;
-        const yCoord = attributeData && attributeData.y;
+    if (attributeType === 'layout') {
+      // Process screenLayoutCoordinates option
+      const xCoord = attributeData && attributeData.x;
+      const yCoord = attributeData && attributeData.y;
 
-        const {
-          screenLayoutWidth,
-          screenLayoutHeight,
-          useScreenLayoutCoordinates,
-        } = exportOptions.globalOptions;
+      const {
+        screenLayoutWidth,
+        screenLayoutHeight,
+        useScreenLayoutCoordinates,
+      } = exportSettings;
 
-        const screenSpaceAttributes = attributeData && useScreenLayoutCoordinates
-          ? {
-            [`${attributeName}_screenSpaceX`]: (attributeData.x * screenLayoutWidth).toFixed(2),
-            [`${attributeName}_screenSpaceY`]: ((1.0 - attributeData.y) * screenLayoutHeight).toFixed(2),
-          }
-          : {};
+      const screenSpaceAttributes = attributeData && useScreenLayoutCoordinates
+        ? {
+          [`${attributeName}_screenSpaceX`]: (attributeData.x * screenLayoutWidth).toFixed(2),
+          [`${attributeName}_screenSpaceY`]: ((1.0 - attributeData.y) * screenLayoutHeight).toFixed(2),
+        }
+        : {};
 
-        const layoutAttrs = {
-          [`${attributeName}_x`]: xCoord,
-          [`${attributeName}_y`]: yCoord,
-          ...screenSpaceAttributes,
-        };
+      const layoutAttrs = {
+        [`${attributeName}_x`]: xCoord,
+        [`${attributeName}_y`]: yCoord,
+        ...screenSpaceAttributes,
+      };
 
-        return { ...accumulatedAttributes, ...layoutAttrs };
-      }
+      return { ...accumulatedAttributes, ...layoutAttrs };
+    }
 
-      if (attributeName) {
-        return { ...accumulatedAttributes, [attributeName]: attributeData };
-      }
+    if (attributeName) {
+      return { ...accumulatedAttributes, [attributeName]: attributeData };
+    }
 
-      return { ...accumulatedAttributes, [attributeUUID]: attributeData };
-    }, {},
+    return { ...accumulatedAttributes, [attributeUUID]: attributeData };
+  },
+  {},
   ),
 });
 

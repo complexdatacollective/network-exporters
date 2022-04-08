@@ -72,7 +72,7 @@ const getXmlHeader = () => `<?xml version="1.0" encoding="UTF-8"?>
 
 // Use exportOptions.defaultOptions from FileExportManager to determine parameters
 // for edge direction.
-const getGraphHeader = ({ globalOptions: { useDirectedEdges } }, sessionVariables) => {
+const getGraphHeader = ({ useDirectedEdges }, sessionVariables) => {
   const edgeDefault = useDirectedEdges ? 'directed' : 'undirected';
 
   let metaAttributes = `nc:caseId="${sessionVariables[caseProperty]}"
@@ -100,8 +100,8 @@ const getGraphFooter = `</graph>${eol}`;
 const xmlFooter = `</graphml>${eol}`;
 
 // Use exportOptions from FileExportManager to determine XML properties
-const setUpXml = (exportOptions, sessionVariables) => {
-  const graphMLOutline = `${getXmlHeader()}${getGraphHeader(exportOptions, sessionVariables)}${xmlFooter}`;
+const setUpXml = (exportSettings, sessionVariables) => {
+  const graphMLOutline = `${getXmlHeader()}${getGraphHeader(exportSettings, sessionVariables)}${xmlFooter}`;
   return (new globalContext.DOMParser()).parseFromString(graphMLOutline, 'text/xml');
 };
 
@@ -114,7 +114,7 @@ const generateKeyElements = (
   type, // 'node' or 'edge' or 'ego'
   excludeList, // Variables to exlcude
   codebook, // codebook
-  exportOptions = {},
+  useScreenLayoutCoordinates,
 ) => {
   let fragment = '';
 
@@ -237,7 +237,7 @@ const generateKeyElements = (
             keyElement2.setAttribute('for', keyTarget);
             fragment += `${serialize(keyElement2)}`;
 
-            if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+            if (useScreenLayoutCoordinates) {
               // Create a third element to model the <key> for
               // the screen space Y value
               const keyElement3 = document.createElement('key');
@@ -316,16 +316,22 @@ const generateKeyElements = (
  * @param {Object} ego - an object representing ego
  * @param {Array} excludeList - Attributes to exclude lookup of in codebook
  * @param {Object} codebook - Copy of codebook
- * @param {Object} exportOptions - Export options object
+ * @param {Object} exportSettings - Export options object
  */
 const generateEgoDataElements = (
   document,
   ego,
   excludeList,
   codebook,
-  exportOptions,
+  exportSettings,
 ) => {
   let fragment = '';
+
+  const {
+    screenLayoutWidth,
+    screenLayoutHeight,
+    useScreenLayoutCoordinates,
+  } = exportSettings;
 
   // Get the ego's attributes for looping over later
   const entityAttributes = getEntityAttributes(ego);
@@ -375,9 +381,7 @@ const generateEgoDataElements = (
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_X` }, xCoord));
         fragment += formatAndSerialize(createDataElement(document, { key: `${key}_Y` }, yCoord));
 
-        const { screenLayoutWidth, screenLayoutHeight } = exportOptions.globalOptions;
-
-        if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+        if (useScreenLayoutCoordinates) {
           const screenSpaceXCoord = (xCoord * screenLayoutWidth).toFixed(2);
           const screenSpaceYCoord = ((1.0 - yCoord) * screenLayoutHeight).toFixed(2);
           fragment += formatAndSerialize(createDataElement(document, { key: `${key}_screenSpaceX` }, screenSpaceXCoord));
@@ -401,9 +405,15 @@ const generateDataElements = (
   type, // Element type to be created. "node" or "egde"
   excludeList, // Attributes to exclude lookup of in codebook
   codebook, // Copy of codebook
-  exportOptions, // Export options object
+  exportSettings, // Export options object
 ) => {
   let fragment = '';
+
+  const {
+    useScreenLayoutCoordinates,
+    screenLayoutWidth,
+    screenLayoutHeight,
+  } = exportSettings;
 
   // Iterate entities
   entities.forEach((entity) => {
@@ -502,9 +512,7 @@ const generateDataElements = (
           domElement.appendChild(createDataElement(document, { key: `${key}_X` }, xCoord));
           domElement.appendChild(createDataElement(document, { key: `${key}_Y` }, yCoord));
 
-          const { screenLayoutWidth, screenLayoutHeight } = exportOptions.globalOptions;
-
-          if (exportOptions.globalOptions.useScreenLayoutCoordinates) {
+          if (useScreenLayoutCoordinates) {
             const screenSpaceXCoord = (xCoord * screenLayoutWidth).toFixed(2);
             const screenSpaceYCoord = ((1.0 - yCoord) * screenLayoutHeight).toFixed(2);
             domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceX` }, screenSpaceXCoord));
@@ -533,12 +541,12 @@ const generateDataElements = (
  * Generator function to supply XML content in chunks to both string and stream producers
  * @param {*} network
  * @param {*} codebook
- * @param {*} exportOptions
+ * @param {*} exportSettings
  */
-function* graphMLGenerator(network, codebook, exportOptions) {
+function* graphMLGenerator(network, codebook, exportSettings) {
   yield getXmlHeader();
 
-  const xmlDoc = setUpXml(exportOptions, network.sessionVariables);
+  const xmlDoc = setUpXml(exportSettings, network.sessionVariables);
 
   const generateEgoKeys = (ego) => generateKeyElements(
     xmlDoc,
@@ -546,7 +554,6 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     'ego',
     [],
     codebook,
-    exportOptions,
   );
 
   const generateNodeKeys = (nodes) => generateKeyElements(
@@ -555,7 +562,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     'node',
     [],
     codebook,
-    exportOptions,
+    exportSettings.useScreenLayoutCoordinates,
   );
 
   const generateEdgeKeys = (edges) => generateKeyElements(
@@ -571,7 +578,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     'node',
     [],
     codebook,
-    exportOptions,
+    exportSettings,
   );
 
   const generateEdgeElements = (edges) => generateDataElements(
@@ -580,7 +587,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     'edge',
     [],
     codebook,
-    exportOptions,
+    exportSettings,
   );
 
   const generateEgoElements = (ego) => generateEgoDataElements(
@@ -588,11 +595,11 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     ego,
     [],
     codebook,
-    exportOptions,
+    exportSettings,
   );
 
   // generate keys for ego
-  if (exportOptions.globalOptions.unifyNetworks) {
+  if (exportSettings.unifyNetworks) {
     const combinedEgos = Object.values(network.ego).reduce((union, ego) => ({
       [entityAttributesProperty]:
           { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] },
@@ -609,7 +616,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
   // generate keys for edges
   yield generateEdgeKeys(network.edges);
 
-  if (exportOptions.globalOptions.unifyNetworks) {
+  if (exportSettings.unifyNetworks) {
     // Group nodes and edges by sessionProperty, and then map.
     const groupedNetwork = {
       nodes: groupBy(network.nodes, sessionProperty),
@@ -618,7 +625,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
 
     /* eslint-disable no-restricted-syntax, guard-for-in, no-unused-vars */
     for (const sessionID in network.sessionVariables) {
-      yield getGraphHeader(exportOptions, network.sessionVariables[sessionID]);
+      yield getGraphHeader(exportSettings, network.sessionVariables[sessionID]);
 
       // Add ego to graph
       if (network.ego[sessionID] && codebook.ego) {
@@ -643,7 +650,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
     /* eslint-enable no-restricted-syntax, guard-for-in */
   } else {
     // TODO: reduce duplication with this code
-    yield getGraphHeader(exportOptions, network.sessionVariables);
+    yield getGraphHeader(exportSettings, network.sessionVariables);
 
     // Add ego to graph
     if (network.ego && codebook.ego) {

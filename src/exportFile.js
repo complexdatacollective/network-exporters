@@ -1,13 +1,11 @@
-/* eslint-disable global-require */
-const { createWriteStream } = require('./utils/filesystem');
+const path = require('path');
 const {
-  getFileExtension,
+  getFileExtensionForType,
   makeFilename,
 } = require('./utils/general');
-const { isCordova, isElectron } = require('./utils/Environment');
 const getFormatterClass = require('./utils/getFormatterClass');
-const { ExportError } = require('./errors/ExportError');
-const UserCancelledExport = require('./errors/UserCancelledExport');
+const { ExportError } = require('./consts/errors/ExportError');
+const UserCancelledExport = require('./consts/errors/UserCancelledExport');
 
 /**
  * Export a single (CSV or graphml) file
@@ -19,6 +17,7 @@ const UserCancelledExport = require('./errors/UserCancelledExport');
  * @param  {Object}   codebook needed to lookup variable types for encoding
  * @param  {Object}   exportOptions the new style configuration object, passed through to
  *                    the formatter
+ * @param  {Object}   filesystemInterface an object with methods for interacting with the
  * @return {Promise}  promise decorated with an `abort` method.
  *                    If aborted, the returned promise will never settle.
  * @private
@@ -30,10 +29,11 @@ const exportFile = (
   outDir,
   network,
   codebook,
-  exportOptions,
+  filesystemInterface,
+  exportSettings,
 ) => {
   const Formatter = getFormatterClass(exportFormat);
-  const extension = getFileExtension(exportFormat);
+  const extension = getFileExtensionForType(exportFormat);
 
   if (!Formatter || !extension) {
     return Promise.reject(new ExportError(`Invalid export format ${exportFormat}`));
@@ -50,20 +50,13 @@ const exportFile = (
   const pathPromise = new Promise((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
-    let filePath;
 
-    const formatter = new Formatter(network, codebook, exportOptions);
+    const formatter = new Formatter(network, codebook, exportSettings);
+
     const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
-    if (isElectron()) {
-      const path = require('path');
-      filePath = path.join(outDir, outputName);
-    }
+    const filePath = path.join(outDir, outputName);
 
-    if (isCordova()) {
-      filePath = `${outDir}${outputName}`;
-    }
-
-    createWriteStream(filePath)
+    filesystemInterface.createWriteStream(filePath)
       .then((ws) => {
         writeStream = ws;
         writeStream.on('finish', () => {

@@ -1,15 +1,12 @@
 /* eslint-disable global-require */
-const { merge, isEmpty, groupBy } = require('lodash');
-const sanitizeFilename = require('sanitize-filename');
+const { isEmpty, groupBy } = require('lodash');
+const uuid = require('uuid').v4;
+const path = require('path');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
 const {
   protocolProperty,
 } = require('./consts/reservedAttributes');
-const {
-  removeDirectory,
-  makeTempDir,
-} = require('./utils/filesystem');
 const exportFile = require('./exportFile');
 const {
   insertEgoIntoSessionNetworks,
@@ -20,58 +17,27 @@ const {
 const {
   verifySessionVariables,
   getFilePrefix,
-  sleep,
-  handlePlatformSaveDialog,
-  ObservableValue,
+  getFileExportListFromFormats,
+  getOptions,
 } = require('./utils/general');
-const archive = require('./utils/archive');
-const { ExportError, ErrorMessages } = require('./errors/ExportError');
-const ProgressMessages = require('./ProgressMessages');
-const UserCancelledExport = require('./errors/UserCancelledExport');
-const { isElectron } = require('./utils/Environment');
+const { ExportError, ErrorMessages } = require('./consts/errors/ExportError');
+const ProgressMessages = require('./consts/ProgressMessages');
+const UserCancelledExport = require('./consts/errors/UserCancelledExport');
+const DefaultFSInterface = require('./filesystem/abstractFs');
+const { FORMATS } = require('./consts/export-consts');
 
-const defaultCSVOptions = {
-  adjacencyMatrix: false,
-  attributeList: true,
-  edgeList: true,
-  // If CSV is exported, egoAttributeList must be exported
-  // as it contains session info so this option is generally
-  // ignored and only relevant for *only* exporting
-  // egoAttributeList
-  egoAttributeList: true,
-};
-
-const defaultExportOptions = {
-  exportGraphML: true,
-  exportCSV: defaultCSVOptions,
-  globalOptions: {
-    exportFilename: 'networkCanvasExport',
-    unifyNetworks: false,
-    useDirectedEdges: false, // TODO
-    useScreenLayoutCoordinates: true,
-    screenLayoutHeight: 1080,
-    screenLayoutWidth: 1920,
-  },
-};
-
-// Merge default and user-supplied options
-const getOptions = (exportOptions) => ({
-  ...merge(defaultExportOptions, exportOptions),
-  ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
-});
 
 /**
  * Interface for all data exports
  */
 class FileExportManager {
-  constructor(exportOptions = {}) {
-    this.exportOptions = getOptions(exportOptions);
-    this.events = new EventEmitter();
+  constructor() {
+    this.eventEmitter = new EventEmitter();
   }
 
   on = (...args) => {
-    this.events.on(...args);
-  }
+    this.eventEmitter.on(...args);
+  };
 
   emit(event, payload) {
     if (!event) {
@@ -80,12 +46,12 @@ class FileExportManager {
       return;
     }
 
-    this.events.emit(event, payload);
+    this.eventEmitter.emit(event, payload);
   }
 
   removeAllListeners = () => {
-    this.events.removeAllListeners();
-  }
+    this.eventEmitter.removeAllListeners();
+  };
 
   /**
    * Main export method. Returns a promise that resolves an to an object
@@ -100,37 +66,45 @@ class FileExportManager {
    *                        including codebook. Must contain a key for every session
    *                        protocol in the sessions collection.
    */
-  exportSessions(sessions, protocols) {
-    let tmpDir; // will hold temporary directory location
+  exportSessions(
+    sessions,
+    protocols,
+    fsInterface = DefaultFSInterface,
+    formats = [FORMATS.graphml],
+    userSettings = {},
+  ) {
+    const settings = getOptions(userSettings);
+
+    const tempDirectoryName = `temp-export-${uuid()}`;
+    const tempDirectoryPath = path.join(settings.tempDataPath, tempDirectoryName);
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
     // https://caolan.github.io/async/v3/docs.html#queue
 
-    // Set concurrency to conservative values for now, based on platform
-    const QUEUE_CONCURRENCY = isElectron() ? 50 : 1;
-
     const q = queue((task, callback) => {
       task()
         .then((result) => callback(null, result))
         .catch((error) => callback(error));
-    }, QUEUE_CONCURRENCY);
+    }, settings.queueConcurrency);
 
-    const exportFormats = [
-      ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-      ...(this.exportOptions.exportCSV ? ['ego'] : []),
-      ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
-      ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
-      ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
-    ];
+    // Returns an array containing each file type that needs to be created.
+    const exportFormats = getFileExportListFromFormats(
+      formats,
+      settings.csvIncludeAdjacencyMatrix,
+      settings.csvIncludeAttributeList,
+      settings.csvIncludeEdgeList,
+    );
 
     // Cleanup function called by abort method, after fatal errors, and after
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
-      if (tmpDir) {
+      if (
+        fsInterface.directoryExists(tempDirectoryPath)
+      ) {
         try {
-          removeDirectory(tmpDir);
+          fsInterface.deleteDirectory(tempDirectoryPath);
         } catch (error) {
           // eslint-disable-next-line no-console
           console.error('Error removing temp directory:', error);
@@ -150,20 +124,15 @@ class FileExportManager {
 
     // Will resolve with an object containing run() and abort() methods
     return new Promise((resolveExportPromise) => {
-      // State variables for this export
       let cancelled = false;
-      const succeeded = [];
-      const failed = [];
-
-      const consideringCancel = new ObservableValue(false);
+      const completedExports = [];
+      const failedExports = [];
 
       const shouldContinue = () => !cancelled;
 
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
-        makeTempDir().then((dir) => { tmpDir = dir; })
-          // Short delay to give consumer UI time to render
-          .then(sleep(1000))
+        fsInterface.createDirectory(tempDirectoryPath)
           .then(() => {
             if (!shouldContinue()) {
               throw new UserCancelledExport();
@@ -176,7 +145,7 @@ class FileExportManager {
             return insertEgoIntoSessionNetworks(sessions);
           })
           // Resequence IDs for this export
-          .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
+          .then(resequenceIds)
           // Group sessions by protocol UUID
           .then((sessionsWithResequencedIDs) => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
           // Then, process the union option
@@ -185,7 +154,7 @@ class FileExportManager {
               throw new UserCancelledExport();
             }
 
-            if (!this.exportOptions.globalOptions.unifyNetworks) {
+            if (!settings.unifyNetworks) {
               return sessionsByProtocol;
             }
 
@@ -197,26 +166,29 @@ class FileExportManager {
               throw new UserCancelledExport();
             }
 
-            const promisedExports = [];
-
             // Create an array of promises representing each session in each export format
             const finishedSessions = [];
-            const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
+
+            // Create a variable representing the total work to be done, so we can report progress
+            const sessionExportTotal = settings.unifyNetworks
               ? Object.keys(unifiedSessions).length : sessions.length;
+
+            // Array to contain all export work to be done
+            const promisedExports = [];
 
             Object.keys(unifiedSessions).forEach((protocolUID) => {
               // Reject if no protocol was provided for this session
               if (!protocols[protocolUID]) {
                 const error = `No protocol was provided for the session. Looked for protocolUID ${protocolUID}`;
                 this.emit('error', error);
-                failed.push(error);
+                failedExports.push(error);
                 return;
               }
 
               unifiedSessions[protocolUID].forEach((session) => {
                 // Skip if sessions don't have required sessionVariables
                 try {
-                  if (this.exportOptions.globalOptions.unifyNetworks) {
+                  if (settings.unifyNetworks) {
                     Object.values(session.sessionVariables)
                       .forEach((sessionVariables) => {
                         verifySessionVariables(sessionVariables);
@@ -225,7 +197,7 @@ class FileExportManager {
                     verifySessionVariables(session.sessionVariables);
                   }
                 } catch (e) {
-                  failed.push(e);
+                  failedExports.push(e);
                   return;
                 }
 
@@ -233,17 +205,17 @@ class FileExportManager {
                 const prefix = getFilePrefix(
                   session,
                   protocol,
-                  this.exportOptions.globalOptions.unifyNetworks,
+                  settings.unifyNetworks,
                 );
 
                 // Returns promise resolving to filePath for each format exported
-                exportFormats.forEach((format) => {
+                exportFormats.forEach((exportFormat) => {
                   // Partitioning the network based on node and edge type so we can create
                   // an individual export file for each type
                   const partitionedNetworks = partitionNetworkByType(
                     protocol.codebook,
                     session,
-                    format,
+                    exportFormat,
                   );
 
                   partitionedNetworks.forEach((partitionedNetwork) => {
@@ -253,16 +225,17 @@ class FileExportManager {
                         exportFile(
                           prefix,
                           partitionedEntity,
-                          format,
-                          tmpDir,
+                          exportFormat,
+                          tempDirectoryPath,
                           partitionedNetwork,
                           protocol.codebook,
-                          this.exportOptions,
+                          fsInterface,
+                          settings,
                         ).then((result) => {
                           if (!finishedSessions.includes(prefix)) {
                             // If we unified the networks, we need to iterate sessionVariables and
                             // emit a 'session-exported' event for each sessionID
-                            if (this.exportOptions.globalOptions.unifyNetworks) {
+                            if (settings.unifyNetworks) {
                               Object.values(session.sessionVariables)
                                 .forEach((sessionVariables) => {
                                   this.emit('session-exported', sessionVariables.sessionId);
@@ -289,30 +262,30 @@ class FileExportManager {
 
             q.push(promisedExports, (err, result) => {
               if (err) {
-                failed.push(err);
+                failedExports.push(err);
                 return;
               }
-              succeeded.push(result);
+              completedExports.push(result);
             });
 
-            return new Promise((resolve, reject) => q.drain()
-              .then(() => resolve({ exportedPaths: succeeded, failedExports: failed }))
-              .catch(reject));
+            return new Promise((resolve, reject) => {
+              q.drain().then(resolve).catch(reject);
+            });
           })
-          // Then, Zip the result.
-          .then(({ exportedPaths, failedExports }) => {
+          // Then, return the paths to the exported files
+          .then(() => {
             if (!shouldContinue()) {
               throw new UserCancelledExport();
             }
 
             // FatalError if there are no sessions to encode and no errors
-            if (exportedPaths.length === 0 && failedExports.length === 0) {
+            if (completedExports.length === 0 && failedExports.length === 0) {
               throw new ExportError(ErrorMessages.NothingToExport);
             }
 
             // If we have no files to encode (but we do have errors), finish
             // the task here so the user can see the errors
-            if (exportedPaths.length === 0) {
+            if (completedExports.length === 0) {
               this.emit('finished', ProgressMessages.Finished);
               cleanUp();
               resolveRun();
@@ -320,62 +293,8 @@ class FileExportManager {
               return Promise.resolve();
             }
 
-            const emitZipProgress = (percent) => this.emit('update', ProgressMessages.ZipProgress(percent));
-
-            // Start the zip process, and attach a callback to the update
-            // progress event.
-            this.emit('update', ProgressMessages.ZipStart);
-            return archive(
-              exportedPaths,
-              tmpDir,
-              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
-              emitZipProgress,
-              shouldContinue,
-            );
-          })
-          .then((zipLocation) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            this.emit('update', ProgressMessages.Saving);
-            return zipLocation;
-          })
-          .then((zipLocation) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            // If the user is considering aborting, don't show the save dialog
-            const waitWhileConsideringAbort = () => new Promise((resolve, reject) => {
-              const resolveWhenReady = (value) => {
-                if (!shouldContinue()) { reject(); }
-                if (value === false) { resolve(); }
-              };
-
-              // Attach a value change listener to our ObservableProperty
-              consideringCancel.registerListener(resolveWhenReady);
-
-              // Call test once on first run
-              resolveWhenReady(consideringCancel.value);
-            });
-
-            return waitWhileConsideringAbort().then(() => handlePlatformSaveDialog(
-              zipLocation,
-              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
-            ));
-          })
-          .then((saveCancelled) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            if (!saveCancelled) {
-              this.emit('finished', ProgressMessages.Finished);
-            }
-
             cleanUp();
-            resolveRun();
+            return resolveRun(completedExports);
           })
           .catch((err) => {
             cleanUp();
@@ -398,11 +317,7 @@ class FileExportManager {
         cancelled = true;
       };
 
-      const setConsideringAbort = (value) => {
-        consideringCancel.value = value;
-      };
-
-      resolveExportPromise({ run, abort, setConsideringAbort });
+      resolveExportPromise({ run, abort });
     });
   }
 }

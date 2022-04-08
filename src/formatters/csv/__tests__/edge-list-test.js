@@ -1,6 +1,6 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
+import { mockCodebook, mockExportSettings } from '../../../../config/mockObjects';
 import {
   entityPrimaryKeyProperty,
   edgeSourceProperty,
@@ -21,11 +21,8 @@ const nodes = [
 ];
 
 const listFromEdges = (edges, directed = false) => asEdgeList({ edges, nodes }, mockCodebook, {
-  ...mockExportOptions,
-  globalOptions: {
-    ...mockExportOptions.globalOptions,
-    useDirectedEdges: directed,
-  },
+  ...mockExportSettings,
+  useDirectedEdges: directed,
 });
 
 describe('asEdgeList', () => {
@@ -37,7 +34,7 @@ describe('asEdgeList', () => {
       }],
       ego: { [entityPrimaryKeyProperty]: 123 },
     };
-    expect(asEdgeList(network, mockCodebook, mockExportOptions)[0]).toEqual(
+    expect(asEdgeList(network, mockCodebook, mockExportSettings)[0]).toEqual(
       {
         [entityPrimaryKeyProperty]: 456, [edgeTargetProperty]: 'nodeB', [edgeSourceProperty]: 'nodeA', type: 'type', [entityAttributesProperty]: {},
       },
@@ -129,7 +126,7 @@ describe('EdgeListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new EdgeListFormatter({}, mockCodebook, mockExportOptions);
+    const formatter = new EdgeListFormatter({}, mockCodebook, mockExportSettings);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

@@ -1,5 +1,17 @@
 import { groupBy } from 'lodash';
-import { caseProperty, sessionStartTimeProperty, sessionFinishTimeProperty, sessionExportTimeProperty, protocolName, entityPrimaryKeyProperty, entityAttributesProperty, protocolProperty, sessionProperty, codebookHashProperty } from '../src/consts/reservedAttributes';
+import { DEFAULT_EXPORT_OPTIONS } from '../src/consts/export-consts';
+import {
+  caseProperty,
+  sessionStartTimeProperty,
+  sessionFinishTimeProperty,
+  sessionExportTimeProperty,
+  protocolName,
+  entityPrimaryKeyProperty,
+  entityAttributesProperty,
+  protocolProperty,
+  sessionProperty,
+  codebookHashProperty,
+} from '../src/consts/reservedAttributes';
 import { insertEgoIntoSessionNetworks, resequenceIds, unionOfNetworks } from '../src/formatters/network';
 
 export const mockCodebook = {
@@ -33,17 +45,7 @@ export const mockCodebook = {
   },
 };
 
-export const mockExportOptions = {
-  exportGraphML: true,
-  exportCSV: true,
-  globalOptions: {
-    unifyNetworks: false,
-    useDirectedEdges: false,
-    useScreenLayoutCoordinates: true,
-    screenLayoutHeight: 1080,
-    screenLayoutWidth: 1920,
-  },
-};
+export const mockExportSettings = DEFAULT_EXPORT_OPTIONS;
 
 export const mockNetwork = {
   nodes: [

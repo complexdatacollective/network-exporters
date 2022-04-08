@@ -11,6 +11,15 @@ import {
 // todo: add resequence ID test
 const protocolID = 123;
 
+// Utility method for use during testing.
+const randomFail = (passThrough) => new Promise((resolve, reject) => {
+  if (Math.random() >= 0.5) {
+    reject(new Error('Error happened!'));
+  }
+
+  resolve(passThrough);
+});
+
 describe('network format helpers', () => {
   describe('unionOfNetworks', () => {
     it('joins nodes of two networks', () => {

@@ -9,10 +9,10 @@ class GraphMLFormatter {
    * @param {Object} codebook - the codebook for this network.
    * @param {Object} exportOptions - global export options object from FileExportManager.
    */
-  constructor(network, codebook, exportOptions) {
+  constructor(network, codebook, exportSettings) {
     this.network = network;
     this.codebook = codebook;
-    this.exportOptions = exportOptions;
+    this.exportSettings = exportSettings;
   }
 
   streamToString = (stream) => {
@@ -22,7 +22,7 @@ class GraphMLFormatter {
       stream.on('error', reject);
       stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     });
-  }
+  };
 
   /**
    * A method allowing writing the file to a string. Used for tests.
@@ -31,7 +31,7 @@ class GraphMLFormatter {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.exportOptions,
+      this.exportSettings,
     );
 
     const inStream = new Readable({
@@ -56,7 +56,7 @@ class GraphMLFormatter {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.exportOptions,
+      this.exportSettings,
     );
     const inStream = new Readable({
       read(/* size */) {

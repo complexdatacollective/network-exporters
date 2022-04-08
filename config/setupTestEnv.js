@@ -5,11 +5,8 @@
 const http = require('http');
 const https = require('https');
 const enzyme = require('enzyme');
-const Adapter = require('enzyme-adapter-react-16');
 const url = require('url');
 const Writable = require('stream').Writable;
-
-enzyme.configure({ adapter: new Adapter() });
 
 /**
  * @return {Stream.Writable} a writable stream, with an `asString()` method added for convenience

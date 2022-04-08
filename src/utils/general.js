@@ -1,9 +1,6 @@
-/* eslint-disable global-require */
-const { first } = require('lodash');
+const { merge } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
-const { ExportError, ErrorMessages } = require('../errors/ExportError');
-const { isCordova, isElectron } = require('./Environment');
-const { getFileNativePath, copy } = require('./filesystem');
+const { ExportError, ErrorMessages } = require('../consts/errors/ExportError');
 const {
   caseProperty,
   sessionProperty,
@@ -12,6 +9,7 @@ const {
   sessionExportTimeProperty,
   codebookHashProperty,
 } = require('../consts/reservedAttributes');
+const { EXTENSIONS, DEFAULT_EXPORT_OPTIONS, FORMATS } = require('../consts/export-consts');
 
 // Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
 const verifySessionVariables = (sessionVariables) => {
@@ -33,17 +31,10 @@ const getEntityAttributes = (entity) => (entity && entity[entityAttributesProper
 const escapeFilePart = (part) => part.replace(/\W/g, '');
 
 const sleep = (time = 2000) => (passThrough) => (
-  new Promise((resolve) => setTimeout(() => resolve(passThrough), time))
+  new Promise((resolve) => {
+    setTimeout(() => resolve(passThrough), time);
+  })
 );
-
-// Utility method for use during testing.
-const randomFail = (passThrough) => new Promise((resolve, reject) => {
-  if (Math.random() >= 0.5) {
-    reject(new Error('Error happened!'));
-  }
-
-  resolve(passThrough);
-});
 
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
@@ -57,25 +48,20 @@ const makeFilename = (prefix, entityType, exportFormat, extension) => {
   return `${name}${extension}`;
 };
 
-const extensions = {
-  graphml: '.graphml',
-  csv: '.csv',
-};
-
 /**
  * Provide the appropriate file extension for the export type
  * @param  {string} formatterType one of the `format`s
  * @return {string}
  */
-const getFileExtension = (formatterType) => {
+const getFileExtensionForType = (formatterType) => {
   switch (formatterType) {
     case 'graphml':
-      return extensions.graphml;
+      return EXTENSIONS.graphml;
     case 'adjacencyMatrix':
     case 'edgeList':
     case 'attributeList':
     case 'ego':
-      return extensions.csv;
+      return EXTENSIONS.csv;
     default:
       return null;
   }
@@ -91,94 +77,52 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
   return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
 };
 
-const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
+const inSequence = (items, apply) => items.reduce(
+  (result, item) => result.then(() => apply(item)),
+  Promise.resolve(),
+);
 
-const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve, reject) => {
-  if (!zipLocation) {
-    reject();
-  }
-  if (isElectron()) {
-    let electron;
+const concatTypedArrays = (a, b) => {
+  const combined = new Uint8Array(a.byteLength + b.byteLength);
+  combined.set(a);
+  combined.set(b, a.length);
+  return combined;
+};
 
-    if (typeof window !== 'undefined' && window) {
-      electron = window.require('electron').remote;
-    } else {
-      // if no window object assume we are in nodejs environment (Electron main)
-      // no remote needed
-      electron = require('electron');
-    }
-
-    const { dialog } = electron;
-    const browserWindow = first(electron.BrowserWindow.getAllWindows());
-
-    dialog.showSaveDialog(
-      browserWindow,
-      {
-        filters: [{ name: 'zip', extensions: ['zip'] }],
-        defaultPath: filename,
-      },
-    )
-      .then(({ canceled, filePath }) => {
-        if (canceled) {
-          resolve(true);
-        }
-
-        copy(zipLocation, filePath)
-          .then(() => {
-            const { shell } = electron;
-            shell.showItemInFolder(filePath);
-            resolve();
-          })
-          .catch(reject);
-      });
+const getFileExportListFromFormats = (
+  formats,
+  csvIncludeAdjacencyMatrix,
+  csvIncludeAttributeList,
+  csvIncludeEdgeList,
+) => {
+  if (!formats) {
+    return [];
   }
 
-  if (isCordova()) {
-    getFileNativePath(zipLocation)
-      .then((nativePath) => {
-        window.plugins.socialsharing.shareWithOptions({
-          message: 'Your zipped network canvas data.', // not supported on some apps
-          subject: 'network canvas export',
-          files: [nativePath],
-          chooserTitle: 'Share zip file via', // Android only
-        }, resolve, reject);
-      });
-  }
-});
+  return [
+    ...(formats.includes(FORMATS.graphml) ? ['graphml'] : []),
+    ...(formats.includes(FORMATS.csv) ? [
+      'ego',
+      ...(csvIncludeAdjacencyMatrix ? ['adjacencyMatrix'] : []),
+      ...(csvIncludeAttributeList ? ['attributeList'] : []),
+      ...(csvIncludeEdgeList ? ['edgeList'] : []),
+    ] : []),
+  ];
+};
 
-// The idea behind this is to allow for an event listener to be attached to
-// an object property which fires when it changes.
-class ObservableValue {
-  constructor(value) {
-    this.valueInternal = value;
-    this.valueListener = () => {};
-  }
-
-  set value(val) {
-    this.valueInternal = val;
-    this.valueListener(val);
-  }
-
-  get value() {
-    return this.valueInternal;
-  }
-
-  registerListener(listener) {
-    this.valueListener = listener;
-  }
-}
+// Merge default and user-supplied options
+const getOptions = (exportOptions) => merge(DEFAULT_EXPORT_OPTIONS, exportOptions);
 
 module.exports = {
+  getOptions,
+  getFileExportListFromFormats,
+  concatTypedArrays,
+  inSequence,
   escapeFilePart,
-  extensionPattern,
-  extensions,
   getEntityAttributes,
-  getFileExtension,
+  getFileExtensionForType,
   getFilePrefix,
   makeFilename,
   verifySessionVariables,
   sleep,
-  randomFail,
-  handlePlatformSaveDialog,
-  ObservableValue,
 };

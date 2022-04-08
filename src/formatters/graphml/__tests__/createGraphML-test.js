@@ -2,7 +2,7 @@
 
 import { DOMParser } from '@xmldom/xmldom';
 import {
-  mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
+  mockExportSettings, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
 } from '../../../../config/mockObjects';
 import graphMLGenerator from '../createGraphML';
 
@@ -25,10 +25,7 @@ describe('buildGraphML', () => {
   let xml;
 
   beforeEach(() => {
-    exportOptions = {
-      ...mockExportOptions,
-      exportGraphML: true,
-    };
+    exportOptions = mockExportSettings;
 
     const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
     const protocolNetwork = processedNetworks['protocol-uid-1'][0];
@@ -161,9 +158,7 @@ describe('buildGraphML', () => {
 
       xml = buildXML(protocolNetwork, codebook, {
         ...exportOptions,
-        globalOptions: {
-          useDirectedEdges: true,
-        },
+        useDirectedEdges: true,
       });
     });
 
@@ -179,9 +174,7 @@ describe('buildGraphML', () => {
 
       xml = buildXML(protocolNetwork, codebook, {
         ...exportOptions,
-        globalOptions: {
-          unifyNetworks: true,
-        },
+        unifyNetworks: true,
       });
     });
 
