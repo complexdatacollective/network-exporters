@@ -18,14 +18,14 @@ const {
   verifySessionVariables,
   getFilePrefix,
   getFileExportListFromFormats,
-  getOptions,
+  makeOptions,
+  makeFormats,
 } = require('./utils/general');
 const { ExportError, ErrorMessages } = require('./consts/errors/ExportError');
 const ProgressMessages = require('./consts/ProgressMessages');
 const UserCancelledExport = require('./consts/errors/UserCancelledExport');
-const DefaultFSInterface = require('./filesystem/abstractFs');
-const { FORMATS } = require('./consts/export-consts');
-
+const MockFSInterface = require('./filesystem/abstractFs');
+const { SUPPORTED_FORMATS } = require('./consts/export-consts');
 
 /**
  * Interface for all data exports
@@ -33,6 +33,10 @@ const { FORMATS } = require('./consts/export-consts');
 class FileExportManager {
   constructor() {
     this.eventEmitter = new EventEmitter();
+  }
+
+  static getSupportedFormats() {
+    return SUPPORTED_FORMATS;
   }
 
   on = (...args) => {
@@ -69,40 +73,41 @@ class FileExportManager {
   exportSessions(
     sessions,
     protocols,
-    fsInterface = DefaultFSInterface,
-    formats = [FORMATS.graphml],
-    userSettings = {},
+    fsInterface = MockFSInterface,
+    userFormats = ['graphml'],
+    userOptions = {},
   ) {
-    const settings = getOptions(userSettings);
+    // Merge user supplied options with defaults
+    const options = makeOptions(userOptions);
+    const formats = makeFormats(userFormats);
 
     const tempDirectoryName = `temp-export-${uuid()}`;
-    const tempDirectoryPath = path.join(settings.tempDataPath, tempDirectoryName);
+    const tempDirectoryPath = path.join(options.tempDataPath, tempDirectoryName);
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
     // https://caolan.github.io/async/v3/docs.html#queue
-
+    // TODO: refactor this to use web workers
     const q = queue((task, callback) => {
       task()
         .then((result) => callback(null, result))
         .catch((error) => callback(error));
-    }, settings.queueConcurrency);
+    }, options.queueConcurrency);
 
     // Returns an array containing each file type that needs to be created.
     const exportFormats = getFileExportListFromFormats(
       formats,
-      settings.csvIncludeAdjacencyMatrix,
-      settings.csvIncludeAttributeList,
-      settings.csvIncludeEdgeList,
+      options.csvIncludeAdjacencyMatrix,
+      options.csvIncludeAttributeList,
+      options.csvIncludeEdgeList,
     );
 
     // Cleanup function called by abort method, after fatal errors, and after
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
-      if (
-        fsInterface.directoryExists(tempDirectoryPath)
-      ) {
+
+      if (fsInterface.directoryExists(tempDirectoryPath)) {
         try {
           fsInterface.deleteDirectory(tempDirectoryPath);
         } catch (error) {
@@ -154,7 +159,7 @@ class FileExportManager {
               throw new UserCancelledExport();
             }
 
-            if (!settings.unifyNetworks) {
+            if (!options.unifyNetworks) {
               return sessionsByProtocol;
             }
 
@@ -170,7 +175,7 @@ class FileExportManager {
             const finishedSessions = [];
 
             // Create a variable representing the total work to be done, so we can report progress
-            const sessionExportTotal = settings.unifyNetworks
+            const sessionExportTotal = options.unifyNetworks
               ? Object.keys(unifiedSessions).length : sessions.length;
 
             // Array to contain all export work to be done
@@ -188,7 +193,7 @@ class FileExportManager {
               unifiedSessions[protocolUID].forEach((session) => {
                 // Skip if sessions don't have required sessionVariables
                 try {
-                  if (settings.unifyNetworks) {
+                  if (options.unifyNetworks) {
                     Object.values(session.sessionVariables)
                       .forEach((sessionVariables) => {
                         verifySessionVariables(sessionVariables);
@@ -205,7 +210,7 @@ class FileExportManager {
                 const prefix = getFilePrefix(
                   session,
                   protocol,
-                  settings.unifyNetworks,
+                  options.unifyNetworks,
                 );
 
                 // Returns promise resolving to filePath for each format exported
@@ -230,12 +235,12 @@ class FileExportManager {
                           partitionedNetwork,
                           protocol.codebook,
                           fsInterface,
-                          settings,
+                          options,
                         ).then((result) => {
                           if (!finishedSessions.includes(prefix)) {
                             // If we unified the networks, we need to iterate sessionVariables and
                             // emit a 'session-exported' event for each sessionID
-                            if (settings.unifyNetworks) {
+                            if (options.unifyNetworks) {
                               Object.values(session.sessionVariables)
                                 .forEach((sessionVariables) => {
                                   this.emit('session-exported', sessionVariables.sessionId);

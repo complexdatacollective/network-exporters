@@ -15,6 +15,7 @@ class ExportError extends Error {
 const ErrorMessages = {
   NoTmpFS: 'Couldn\'t create a temporary directory for the export.',
   EmptyFilelist: 'Empty filelist',
+  InvalidFormat: 'Invalid format',
   FilelistNotSingular: 'Multiple files must be uploaded separately',
   InvalidContainerFile: 'Invalid file',
   InvalidContainerFileExtension: 'File must have a ".netcanvas" extension',

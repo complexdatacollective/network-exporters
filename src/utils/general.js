@@ -1,5 +1,5 @@
-const { merge } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
+const { isEmpty, has } = require('lodash');
 const { ExportError, ErrorMessages } = require('../consts/errors/ExportError');
 const {
   caseProperty,
@@ -9,7 +9,7 @@ const {
   sessionExportTimeProperty,
   codebookHashProperty,
 } = require('../consts/reservedAttributes');
-const { EXTENSIONS, DEFAULT_EXPORT_OPTIONS, FORMATS } = require('../consts/export-consts');
+const { DEFAULT_EXPORT_OPTIONS, SUPPORTED_FORMATS } = require('../consts/export-consts');
 
 // Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
 const verifySessionVariables = (sessionVariables) => {
@@ -28,15 +28,9 @@ const verifySessionVariables = (sessionVariables) => {
 
 const getEntityAttributes = (entity) => (entity && entity[entityAttributesProperty]) || {};
 
-const escapeFilePart = (part) => part.replace(/\W/g, '');
-
-const sleep = (time = 2000) => (passThrough) => (
-  new Promise((resolve) => {
-    setTimeout(() => resolve(passThrough), time);
-  })
-);
-
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
+  const escapeFilePart = (part) => part.replace(/\W/g, '');
+
   let name = prefix;
   if (extension !== `.${exportFormat}`) {
     name += name ? '_' : '';
@@ -56,12 +50,12 @@ const makeFilename = (prefix, entityType, exportFormat, extension) => {
 const getFileExtensionForType = (formatterType) => {
   switch (formatterType) {
     case 'graphml':
-      return EXTENSIONS.graphml;
+      return SUPPORTED_FORMATS.graphml.extension;
     case 'adjacencyMatrix':
     case 'edgeList':
     case 'attributeList':
     case 'ego':
-      return EXTENSIONS.csv;
+      return SUPPORTED_FORMATS.csv.extension;
     default:
       return null;
   }
@@ -77,11 +71,6 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
   return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
 };
 
-const inSequence = (items, apply) => items.reduce(
-  (result, item) => result.then(() => apply(item)),
-  Promise.resolve(),
-);
-
 const concatTypedArrays = (a, b) => {
   const combined = new Uint8Array(a.byteLength + b.byteLength);
   combined.set(a);
@@ -91,38 +80,160 @@ const concatTypedArrays = (a, b) => {
 
 const getFileExportListFromFormats = (
   formats,
-  csvIncludeAdjacencyMatrix,
-  csvIncludeAttributeList,
-  csvIncludeEdgeList,
 ) => {
-  if (!formats) {
+  if (!formats || isEmpty(formats)) {
     return [];
   }
 
-  return [
-    ...(formats.includes(FORMATS.graphml) ? ['graphml'] : []),
-    ...(formats.includes(FORMATS.csv) ? [
-      'ego',
-      ...(csvIncludeAdjacencyMatrix ? ['adjacencyMatrix'] : []),
-      ...(csvIncludeAttributeList ? ['attributeList'] : []),
-      ...(csvIncludeEdgeList ? ['edgeList'] : []),
-    ] : []),
-  ];
+  const formatNames = Object.keys(formats);
+  // Throw an error if any format isn't supported
+  const supportedFormats = Object.keys(SUPPORTED_FORMATS);
+  formatNames.every((format) => supportedFormats.includes(format));
+
+  const fileExportList = [];
+
+  if (formatNames.includes('graphml')) {
+    fileExportList.push('graphml');
+  }
+
+  if (formatNames.includes('csv')) {
+    fileExportList.push('ego');
+
+    if (formats.csv.includeAdjacencyMatrix) {
+      fileExportList.push('adjacencyMatrix');
+    }
+    if (formats.csv.includeEdgeList) {
+      fileExportList.push('edgeList');
+    }
+    if (formats.csv.includeAttributeList) {
+      fileExportList.push('attributeList');
+    }
+  }
+
+  return fileExportList;
+};
+
+const validateUserOptionType = (optionName, optionValue) => {
+  const optionType = typeof DEFAULT_EXPORT_OPTIONS[optionName];
+  // eslint-disable-next-line valid-typeof
+  if (optionType !== typeof optionValue) {
+    return false;
+  }
+
+  return true;
 };
 
 // Merge default and user-supplied options
-const getOptions = (exportOptions) => merge(DEFAULT_EXPORT_OPTIONS, exportOptions);
+const makeOptions = (userOptions) => {
+  const userOptionsKeys = Object.keys(userOptions);
+
+  return DEFAULT_EXPORT_OPTIONS.reduce((acc, optionName) => {
+    if (userOptionsKeys.includes(optionName)) {
+      if (!validateUserOptionType(optionName, userOptions[optionName])) {
+        // eslint-disable-next-line no-console
+        console.warn(`Option ${optionName} is not the correct type. Ignoring.`);
+        return {
+          ...acc,
+          [optionName]: DEFAULT_EXPORT_OPTIONS[optionName],
+        };
+      }
+
+      return {
+        ...acc,
+        [optionName]: userOptions[optionName],
+      };
+    }
+
+    return {
+      ...acc,
+      [optionName]: DEFAULT_EXPORT_OPTIONS[optionName],
+    };
+  }, {});
+};
+
+const validateUserFormatOptionType = (format, optionName, optionValue) => {
+  const optionType = typeof SUPPORTED_FORMATS[format].options[optionName];
+  console.log('validgin', format, optionName, optionValue, optionType);
+  // eslint-disable-next-line valid-typeof
+  if (optionType !== typeof optionValue) {
+    return false;
+  }
+
+  return true;
+};
+
+const makeFormats = (userFormats) => {
+  // User can provide an array of formats, which will use the default
+  // options.
+  if (Array.isArray(userFormats)) {
+    return userFormats.reduce((acc, format) => {
+      if (!Object.keys(SUPPORTED_FORMATS).includes(format)) {
+        throw new ExportError(ErrorMessages.InvalidFormat, format);
+      }
+
+      return {
+        ...acc,
+        [format]: Object.keys(SUPPORTED_FORMATS[format].options).reduce((acc2, option) => ({
+          ...acc2,
+          [option]: SUPPORTED_FORMATS[format].options[option],
+        }), {}),
+      };
+    }, {});
+  }
+
+  // User can provide an object, with options specified for each format.
+  // In this case merge the user-supplied options with the default options.
+  if (typeof userFormats === 'object') {
+    return Object.keys(userFormats).reduce((acc, format) => {
+      // Check if the format is supported
+      if (!Object.keys(SUPPORTED_FORMATS).includes(format)) {
+        throw new ExportError(ErrorMessages.InvalidFormat, format);
+      }
+
+      const userFormatOptions = userFormats[format];
+      const defaultFormatOptions = SUPPORTED_FORMATS[format].options;
+
+      const options = Object.keys(defaultFormatOptions).reduce((acc2, option) => {
+        if (has(userFormatOptions, option)) {
+          if (!validateUserFormatOptionType(format, option, userFormatOptions[option])) {
+            // eslint-disable-next-line no-console
+            console.warn(`${option} is not a valid option for ${format}. Ignoring.`);
+            return {
+              ...acc2,
+              [option]: defaultFormatOptions[option],
+            };
+          }
+
+          return {
+            ...acc2,
+            [option]: userFormatOptions[option],
+          };
+        }
+
+        return {
+          ...acc2,
+          [option]: defaultFormatOptions[option],
+        };
+      }, {});
+
+      return {
+        ...acc,
+        [format]: options,
+      };
+    }, {});
+  }
+
+  throw new ExportError(ErrorMessages.MissingParameters);
+};
 
 module.exports = {
-  getOptions,
+  makeFormats,
+  makeOptions,
   getFileExportListFromFormats,
   concatTypedArrays,
-  inSequence,
-  escapeFilePart,
   getEntityAttributes,
   getFileExtensionForType,
   getFilePrefix,
   makeFilename,
   verifySessionVariables,
-  sleep,
 };

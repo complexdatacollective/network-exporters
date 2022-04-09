@@ -3,31 +3,19 @@ import GraphMLFormatter from '../graphml/GraphMLFormatter';
 import { mockCodebook } from '../../../config/mockObjects';
 import { entityPrimaryKeyProperty } from '../../consts/reservedAttributes';
 import {
-  getFileExtensionForType,
-} from '../../utils/general';
-import {
   partitionNetworkByType,
 } from '../network';
 import getFormatterClass from '../../utils/getFormatterClass';
-import { EXTENSIONS } from '../../consts/export-consts';
+import { SUPPORTED_FORMATS } from '../../consts/export-consts';
 
 describe('formatter utilities', () => {
-  describe('getFileExtensionForType', () => {
-    it('maps CSV types', () => {
-      expect(getFileExtensionForType('adjacencyMatrix')).toEqual('.csv');
-      expect(getFileExtensionForType('edgeList')).toEqual('.csv');
-      expect(getFileExtensionForType('attributeList')).toEqual('.csv');
-      expect(getFileExtensionForType('ego')).toEqual('.csv');
-    });
-  });
-
   describe('getFormatterClass', () => {
     it('maps graphml to its formatter', () => {
       expect(getFormatterClass('graphml')).toEqual(GraphMLFormatter);
     });
 
     it('maps each format to a class', () => {
-      Object.keys(EXTENSIONS).forEach((format) => {
+      Object.keys(SUPPORTED_FORMATS).forEach((format) => {
         expect(getFormatterClass(format)).toBeDefined();
       });
     });
