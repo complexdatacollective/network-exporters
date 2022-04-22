@@ -87,7 +87,7 @@ describe('makeFormats', () => {
   });
 
   it('emits a warning when an invalid option type is provided for a format, and ignores it', () => {
-    const spy = jest.spyOn(console, 'warn');
+    const spy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     // Directed edges should be type boolean
     expect(makeFormats({ graphml: { directedEdges: 'invalid' } })).toEqual({

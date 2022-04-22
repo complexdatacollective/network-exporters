@@ -126,8 +126,9 @@ const validateUserOptionType = (optionName, optionValue) => {
 // Merge default and user-supplied options
 const makeOptions = (userOptions) => {
   const userOptionsKeys = Object.keys(userOptions);
+  const defaultOptions = Object.keys(DEFAULT_EXPORT_OPTIONS);
 
-  return DEFAULT_EXPORT_OPTIONS.reduce((acc, optionName) => {
+  return defaultOptions.reduce((acc, optionName) => {
     if (userOptionsKeys.includes(optionName)) {
       if (!validateUserOptionType(optionName, userOptions[optionName])) {
         // eslint-disable-next-line no-console
@@ -153,7 +154,7 @@ const makeOptions = (userOptions) => {
 
 const validateUserFormatOptionType = (format, optionName, optionValue) => {
   const optionType = typeof SUPPORTED_FORMATS[format].options[optionName];
-  console.log('validgin', format, optionName, optionValue, optionType);
+
   // eslint-disable-next-line valid-typeof
   if (optionType !== typeof optionValue) {
     return false;

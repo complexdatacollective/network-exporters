@@ -1,3 +1,3 @@
 // src/index.js
-export * from "./FileExportManager";
-export * from "./consts/reservedAttributes";
+export * from './FileExportManager';
+export * from './consts/reservedAttributes';
