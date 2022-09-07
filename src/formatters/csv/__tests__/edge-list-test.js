@@ -11,7 +11,8 @@ const {
   ncTargetUUID,
 } = require('@codaco/shared-consts');
 const { makeWriteableStream } = require('../../../../config/setupTestEnv');
-const { mockCodebook, mockExportSettings } = require('../../../utils/general');
+const { mockExportSettings } = require('../../../utils/general');
+const { mockCodebook } = require('../../network');
 const { EdgeListFormatter, asEdgeList, toCSVStream } = require('../edge-list');
 
 const nodes = [

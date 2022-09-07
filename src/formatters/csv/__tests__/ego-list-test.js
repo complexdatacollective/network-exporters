@@ -15,7 +15,8 @@ const {
 } = require('@codaco/shared-consts');
 const { makeWriteableStream } = require('../../../../config/setupTestEnv');
 const { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } = require('../ego-list');
-const { mockCodebook, mockExportSettings } = require('../../../utils/general');
+const { mockExportSettings } = require('../../../utils/general');
+const { mockCodebook } = require('../../network');
 
 const ego = {
   [egoProperty]: 123,

@@ -1,9 +1,8 @@
 /* eslint-env jest */
 const { entityPrimaryKeyProperty } = require('@codaco/shared-consts');
 const GraphMLFormatter = require('../graphml/GraphMLFormatter');
-const { mockCodebook } = require('../../utils/general');
 const {
-  partitionNetworkByType,
+  partitionNetworkByType, mockCodebook,
 } = require('../network');
 const getFormatterClass = require('../../utils/getFormatterClass');
 const { SUPPORTED_FORMATS } = require('../../consts/export-consts');
