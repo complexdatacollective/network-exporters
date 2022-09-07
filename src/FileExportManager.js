@@ -54,7 +54,6 @@ class FileExportManager {
       return;
     }
 
-    console.log(event, payload);
     this.eventEmitter.emit(event, payload);
   }
 
@@ -278,8 +277,6 @@ class FileExportManager {
           }
 
           // FatalError if there are no sessions to encode and only errors
-          console.log("Completed exports: ", completedExports);
-          console.log("Failed exports: ", failedExports);
           if (completedExports.length === 0 && failedExports.length > 0) {
             throw new ExportError(ErrorMessages.NothingToExport);
           }
