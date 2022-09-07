@@ -1,7 +1,7 @@
 /* eslint-env jest */
 
 import { Writable } from 'stream';
-import { mockNetwork, mockCodebook } from '../../../../config/mockObjects';
+import { mockNetwork, mockCodebook } from '../../../utils/general';
 import GraphMLFormatter from '../GraphMLFormatter';
 
 const makeWriteableStream = () => {

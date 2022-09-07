@@ -1,15 +1,15 @@
 /* eslint-env jest */
 
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { AttributeListFormatter, asAttributeList, toCSVStream } from '../attribute-list';
 import {
   entityPrimaryKeyProperty,
   entityAttributesProperty,
   egoProperty,
   nodeExportIDProperty,
   ncUUIDProperty,
-} from '../../../consts/reservedAttributes';
+} from '@codaco/shared-consts';
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import { mockCodebook, mockExportOptions } from '../../../utils/general';
+import { AttributeListFormatter, asAttributeList, toCSVStream } from '../attribute-list';
 
 const node = {
   [egoProperty]: 123,

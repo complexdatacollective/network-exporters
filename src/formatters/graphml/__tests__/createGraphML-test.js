@@ -1,9 +1,8 @@
 /* eslint-env jest */
-
 import { DOMParser } from '@xmldom/xmldom';
 import {
   mockExportSettings, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
-} from '../../../../config/mockObjects';
+} from '../../../utils/general';
 import graphMLGenerator from '../createGraphML';
 
 const getChildElements = (parentEl, elements) => Array.from(elements)

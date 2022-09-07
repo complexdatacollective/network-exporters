@@ -6,7 +6,7 @@ import {
 import { getEntityAttributes } from '../../utils/general';
 import {
   egoProperty, entityAttributesProperty, entityPrimaryKeyProperty, sessionProperty,
-} from '../../consts/reservedAttributes';
+} from '@codaco/shared-consts';
 
 // todo: add resequence ID test
 const protocolID = 123;

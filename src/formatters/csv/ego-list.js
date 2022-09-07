@@ -12,7 +12,7 @@ const {
   ncCaseProperty,
   ncSessionProperty,
   ncProtocolNameProperty,
-} = require('../../consts/reservedAttributes');
+} = require('@codaco/shared-consts');
 const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 

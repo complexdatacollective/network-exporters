@@ -1,4 +1,3 @@
-/* eslint-disable global-require */
 const { isEmpty, groupBy } = require('lodash');
 const uuid = require('uuid').v4;
 const path = require('path');
@@ -6,7 +5,7 @@ const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
 const {
   protocolProperty,
-} = require('./consts/reservedAttributes');
+} = require('@codaco/shared-consts');
 const exportFile = require('./exportFile');
 const {
   insertEgoIntoSessionNetworks,
@@ -31,8 +30,13 @@ const { SUPPORTED_FORMATS } = require('./consts/export-consts');
  * Interface for all data exports
  */
 class FileExportManager {
-  constructor() {
+  constructor(fsInterface = MockFSInterface) {
+    if (!fsInterface) {
+      throw new Error('Filesystem interface is required');
+    }
+
     this.eventEmitter = new EventEmitter();
+    this.fsInterface = fsInterface;
   }
 
   static getSupportedFormats() {
@@ -73,7 +77,6 @@ class FileExportManager {
   prepareExportJob(
     sessions,
     protocols,
-    fsInterface = MockFSInterface,
     userFormats = ['graphml'],
     userOptions = {},
   ) {
@@ -106,14 +109,13 @@ class FileExportManager {
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
-      fsInterface.deleteDirectory(tempDirectoryPath);
+      this.fsInterface.deleteDirectory(tempDirectoryPath);
     };
 
     // Reject if required parameters aren't provided
     if (
       (!sessions || isEmpty(sessions))
       || (!protocols || isEmpty(protocols))
-      || isEmpty(fsInterface)
     ) {
       throw new ExportError(ErrorMessages.MissingParameters);
     }
@@ -128,7 +130,7 @@ class FileExportManager {
     const run = () => new Promise((resolveRun, rejectRun) => {
       this.emit('begin', ProgressMessages.Begin);
 
-      fsInterface.createDirectory(tempDirectoryPath)
+      this.fsInterface.createDirectory(tempDirectoryPath)
         .then(() => {
           if (!shouldContinue()) {
             throw new UserCancelledExport();

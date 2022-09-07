@@ -1,7 +1,7 @@
 /* eslint-env jest */
+import { ncSourceUUID, ncTargetUUID } from '@codaco/shared-consts';
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { AdjacencyMatrixFormatter, asAdjacencyMatrix } from '../matrix';
-import { ncSourceUUID, ncTargetUUID } from '../../../consts/reservedAttributes';
 
 const mockNetwork = (edges) => ({
   edges,

@@ -8,7 +8,7 @@ describe('FileExportManager', () => {
   let instance;
 
   beforeEach(() => {
-    instance = new FileExportManager();
+    instance = new FileExportManager(MockFSInterface);
   });
 
   it('Returns supported formats', () => {
@@ -21,12 +21,12 @@ describe('FileExportManager', () => {
     it('Throws an error if parameters are missing', () => {
       // Missing sessions
       expect(
-        () => instance.prepareExportJob(null, { 123: 243 }, MockFSInterface),
+        () => instance.prepareExportJob(null, { 123: 243 }),
       ).toThrow(new ExportError(ErrorMessages.MissingParameters));
 
       // Missing protocols
       expect(
-        () => instance.prepareExportJob([{}, {}], null, MockFSInterface),
+        () => instance.prepareExportJob([{}, {}], null),
       ).toThrow(new ExportError(ErrorMessages.MissingParameters));
 
       // Missing FS Interface
@@ -36,7 +36,7 @@ describe('FileExportManager', () => {
     });
 
     it('Returns a run() and abort() method when parameters are provided', () => {
-      result = instance.prepareExportJob([{}, {}], { 123: 243 }, MockFSInterface);
+      result = instance.prepareExportJob([{}, {}], { 123: 243 });
       expect(typeof result.run).toEqual('function');
       expect(typeof result.abort).toEqual('function');
     });
@@ -46,8 +46,7 @@ describe('FileExportManager', () => {
     it('Returns a list of paths when export completes', async () => {
       const sessions = [{}, {}];
       const protocols = { 123: 243 };
-      const fsInterface = MockFSInterface;
-      const result = await instance.prepareExportJob(sessions, protocols, fsInterface);
+      const result = await instance.prepareExportJob(sessions, protocols);
       const paths = await result.run();
       expect(paths).toEqual(['/path/to/file1', '/path/to/file2']);
     });

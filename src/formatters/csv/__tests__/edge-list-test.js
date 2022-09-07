@@ -1,6 +1,4 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportSettings } from '../../../../config/mockObjects';
 import {
   entityPrimaryKeyProperty,
   edgeSourceProperty,
@@ -11,7 +9,9 @@ import {
   ncUUIDProperty,
   ncSourceUUID,
   ncTargetUUID,
-} from '../../../consts/reservedAttributes';
+} from '@codaco/shared-consts';
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import { mockCodebook, mockExportSettings } from '../../../utils/general';
 import { EdgeListFormatter, asEdgeList, toCSVStream } from '../edge-list';
 
 const nodes = [

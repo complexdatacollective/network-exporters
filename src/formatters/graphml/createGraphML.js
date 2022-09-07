@@ -1,13 +1,12 @@
 const { findKey, includes, groupBy } = require('lodash');
 const jsSHA = require('jssha/dist/sha1');
 const {
-  getEntityAttributes,
   createDataElement,
   getGraphMLTypeForKey,
   getAttributePropertyFromCodebook,
   formatXml,
 } = require('./helpers');
-const { VariableType } = require('../../consts/protocol-consts');
+const { getEntityAttributes } = require('../../utils/general');
 const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
@@ -27,7 +26,8 @@ const {
   ncUUIDProperty,
   nodeExportIDProperty,
   edgeExportIDProperty,
-} = require('../../consts/reservedAttributes');
+  variableTypes,
+} = require('@codaco/shared-consts');
 
 // In a browser process, window provides a globalContext;
 // in an electron main process, we can inject required globals
@@ -212,16 +212,16 @@ const generateKeyElements = (
         keyElement.setAttribute('attr.name', keyName);
 
         switch (variableType) {
-          case VariableType.boolean:
+          case variableTypes.boolean:
             keyElement.setAttribute('attr.type', variableType);
             break;
-          case VariableType.ordinal:
-          case VariableType.number: {
+          case variableTypes.ordinal:
+          case variableTypes.number: {
             const keyType = getGraphMLTypeForKey(entities, key);
             keyElement.setAttribute('attr.type', keyType || 'string');
             break;
           }
-          case VariableType.layout: {
+          case variableTypes.layout: {
             // special handling for layout variables: split the variable into
             // two <key> elements - one for X and one for Y.
             keyElement.setAttribute('attr.name', `${keyName}_Y`);
@@ -259,7 +259,7 @@ const generateKeyElements = (
 
             break;
           }
-          case VariableType.categorical: {
+          case variableTypes.categorical: {
             /*
             * Special handling for categorical variables:
             * Because categorical variables can have multiple membership, we
@@ -290,11 +290,11 @@ const generateKeyElements = (
             });
             break;
           }
-          case VariableType.scalar:
+          case variableTypes.scalar:
             keyElement.setAttribute('attr.type', 'float');
             break;
-          case VariableType.text:
-          case VariableType.datetime:
+          case variableTypes.text:
+          case variableTypes.datetime:
           default:
             keyElement.setAttribute('attr.type', 'string');
         }
@@ -500,10 +500,10 @@ const generateDataElements = (
               !!entityAttributes[key] && includes(entityAttributes[key], option.value),
             ));
           });
-        // Handle all codebook variables apart from layout variables
+          // Handle all codebook variables apart from layout variables
         } else if (keyType && typeof entityAttributes[key] !== 'object') {
           domElement.appendChild(createDataElement(document, { key }, entityAttributes[key]));
-        // Handle layout variables
+          // Handle layout variables
         } else if (keyType === 'layout') {
           // Determine if we should use the normalized or the "screen space" value
           const xCoord = entityAttributes[key].x;
@@ -519,7 +519,7 @@ const generateDataElements = (
             domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceY` }, screenSpaceYCoord));
           }
 
-        // Handle non-codebook variables
+          // Handle non-codebook variables
         } else {
           // If we reach this point, we could not detect the attribute type by looking
           // in the codebook.
@@ -602,7 +602,7 @@ function* graphMLGenerator(network, codebook, exportSettings) {
   if (exportSettings.unifyNetworks) {
     const combinedEgos = Object.values(network.ego).reduce((union, ego) => ({
       [entityAttributesProperty]:
-          { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] },
+        { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] },
     }), { [entityAttributesProperty]: {} });
 
     yield generateEgoKeys(combinedEgos);

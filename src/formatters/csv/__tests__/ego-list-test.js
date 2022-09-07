@@ -1,7 +1,4 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportSettings } from '../../../../config/mockObjects';
-import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from '../ego-list';
 import {
   entityPrimaryKeyProperty,
   entityAttributesProperty,
@@ -15,7 +12,10 @@ import {
   protocolName,
   ncCaseProperty,
   sessionProperty,
-} from '../../../consts/reservedAttributes';
+} from '@codaco/shared-consts';
+import { makeWriteableStream } from '../../../../config/setupTestEnv';
+import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from '../ego-list';
+import { mockCodebook, mockExportSettings } from '../../../utils/general';
 
 const ego = {
   [egoProperty]: 123,

@@ -1,7 +1,7 @@
 /* eslint-env jest */
+import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
 import GraphMLFormatter from '../graphml/GraphMLFormatter';
-import { mockCodebook } from '../../../config/mockObjects';
-import { entityPrimaryKeyProperty } from '../../consts/reservedAttributes';
+import { mockCodebook } from '../../utils/general';
 import {
   partitionNetworkByType,
 } from '../network';

@@ -40,14 +40,15 @@
     "rollup-plugin-terser": "^7.0.2"
   },
   "dependencies": {
-    "@xmldom/xmldom": "^0.8.1",
-    "async": "^3.2.3",
+    "@codaco/shared-consts": "^0.0.1-alpha.1",
+    "@xmldom/xmldom": "^0.8.2",
+    "async": "^3.2.4",
     "eventemitter3": "^4.0.7",
     "fs-extra": "^10.0.1",
     "jssha": "^3.2.0",
     "lodash": "^4.17.21",
     "sanitize-filename": "^1.6.3",
-    "uuid": "^8.3.2"
+    "uuid": "^9.0.0"
   },
   "jest": {
     "collectCoverageFrom": [
@@ -59,11 +60,7 @@
     "testEnvironment": "node",
     "testURL": "http://localhost",
     "transform": {
-      "/node_modules/(?!codaco/ui).+\\.js$": "<rootDir>/node_modules/babel-jest",
       "^.+\\.(js|jsx)$": "<rootDir>/node_modules/babel-jest"
-    },
-    "transformIgnorePatterns": [
-      "/node_modules/(?!@codaco/ui).+\\.js$"
-    ]
+    }
   }
 }
