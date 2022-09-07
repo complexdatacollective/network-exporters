@@ -1,13 +1,6 @@
 const { findKey, includes, groupBy } = require('lodash');
 const jsSHA = require('jssha/dist/sha1');
 const {
-  createDataElement,
-  getGraphMLTypeForKey,
-  getAttributePropertyFromCodebook,
-  formatXml,
-} = require('./helpers');
-const { getEntityAttributes } = require('../../utils/general');
-const {
   entityAttributesProperty,
   entityPrimaryKeyProperty,
   caseProperty,
@@ -28,26 +21,19 @@ const {
   edgeExportIDProperty,
   variableTypes,
 } = require('@codaco/shared-consts');
-
-// In a browser process, window provides a globalContext;
-// in an electron main process, we can inject required globals
-let globalContext;
-
-/* eslint-disable no-undef, global-require */
-if (typeof window !== 'undefined' && window.DOMParser && window.XMLSerializer) {
-  globalContext = window;
-} else {
-  const dom = require('@xmldom/xmldom');
-  globalContext = {};
-  globalContext.DOMParser = dom.DOMParser;
-  globalContext.XMLSerializer = dom.XMLSerializer;
-}
-/* eslint-enable */
+const { DOMParser, XMLSerializer } = require('@xmldom/xmldom');
+const {
+  createDataElement,
+  getGraphMLTypeForKey,
+  getAttributePropertyFromCodebook,
+  formatXml,
+} = require('./helpers');
+const { getEntityAttributes } = require('../../utils/general');
 
 const eol = '\n';
 
 // Create a serializer for reuse below.
-const serializer = new globalContext.XMLSerializer();
+const serializer = new XMLSerializer();
 const serialize = (fragment) => `${serializer.serializeToString(fragment)}${eol}`;
 
 // Utility function for indenting and serializing XML element
@@ -102,7 +88,7 @@ const xmlFooter = `</graphml>${eol}`;
 // Use exportOptions from FileExportManager to determine XML properties
 const setUpXml = (exportSettings, sessionVariables) => {
   const graphMLOutline = `${getXmlHeader()}${getGraphHeader(exportSettings, sessionVariables)}${xmlFooter}`;
-  return (new globalContext.DOMParser()).parseFromString(graphMLOutline, 'text/xml');
+  return (new DOMParser()).parseFromString(graphMLOutline, 'text/xml');
 };
 
 // <key> elements provide the type definitions for GraphML data elements
@@ -545,7 +531,6 @@ const generateDataElements = (
  */
 function* graphMLGenerator(network, codebook, exportSettings) {
   yield getXmlHeader();
-
   const xmlDoc = setUpXml(exportSettings, network.sessionVariables);
 
   const generateEgoKeys = (ego) => generateKeyElements(

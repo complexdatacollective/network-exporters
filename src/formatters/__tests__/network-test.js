@@ -1,24 +1,27 @@
 /* eslint-env jest */
 const {
+  egoProperty,
+  entityAttributesProperty,
+  entityPrimaryKeyProperty,
+  sessionProperty,
+} = require('@codaco/shared-consts');
+const {
   unionOfNetworks,
   insertEgoIntoSessionNetworks,
 } = require('../network');
 const { getEntityAttributes } = require('../../utils/general');
-const {
-  egoProperty, entityAttributesProperty, entityPrimaryKeyProperty, sessionProperty,
-} = require('@codaco/shared-consts');
 
 // todo: add resequence ID test
 const protocolID = 123;
 
 // Utility method for use during testing.
-const randomFail = (passThrough) => new Promise((resolve, reject) => {
-  if (Math.random() >= 0.5) {
-    reject(new Error('Error happened!'));
-  }
+// const randomFail = (passThrough) => new Promise((resolve, reject) => {
+//   if (Math.random() >= 0.5) {
+//     reject(new Error('Error happened!'));
+//   }
 
-  resolve(passThrough);
-});
+//   resolve(passThrough);
+// });
 
 describe('network format helpers', () => {
   describe('unionOfNetworks', () => {

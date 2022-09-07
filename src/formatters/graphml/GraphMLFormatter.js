@@ -1,6 +1,15 @@
 const { Readable } = require('stream');
 const graphMLGenerator = require('./createGraphML');
 
+const streamToString = (stream) => {
+  const chunks = [];
+  return new Promise((resolve, reject) => {
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+};
+
 /** Class providing a graphML formatter. */
 class GraphMLFormatter {
   /**
@@ -14,15 +23,6 @@ class GraphMLFormatter {
     this.codebook = codebook;
     this.exportSettings = exportSettings;
   }
-
-  streamToString = (stream) => {
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-      stream.on('data', (chunk) => chunks.push(chunk));
-      stream.on('error', reject);
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    });
-  };
 
   /**
    * A method allowing writing the file to a string. Used for tests.
@@ -45,7 +45,7 @@ class GraphMLFormatter {
       },
     });
 
-    return this.streamToString(inStream);
+    return streamToString(inStream);
   }
 
   /**

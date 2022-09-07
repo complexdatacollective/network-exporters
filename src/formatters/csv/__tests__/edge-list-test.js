@@ -11,7 +11,7 @@ const {
   ncTargetUUID,
 } = require('@codaco/shared-consts');
 const { makeWriteableStream } = require('../../../../config/setupTestEnv');
-const { mockExportSettings } = require('../../../utils/general');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
 const { mockCodebook } = require('../../network');
 const { EdgeListFormatter, asEdgeList, toCSVStream } = require('../edge-list');
 
@@ -22,7 +22,7 @@ const nodes = [
 ];
 
 const listFromEdges = (edges, directed = false) => asEdgeList({ edges, nodes }, mockCodebook, {
-  ...mockExportSettings,
+  ...DEFAULT_EXPORT_OPTIONS,
   useDirectedEdges: directed,
 });
 
@@ -35,7 +35,7 @@ describe('asEdgeList', () => {
       }],
       ego: { [entityPrimaryKeyProperty]: 123 },
     };
-    expect(asEdgeList(network, mockCodebook, mockExportSettings)[0]).toEqual(
+    expect(asEdgeList(network, mockCodebook, DEFAULT_EXPORT_OPTIONS)[0]).toEqual(
       {
         [entityPrimaryKeyProperty]: 456, [edgeTargetProperty]: 'nodeB', [edgeSourceProperty]: 'nodeA', type: 'type', [entityAttributesProperty]: {},
       },
@@ -127,7 +127,7 @@ describe('EdgeListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new EdgeListFormatter({}, mockCodebook, mockExportSettings);
+    const formatter = new EdgeListFormatter({}, mockCodebook, DEFAULT_EXPORT_OPTIONS);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

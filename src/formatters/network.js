@@ -17,23 +17,23 @@ const {
   sessionExportTimeProperty,
   protocolProperty,
   protocolName,
-  codebookHashProperty
+  codebookHashProperty,
 } = require('@codaco/shared-consts');
 const { getAttributePropertyFromCodebook } = require('./graphml/helpers');
-const general = require('../utils/general');
+const { getEntityAttributes } = require('../utils/general');
 
 // Determine which variables to include
 // TODO: Move this to CSV formatter, since only CSV uses it
 const processEntityVariables = (entity, entityType, codebook, exportSettings) => ({
   ...entity,
-  attributes: Object.keys(general.getEntityAttributes(entity)).reduce(
+  attributes: Object.keys(getEntityAttributes(entity)).reduce(
     (
       accumulatedAttributes,
       attributeUUID,
     ) => {
       const attributeName = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'name');
       const attributeType = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'type');
-      const attributeData = general.getEntityAttributes(entity)[attributeUUID];
+      const attributeData = getEntityAttributes(entity)[attributeUUID];
 
       if (attributeType === 'categorical') {
         const attributeOptions = getAttributePropertyFromCodebook(codebook, entityType, entity, attributeUUID, 'options') || [];
@@ -245,13 +245,36 @@ const processMockNetworks = (networkCollection, unify) => {
   return unionOfNetworks(sessionsByProtocol);
 };
 
-
 const mockNetwork = {
   nodes: [
-    { [entityPrimaryKeyProperty]: '1', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': true, 'mock-uuid-5': null } },
-    { [entityPrimaryKeyProperty]: '2', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 0, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': false, 'mock-uuid-5': null } },
-    { [entityPrimaryKeyProperty]: '3', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jumbo', 'mock-uuid-2': 50, 'mock-uuid-3': null, 'mock-uuid-4': true, 'mock-uuid-5': null } },
-    { [entityPrimaryKeyProperty]: '4', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Francis', 'mock-uuid-2': 10, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': null, 'mock-uuid-5': null } },
+    {
+      [entityPrimaryKeyProperty]: '1',
+      type: 'mock-node-type',
+      [entityAttributesProperty]: {
+        'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': true, 'mock-uuid-5': null,
+      },
+    },
+    {
+      [entityPrimaryKeyProperty]: '2',
+      type: 'mock-node-type',
+      [entityAttributesProperty]: {
+        'mock-uuid-1': 'Carl', 'mock-uuid-2': 0, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': false, 'mock-uuid-5': null,
+      },
+    },
+    {
+      [entityPrimaryKeyProperty]: '3',
+      type: 'mock-node-type',
+      [entityAttributesProperty]: {
+        'mock-uuid-1': 'Jumbo', 'mock-uuid-2': 50, 'mock-uuid-3': null, 'mock-uuid-4': true, 'mock-uuid-5': null,
+      },
+    },
+    {
+      [entityPrimaryKeyProperty]: '4',
+      type: 'mock-node-type',
+      [entityAttributesProperty]: {
+        'mock-uuid-1': 'Francis', 'mock-uuid-2': 10, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': null, 'mock-uuid-5': null,
+      },
+    },
   ],
   edges: [
     { from: '1', to: '2', type: 'mock-edge-type' },
@@ -334,7 +357,6 @@ const mockCodebook = {
     },
   },
 };
-
 
 module.exports = {
   mockCodebook,

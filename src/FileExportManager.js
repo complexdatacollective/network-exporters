@@ -43,9 +43,9 @@ class FileExportManager {
     return SUPPORTED_FORMATS;
   }
 
-  on = (...args) => {
+  on(...args) {
     this.eventEmitter.on(...args);
-  };
+  }
 
   emit(event, payload) {
     if (!event) {
@@ -57,9 +57,9 @@ class FileExportManager {
     this.eventEmitter.emit(event, payload);
   }
 
-  removeAllListeners = () => {
+  removeAllListeners() {
     this.eventEmitter.removeAllListeners();
-  };
+  }
 
   /**
    * Main export method. Returns a promise that resolves an to an object
@@ -227,7 +227,7 @@ class FileExportManager {
                         tempDirectoryPath,
                         partitionedNetwork,
                         protocol.codebook,
-                        fsInterface,
+                        this.fsInterface,
                         options,
                       ).then((result) => {
                         if (!finishedSessions.includes(prefix)) {

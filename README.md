@@ -22,10 +22,13 @@ Designed to be used in a nodejs environment (not browser!). The intended scenari
 Something like this:
 
  ``` js
- const FileExportManager = require('@codaco/network-exporters');
- const Filesystem = require('./node-filesystem-shim');
+const FileExportManager = require('@codaco/network-exporters');
+const Filesystem = require('./node-filesystem-shim');
 
 const fileExportManager = new FileExportManager(Filesystem);
+
+// Provides helper method to generate text that can be used in UI.
+const infoForUser = fileExportManager.getSupportedFormats();
 
 // Bind event handlers to the emitter
 fieExportManager.on('progress', (progress) => {

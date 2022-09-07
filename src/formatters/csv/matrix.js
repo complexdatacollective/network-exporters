@@ -65,7 +65,7 @@ class AdjacencyMatrix {
 
     // By using a buffer + typedArray, we avoid the need to fill
     // (which is inefficient on very large arrays)
-    const bitLength = Math.ceil(dimension * dimension / 8);
+    const bitLength = Math.ceil((dimension * dimension) / 8);
     this.buffer = new ArrayBuffer(bitLength);
 
     // A persisted view into the buffer to make the initial construction faster

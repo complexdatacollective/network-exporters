@@ -1,6 +1,6 @@
 const SUPPORTED_FORMATS = {
   graphml: {
-    description: 'GraphML',
+    description: 'Network Canvas GraphML',
     extension: '.graphml',
     options: {
       directedEdges: false,

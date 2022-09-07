@@ -3,6 +3,7 @@ const { SUPPORTED_FORMATS } = require('../consts/export-consts');
 const { ExportError, ErrorMessages } = require('../consts/errors/ExportError');
 const FileExportManager = require('../FileExportManager');
 const MockFSInterface = require('../filesystem/testFs');
+const { mockNetwork, mockNetwork2 } = require('../formatters/network');
 
 describe('FileExportManager', () => {
   let instance;
@@ -28,11 +29,6 @@ describe('FileExportManager', () => {
       expect(
         () => instance.prepareExportJob([{}, {}], null),
       ).toThrow(new ExportError(ErrorMessages.MissingParameters));
-
-      // Missing FS Interface
-      expect(
-        () => instance.prepareExportJob([{}, {}], { 123: 243 }, null),
-      ).toThrow(new ExportError(ErrorMessages.MissingParameters));
     });
 
     it('Returns a run() and abort() method when parameters are provided', () => {
@@ -44,16 +40,14 @@ describe('FileExportManager', () => {
 
   describe('Run Export', () => {
     it('Returns a list of paths when export completes', async () => {
-      const sessions = [{}, {}];
+      const sessions = [mockNetwork, mockNetwork2];
       const protocols = { 123: 243 };
-      const result = await instance.prepareExportJob(sessions, protocols);
-      const paths = await result.run();
+      const job = instance.prepareExportJob(sessions, protocols);
+      const paths = await job.run();
       expect(paths).toEqual(['/path/to/file1', '/path/to/file2']);
     });
 
-    // it('Emits progress events', () => {
-
-    // });
+    it.todo('Emits progress events');
   });
 
   describe('Abort Export', () => {

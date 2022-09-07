@@ -15,8 +15,8 @@ const {
 } = require('@codaco/shared-consts');
 const { makeWriteableStream } = require('../../../../config/setupTestEnv');
 const { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } = require('../ego-list');
-const { mockExportSettings } = require('../../../utils/general');
 const { mockCodebook } = require('../../network');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
 
 const ego = {
   [egoProperty]: 123,
@@ -48,7 +48,7 @@ describe('asEgoAndSessionVariablesList', () => {
     expect(asEgoAndSessionVariablesList(
       network,
       mockCodebook,
-      mockExportSettings,
+      DEFAULT_EXPORT_OPTIONS,
     )).toEqual([network.ego]);
   });
 });
@@ -234,7 +234,7 @@ describe('EgoListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new EgoListFormatter({}, mockCodebook, mockExportSettings);
+    const formatter = new EgoListFormatter({}, mockCodebook, DEFAULT_EXPORT_OPTIONS);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

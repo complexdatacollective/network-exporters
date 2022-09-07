@@ -32,7 +32,7 @@ function getEntityAttributes(entity) {
   }
 
   return get(entity, entityAttributesProperty, {});
-};
+}
 
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
   const escapeFilePart = (part) => part.replace(/\W/g, '');
@@ -233,20 +233,7 @@ const makeFormats = (userFormats) => {
   throw new ExportError(ErrorMessages.MissingParameters);
 };
 
-const mockExportSettings = {
-  exportGraphML: true,
-  exportCSV: true,
-  globalOptions: {
-    unifyNetworks: false,
-    useDirectedEdges: false,
-    useScreenLayoutCoordinates: true,
-    screenLayoutHeight: 1080,
-    screenLayoutWidth: 1920,
-  },
-};
-
 module.exports = {
-  mockExportSettings,
   makeFormats,
   makeOptions,
   getFileExportListFromFormats,

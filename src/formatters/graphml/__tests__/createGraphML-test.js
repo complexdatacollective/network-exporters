@@ -1,7 +1,9 @@
 /* eslint-env jest */
 const { DOMParser } = require('@xmldom/xmldom');
-const { mockExportSettings } = require('../../../utils/general');
-const { mockCodebook, mockNetwork, mockNetwork2, processMockNetworks } = require('../../network');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
+const {
+  mockCodebook, mockNetwork, mockNetwork2, processMockNetworks,
+} = require('../../network');
 const graphMLGenerator = require('../createGraphML');
 
 const getChildElements = (parentEl, elements) => Array.from(elements)
@@ -23,7 +25,7 @@ describe('buildGraphML', () => {
   let xml;
 
   beforeEach(() => {
-    exportOptions = mockExportSettings;
+    exportOptions = DEFAULT_EXPORT_OPTIONS;
     const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
     const protocolNetwork = processedNetworks['protocol-uid-1'][0];
 

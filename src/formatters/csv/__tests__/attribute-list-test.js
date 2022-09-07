@@ -8,7 +8,7 @@ const {
   ncUUIDProperty,
 } = require('@codaco/shared-consts');
 const { makeWriteableStream } = require('../../../../config/setupTestEnv');
-const { mockExportSettings } = require('../../../utils/general');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
 const { mockCodebook } = require('../../network');
 const { AttributeListFormatter, asAttributeList, toCSVStream } = require('../attribute-list');
 
@@ -196,7 +196,7 @@ describe('AttributeListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new AttributeListFormatter({}, mockCodebook, mockExportSettings);
+    const formatter = new AttributeListFormatter({}, mockCodebook, DEFAULT_EXPORT_OPTIONS);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });
