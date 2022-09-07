@@ -1,17 +1,13 @@
 'use strict';
 
-/* eslint-disable global-require */
-const { merge, isEmpty, groupBy } = require('lodash');
-const sanitizeFilename = require('sanitize-filename');
+const { isEmpty, groupBy } = require('lodash');
+const uuid = require('uuid').v4;
+const path = require('path');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
 const {
-  protocolProperty: protocolProperty$1,
-} = require('./consts/reservedAttributes');
-const {
-  removeDirectory,
-  makeTempDir,
-} = require('./utils/filesystem');
+  protocolProperty,
+} = require('@codaco/shared-consts');
 const exportFile = require('./exportFile');
 const {
   insertEgoIntoSessionNetworks,
@@ -22,58 +18,36 @@ const {
 const {
   verifySessionVariables,
   getFilePrefix,
-  sleep,
-  handlePlatformSaveDialog,
-  ObservableValue,
+  getFileExportListFromFormats,
+  makeOptions,
+  makeFormats,
 } = require('./utils/general');
-const archive = require('./utils/archive');
-const { ExportError, ErrorMessages } = require('./errors/ExportError');
-const ProgressMessages = require('./ProgressMessages');
-const UserCancelledExport = require('./errors/UserCancelledExport');
-const { isElectron } = require('./utils/Environment');
-
-const defaultCSVOptions = {
-  adjacencyMatrix: false,
-  attributeList: true,
-  edgeList: true,
-  // If CSV is exported, egoAttributeList must be exported
-  // as it contains session info so this option is generally
-  // ignored and only relevant for *only* exporting
-  // egoAttributeList
-  egoAttributeList: true,
-};
-
-const defaultExportOptions = {
-  exportGraphML: true,
-  exportCSV: defaultCSVOptions,
-  globalOptions: {
-    exportFilename: 'networkCanvasExport',
-    unifyNetworks: false,
-    useDirectedEdges: false, // TODO
-    useScreenLayoutCoordinates: true,
-    screenLayoutHeight: 1080,
-    screenLayoutWidth: 1920,
-  },
-};
-
-// Merge default and user-supplied options
-const getOptions = (exportOptions) => ({
-  ...merge(defaultExportOptions, exportOptions),
-  ...(exportOptions.exportCSV === true ? { exportCSV: defaultCSVOptions } : {}),
-});
+const { ExportError, ErrorMessages } = require('./consts/errors/ExportError');
+const ProgressMessages = require('./consts/ProgressMessages');
+const UserCancelledExport = require('./consts/errors/UserCancelledExport');
+const MockFSInterface = require('./filesystem/testFs');
+const { SUPPORTED_FORMATS } = require('./consts/export-consts');
 
 /**
  * Interface for all data exports
  */
 class FileExportManager {
-  constructor(exportOptions = {}) {
-    this.exportOptions = getOptions(exportOptions);
-    this.events = new EventEmitter();
+  constructor(fsInterface = MockFSInterface) {
+    if (!fsInterface) {
+      throw new Error('Filesystem interface is required');
+    }
+
+    this.eventEmitter = new EventEmitter();
+    this.fsInterface = fsInterface;
+  }
+
+  static getSupportedFormats() {
+    return SUPPORTED_FORMATS;
   }
 
   on = (...args) => {
-    this.events.on(...args);
-  }
+    this.eventEmitter.on(...args);
+  };
 
   emit(event, payload) {
     if (!event) {
@@ -82,12 +56,12 @@ class FileExportManager {
       return;
     }
 
-    this.events.emit(event, payload);
+    this.eventEmitter.emit(event, payload);
   }
 
   removeAllListeners = () => {
-    this.events.removeAllListeners();
-  }
+    this.eventEmitter.removeAllListeners();
+  };
 
   /**
    * Main export method. Returns a promise that resolves an to an object
@@ -102,365 +76,250 @@ class FileExportManager {
    *                        including codebook. Must contain a key for every session
    *                        protocol in the sessions collection.
    */
-  exportSessions(sessions, protocols) {
-    let tmpDir; // will hold temporary directory location
+  prepareExportJob(
+    sessions,
+    protocols,
+    userFormats = ['graphml'],
+    userOptions = {},
+  ) {
+    // Merge user supplied options with defaults
+    const options = makeOptions(userOptions);
+    const formats = makeFormats(userFormats);
+
+    const tempDirectoryName = `temp-export-${uuid()}`;
+    const tempDirectoryPath = path.join(options.tempDataPath, tempDirectoryName);
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
     // https://caolan.github.io/async/v3/docs.html#queue
-
-    // Set concurrency to conservative values for now, based on platform
-    const QUEUE_CONCURRENCY = isElectron() ? 50 : 1;
-
+    // TODO: refactor this to use web workers
     const q = queue((task, callback) => {
       task()
         .then((result) => callback(null, result))
         .catch((error) => callback(error));
-    }, QUEUE_CONCURRENCY);
+    }, options.queueConcurrency);
 
-    const exportFormats = [
-      ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
-      ...(this.exportOptions.exportCSV ? ['ego'] : []),
-      ...(this.exportOptions.exportCSV.adjacencyMatrix ? ['adjacencyMatrix'] : []),
-      ...(this.exportOptions.exportCSV.attributeList ? ['attributeList'] : []),
-      ...(this.exportOptions.exportCSV.edgeList ? ['edgeList'] : []),
-    ];
+    // Returns an array containing each file type that needs to be created.
+    const exportFormats = getFileExportListFromFormats(
+      formats,
+      options.csvIncludeAdjacencyMatrix,
+      options.csvIncludeAttributeList,
+      options.csvIncludeEdgeList,
+    );
 
     // Cleanup function called by abort method, after fatal errors, and after
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
-      if (tmpDir) {
-        try {
-          removeDirectory(tmpDir);
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error removing temp directory:', error);
-        }
-      }
+      this.fsInterface.deleteDirectory(tempDirectoryPath);
     };
-
-    this.emit('begin', ProgressMessages.Begin);
 
     // Reject if required parameters aren't provided
     if (
-      (!sessions && !isEmpty(sessions))
-      || (!protocols && !isEmpty(protocols))
+      (!sessions || isEmpty(sessions))
+      || (!protocols || isEmpty(protocols))
     ) {
-      return Promise.reject(new ExportError(ErrorMessages.MissingParameters));
+      throw new ExportError(ErrorMessages.MissingParameters);
     }
 
-    // Will resolve with an object containing run() and abort() methods
-    return new Promise((resolveExportPromise) => {
-      // State variables for this export
-      let cancelled = false;
-      const succeeded = [];
-      const failed = [];
+    let cancelled = false;
+    const completedExports = [];
+    const failedExports = [];
 
-      const consideringCancel = new ObservableValue(false);
+    const shouldContinue = () => !cancelled;
 
-      const shouldContinue = () => !cancelled;
+    // Main work of the process happens here
+    const run = () => new Promise((resolveRun, rejectRun) => {
+      this.emit('begin', ProgressMessages.Begin);
 
-      // Main work of the process happens here
-      const run = () => new Promise((resolveRun, rejectRun) => {
-        makeTempDir().then((dir) => { tmpDir = dir; })
-          // Short delay to give consumer UI time to render
-          .then(sleep(1000))
-          .then(() => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-          })
+      this.fsInterface.createDirectory(tempDirectoryPath)
+        .then(() => {
+          if (!shouldContinue()) {
+            throw new UserCancelledExport();
+          }
+        })
+        // Insert a reference to the ego ID into all nodes and edges
+        .then(() => {
+          this.emit('update', ProgressMessages.Formatting);
           // Insert a reference to the ego ID into all nodes and edges
-          .then(() => {
-            this.emit('update', ProgressMessages.Formatting);
-            // Insert a reference to the ego ID into all nodes and edges
-            return insertEgoIntoSessionNetworks(sessions);
-          })
-          // Resequence IDs for this export
-          .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
-          // Group sessions by protocol UUID
-          .then((sessionsWithResequencedIDs) => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty$1}`))
-          // Then, process the union option
-          .then((sessionsByProtocol) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
+          return insertEgoIntoSessionNetworks(sessions);
+        })
+        // Resequence IDs for this export
+        .then(resequenceIds)
+        // Group sessions by protocol UUID
+        .then((sessionsWithResequencedIDs) => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
+        // Then, process the union option
+        .then((sessionsByProtocol) => {
+          if (!shouldContinue()) {
+            throw new UserCancelledExport();
+          }
+
+          if (!options.unifyNetworks) {
+            return sessionsByProtocol;
+          }
+
+          this.emit('update', ProgressMessages.Merging);
+          return unionOfNetworks(sessionsByProtocol);
+        })
+        .then((unifiedSessions) => {
+          if (!shouldContinue()) {
+            throw new UserCancelledExport();
+          }
+
+          // Create an array of promises representing each session in each export format
+          const finishedSessions = [];
+
+          // Create a variable representing the total work to be done, so we can report progress
+          const sessionExportTotal = options.unifyNetworks
+            ? Object.keys(unifiedSessions).length : sessions.length;
+
+          // Array to contain all export work to be done
+          const promisedExports = [];
+
+          Object.keys(unifiedSessions).forEach((protocolUID) => {
+            // Reject if no protocol was provided for this session
+            if (!protocols[protocolUID]) {
+              const error = `No protocol was provided for the session. Looked for protocolUID ${protocolUID}`;
+              this.emit('error', error);
+              failedExports.push(error);
+              return;
             }
 
-            if (!this.exportOptions.globalOptions.unifyNetworks) {
-              return sessionsByProtocol;
-            }
-
-            this.emit('update', ProgressMessages.Merging);
-            return unionOfNetworks(sessionsByProtocol);
-          })
-          .then((unifiedSessions) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            const promisedExports = [];
-
-            // Create an array of promises representing each session in each export format
-            const finishedSessions = [];
-            const sessionExportTotal = this.exportOptions.globalOptions.unifyNetworks
-              ? Object.keys(unifiedSessions).length : sessions.length;
-
-            Object.keys(unifiedSessions).forEach((protocolUID) => {
-              // Reject if no protocol was provided for this session
-              if (!protocols[protocolUID]) {
-                const error = `No protocol was provided for the session. Looked for protocolUID ${protocolUID}`;
-                this.emit('error', error);
-                failed.push(error);
+            unifiedSessions[protocolUID].forEach((session) => {
+              // Skip if sessions don't have required sessionVariables
+              try {
+                if (options.unifyNetworks) {
+                  Object.values(session.sessionVariables)
+                    .forEach((sessionVariables) => {
+                      verifySessionVariables(sessionVariables);
+                    });
+                } else {
+                  verifySessionVariables(session.sessionVariables);
+                }
+              } catch (e) {
+                failedExports.push(e);
                 return;
               }
 
-              unifiedSessions[protocolUID].forEach((session) => {
-                // Skip if sessions don't have required sessionVariables
-                try {
-                  if (this.exportOptions.globalOptions.unifyNetworks) {
-                    Object.values(session.sessionVariables)
-                      .forEach((sessionVariables) => {
-                        verifySessionVariables(sessionVariables);
-                      });
-                  } else {
-                    verifySessionVariables(session.sessionVariables);
-                  }
-                } catch (e) {
-                  failed.push(e);
-                  return;
-                }
+              const protocol = protocols[protocolUID];
+              const prefix = getFilePrefix(
+                session,
+                protocol,
+                options.unifyNetworks,
+              );
 
-                const protocol = protocols[protocolUID];
-                const prefix = getFilePrefix(
+              // Returns promise resolving to filePath for each format exported
+              exportFormats.forEach((exportFormat) => {
+                // Partitioning the network based on node and edge type so we can create
+                // an individual export file for each type
+                const partitionedNetworks = partitionNetworkByType(
+                  protocol.codebook,
                   session,
-                  protocol,
-                  this.exportOptions.globalOptions.unifyNetworks,
+                  exportFormat,
                 );
 
-                // Returns promise resolving to filePath for each format exported
-                exportFormats.forEach((format) => {
-                  // Partitioning the network based on node and edge type so we can create
-                  // an individual export file for each type
-                  const partitionedNetworks = partitionNetworkByType(
-                    protocol.codebook,
-                    session,
-                    format,
-                  );
-
-                  partitionedNetworks.forEach((partitionedNetwork) => {
-                    const partitionedEntity = partitionedNetwork.partitionEntity;
-                    promisedExports.push(() => new Promise((resolve, reject) => {
-                      try {
-                        exportFile(
-                          prefix,
-                          partitionedEntity,
-                          format,
-                          tmpDir,
-                          partitionedNetwork,
-                          protocol.codebook,
-                          this.exportOptions,
-                        ).then((result) => {
-                          if (!finishedSessions.includes(prefix)) {
-                            // If we unified the networks, we need to iterate sessionVariables and
-                            // emit a 'session-exported' event for each sessionID
-                            if (this.exportOptions.globalOptions.unifyNetworks) {
-                              Object.values(session.sessionVariables)
-                                .forEach((sessionVariables) => {
-                                  this.emit('session-exported', sessionVariables.sessionId);
-                                });
-                            } else {
-                              this.emit('session-exported', session.sessionVariables.sessionId);
-                            }
-
-                            this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                            finishedSessions.push(prefix);
+                partitionedNetworks.forEach((partitionedNetwork) => {
+                  const partitionedEntity = partitionedNetwork.partitionEntity;
+                  promisedExports.push(() => new Promise((resolve, reject) => {
+                    try {
+                      exportFile(
+                        prefix,
+                        partitionedEntity,
+                        exportFormat,
+                        tempDirectoryPath,
+                        partitionedNetwork,
+                        protocol.codebook,
+                        fsInterface,
+                        options,
+                      ).then((result) => {
+                        if (!finishedSessions.includes(prefix)) {
+                          // If we unified the networks, we need to iterate sessionVariables and
+                          // emit a 'session-exported' event for each sessionID
+                          if (options.unifyNetworks) {
+                            Object.values(session.sessionVariables)
+                              .forEach((sessionVariables) => {
+                                this.emit('session-exported', sessionVariables.sessionId);
+                              });
+                          } else {
+                            this.emit('session-exported', session.sessionVariables.sessionId);
                           }
-                          resolve(result);
-                        }).catch((e) => reject(e));
-                      } catch (error) {
-                        this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
-                        this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                        reject(error);
-                      }
-                    }));
-                  });
+
+                          this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                          finishedSessions.push(prefix);
+                        }
+                        resolve(result);
+                      }).catch((e) => reject(e));
+                    } catch (error) {
+                      this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
+                      this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                      reject(error);
+                    }
+                  }));
                 });
               });
             });
+          });
 
-            q.push(promisedExports, (err, result) => {
-              if (err) {
-                failed.push(err);
-                return;
-              }
-              succeeded.push(result);
-            });
-
-            return new Promise((resolve, reject) => q.drain()
-              .then(() => resolve({ exportedPaths: succeeded, failedExports: failed }))
-              .catch(reject));
-          })
-          // Then, Zip the result.
-          .then(({ exportedPaths, failedExports }) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
+          q.push(promisedExports, (err, result) => {
+            if (err) {
+              failedExports.push(err);
+              return;
             }
+            completedExports.push(result);
+          });
 
-            // FatalError if there are no sessions to encode and no errors
-            if (exportedPaths.length === 0 && failedExports.length === 0) {
-              throw new ExportError(ErrorMessages.NothingToExport);
-            }
+          return new Promise((resolve, reject) => {
+            q.drain().then(resolve).catch(reject);
+          });
+        })
+        // Then, return the paths to the exported files
+        .then(() => {
+          if (!shouldContinue()) {
+            throw new UserCancelledExport();
+          }
 
-            // If we have no files to encode (but we do have errors), finish
-            // the task here so the user can see the errors
-            if (exportedPaths.length === 0) {
-              this.emit('finished', ProgressMessages.Finished);
-              cleanUp();
-              resolveRun();
-              cancelled = true;
-              return Promise.resolve();
-            }
+          // FatalError if there are no sessions to encode and no errors
+          if (completedExports.length === 0 && failedExports.length === 0) {
+            throw new ExportError(ErrorMessages.NothingToExport);
+          }
 
-            const emitZipProgress = (percent) => this.emit('update', ProgressMessages.ZipProgress(percent));
-
-            // Start the zip process, and attach a callback to the update
-            // progress event.
-            this.emit('update', ProgressMessages.ZipStart);
-            return archive(
-              exportedPaths,
-              tmpDir,
-              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
-              emitZipProgress,
-              shouldContinue,
-            );
-          })
-          .then((zipLocation) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            this.emit('update', ProgressMessages.Saving);
-            return zipLocation;
-          })
-          .then((zipLocation) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            // If the user is considering aborting, don't show the save dialog
-            const waitWhileConsideringAbort = () => new Promise((resolve, reject) => {
-              const resolveWhenReady = (value) => {
-                if (!shouldContinue()) { reject(); }
-                if (value === false) { resolve(); }
-              };
-
-              // Attach a value change listener to our ObservableProperty
-              consideringCancel.registerListener(resolveWhenReady);
-
-              // Call test once on first run
-              resolveWhenReady(consideringCancel.value);
-            });
-
-            return waitWhileConsideringAbort().then(() => handlePlatformSaveDialog(
-              zipLocation,
-              sanitizeFilename(this.exportOptions.globalOptions.exportFilename),
-            ));
-          })
-          .then((saveCancelled) => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-
-            if (!saveCancelled) {
-              this.emit('finished', ProgressMessages.Finished);
-            }
-
+          // If we have no files to encode (but we do have errors), finish
+          // the task here so the user can see the errors
+          if (completedExports.length === 0) {
+            this.emit('finished', ProgressMessages.Finished);
             cleanUp();
             resolveRun();
-          })
-          .catch((err) => {
-            cleanUp();
-            // We don't reject if this is an error from user cancelling
-            if (!(err instanceof UserCancelledExport)) {
-              this.emit('cancelled', ProgressMessages.Cancelled);
-              rejectRun(err);
-            }
-          });
-      }); // End run()
+            cancelled = true;
+            return Promise.resolve();
+          }
 
-      const abort = () => {
+          cleanUp();
+          return resolveRun(completedExports);
+        })
+        .catch((err) => {
+          cleanUp();
+          // We don't reject if this is an error from user cancelling
+          if (!(err instanceof UserCancelledExport)) {
+            this.emit('cancelled', ProgressMessages.Cancelled);
+            rejectRun(err);
+          }
+        });
+    }); // End run()
+
+    const abort = () => {
+      // eslint-disable-next-line no-console
+      console.info('Aborting file export.');
+      if (!shouldContinue()) {
         // eslint-disable-next-line no-console
-        console.info('Aborting file export.');
-        if (!shouldContinue()) {
-          // eslint-disable-next-line no-console
-          console.warn('This export already aborted. Cancelling abort!');
-          return;
-        }
-        cancelled = true;
-      };
+        console.warn('This export already aborted. Cancelling abort!');
+        return;
+      }
+      cancelled = true;
+    };
 
-      const setConsideringAbort = (value) => {
-        consideringCancel.value = value;
-      };
-
-      resolveExportPromise({ run, abort, setConsideringAbort });
-    });
+    return { run, abort };
   }
 }
 
 module.exports = FileExportManager;
-
-// Model properties
-const entityPrimaryKeyProperty = '_uid';
-const entityAttributesProperty = 'attributes';
-const edgeSourceProperty = 'from';
-const edgeTargetProperty = 'to';
-
-// Session variable properties
-const caseProperty = 'caseId';
-const sessionProperty = 'sessionId';
-const protocolProperty = 'protocolUID';
-const protocolName = 'protocolName';
-const sessionStartTimeProperty = 'sessionStart';
-const sessionFinishTimeProperty = 'sessionFinish';
-const sessionExportTimeProperty = 'sessionExported';
-const codebookHashProperty = 'codebookHash';
-
-// Export properties
-const nodeExportIDProperty = 'nodeID'; // Incrementing ID number for nodes
-const edgeExportIDProperty = 'edgeID'; // Incrementing ID number for edges
-const egoProperty = 'networkCanvasEgoUUID';
-const ncTypeProperty = 'networkCanvasType';
-const ncProtocolNameProperty = 'networkCanvasProtocolName';
-const ncCaseProperty = 'networkCanvasCaseID';
-const ncSessionProperty = 'networkCanvasSessionID';
-const ncUUIDProperty = 'networkCanvasUUID';
-const ncSourceUUID = 'networkCanvasSourceUUID';
-const ncTargetUUID = 'networkCanvasTargetUUID';
-
-module.exports = {
-  caseProperty,
-  edgeSourceProperty,
-  edgeTargetProperty,
-  egoProperty,
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  nodeExportIDProperty,
-  edgeExportIDProperty,
-  ncCaseProperty,
-  ncProtocolNameProperty,
-  ncSessionProperty,
-  ncSourceUUID,
-  ncTargetUUID,
-  ncTypeProperty,
-  ncUUIDProperty,
-  protocolName,
-  protocolProperty,
-  sessionExportTimeProperty,
-  sessionFinishTimeProperty,
-  sessionProperty,
-  sessionStartTimeProperty,
-  codebookHashProperty,
-};
 //# sourceMappingURL=index.js.map

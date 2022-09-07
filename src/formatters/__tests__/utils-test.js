@@ -1,12 +1,12 @@
 /* eslint-env jest */
-import { entityPrimaryKeyProperty } from '@codaco/shared-consts';
-import GraphMLFormatter from '../graphml/GraphMLFormatter';
-import { mockCodebook } from '../../utils/general';
-import {
+const { entityPrimaryKeyProperty } = require('@codaco/shared-consts');
+const GraphMLFormatter = require('../graphml/GraphMLFormatter');
+const { mockCodebook } = require('../../utils/general');
+const {
   partitionNetworkByType,
-} from '../network';
-import getFormatterClass from '../../utils/getFormatterClass';
-import { SUPPORTED_FORMATS } from '../../consts/export-consts';
+} = require('../network');
+const getFormatterClass = require('../../utils/getFormatterClass');
+const { SUPPORTED_FORMATS } = require('../../consts/export-consts');
 
 describe('formatter utilities', () => {
   describe('getFormatterClass', () => {

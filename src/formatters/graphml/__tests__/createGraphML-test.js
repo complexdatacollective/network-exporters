@@ -1,9 +1,9 @@
 /* eslint-env jest */
-import { DOMParser } from '@xmldom/xmldom';
-import {
+const { DOMParser } = require('@xmldom/xmldom');
+const {
   mockExportSettings, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
-} from '../../../utils/general';
-import graphMLGenerator from '../createGraphML';
+} = require('../../../utils/general');
+const graphMLGenerator = require('../createGraphML');
 
 const getChildElements = (parentEl, elements) => Array.from(elements)
   .filter((el) => el.parentNode === parentEl);

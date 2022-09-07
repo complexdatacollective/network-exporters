@@ -1,12 +1,12 @@
 /* eslint-env jest */
-import {
+const {
   unionOfNetworks,
   insertEgoIntoSessionNetworks,
-} from '../network';
-import { getEntityAttributes } from '../../utils/general';
-import {
+} = require('../network');
+const { getEntityAttributes } = require('../../utils/general');
+const {
   egoProperty, entityAttributesProperty, entityPrimaryKeyProperty, sessionProperty,
-} from '@codaco/shared-consts';
+} = require('@codaco/shared-consts');
 
 // todo: add resequence ID test
 const protocolID = 123;
