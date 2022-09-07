@@ -1,9 +1,5 @@
-/* eslint-disable global-require */
-const { first } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
-const { ExportError, ErrorMessages } = require('../errors/ExportError');
-const { isCordova, isElectron } = require('./Environment');
-const { getFileNativePath, copy } = require('./filesystem');
+const { isEmpty, has, get } = require('lodash');
 const {
   caseProperty,
   sessionProperty,
@@ -11,7 +7,9 @@ const {
   entityAttributesProperty,
   sessionExportTimeProperty,
   codebookHashProperty,
-} = require('./reservedAttributes');
+} = require('@codaco/shared-consts');
+const { ExportError, ErrorMessages } = require('../consts/errors/ExportError');
+const { DEFAULT_EXPORT_OPTIONS, SUPPORTED_FORMATS } = require('../consts/export-consts');
 
 // Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
 const verifySessionVariables = (sessionVariables) => {
@@ -28,24 +26,17 @@ const verifySessionVariables = (sessionVariables) => {
   return true;
 };
 
-const getEntityAttributes = (entity) => (entity && entity[entityAttributesProperty]) || {};
-
-const escapeFilePart = (part) => part.replace(/\W/g, '');
-
-const sleep = (time = 2000) => (passThrough) => (
-  new Promise((resolve) => setTimeout(() => resolve(passThrough), time))
-);
-
-// Utility method for use during testing.
-const randomFail = (passThrough) => new Promise((resolve, reject) => {
-  if (Math.random() >= 0.5) {
-    reject(new Error('Error happened!'));
+function getEntityAttributes(entity) {
+  if (!entity) {
+    throw new Error('Entity is required');
   }
 
-  resolve(passThrough);
-});
+  return get(entity, entityAttributesProperty, {});
+}
 
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
+  const escapeFilePart = (part) => part.replace(/\W/g, '');
+
   let name = prefix;
   if (extension !== `.${exportFormat}`) {
     name += name ? '_' : '';
@@ -57,25 +48,20 @@ const makeFilename = (prefix, entityType, exportFormat, extension) => {
   return `${name}${extension}`;
 };
 
-const extensions = {
-  graphml: '.graphml',
-  csv: '.csv',
-};
-
 /**
  * Provide the appropriate file extension for the export type
  * @param  {string} formatterType one of the `format`s
  * @return {string}
  */
-const getFileExtension = (formatterType) => {
+const getFileExtensionForType = (formatterType) => {
   switch (formatterType) {
     case 'graphml':
-      return extensions.graphml;
+      return SUPPORTED_FORMATS.graphml.extension;
     case 'adjacencyMatrix':
     case 'edgeList':
     case 'attributeList':
     case 'ego':
-      return extensions.csv;
+      return SUPPORTED_FORMATS.csv.extension;
     default:
       return null;
   }
@@ -88,97 +74,175 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
     return sanitizeFilename(protocol.name);
   }
 
-  return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
+  const caseAsString = session.sessionVariables[caseProperty].toString();
+
+  return `${sanitizeFilename(caseAsString)}_${session.sessionVariables[sessionProperty]}`;
 };
 
-const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
+const concatTypedArrays = (a, b) => {
+  const combined = new Uint8Array(a.byteLength + b.byteLength);
+  combined.set(a);
+  combined.set(b, a.length);
+  return combined;
+};
 
-const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve, reject) => {
-  if (!zipLocation) {
-    reject();
+const getFileExportListFromFormats = (
+  formats,
+) => {
+  if (!formats || isEmpty(formats)) {
+    return [];
   }
-  if (isElectron()) {
-    let electron;
 
-    if (typeof window !== 'undefined' && window) {
-      electron = window.require('electron').remote;
-    } else {
-      // if no window object assume we are in nodejs environment (Electron main)
-      // no remote needed
-      electron = require('electron');
+  const formatNames = Object.keys(formats);
+  // Throw an error if any format isn't supported
+  const supportedFormats = Object.keys(SUPPORTED_FORMATS);
+  formatNames.every((format) => supportedFormats.includes(format));
+
+  const fileExportList = [];
+
+  if (formatNames.includes('graphml')) {
+    fileExportList.push('graphml');
+  }
+
+  if (formatNames.includes('csv')) {
+    fileExportList.push('ego');
+
+    if (formats.csv.includeAdjacencyMatrix) {
+      fileExportList.push('adjacencyMatrix');
+    }
+    if (formats.csv.includeEdgeList) {
+      fileExportList.push('edgeList');
+    }
+    if (formats.csv.includeAttributeList) {
+      fileExportList.push('attributeList');
+    }
+  }
+
+  return fileExportList;
+};
+
+const validateUserOptionType = (optionName, optionValue) => {
+  const optionType = typeof DEFAULT_EXPORT_OPTIONS[optionName];
+  // eslint-disable-next-line valid-typeof
+  if (optionType !== typeof optionValue) {
+    return false;
+  }
+
+  return true;
+};
+
+// Merge default and user-supplied options
+const makeOptions = (userOptions) => {
+  const userOptionsKeys = Object.keys(userOptions);
+  const defaultOptions = Object.keys(DEFAULT_EXPORT_OPTIONS);
+
+  return defaultOptions.reduce((acc, optionName) => {
+    if (userOptionsKeys.includes(optionName)) {
+      if (!validateUserOptionType(optionName, userOptions[optionName])) {
+        // eslint-disable-next-line no-console
+        console.warn(`Option ${optionName} is not the correct type. Ignoring.`);
+        return {
+          ...acc,
+          [optionName]: DEFAULT_EXPORT_OPTIONS[optionName],
+        };
+      }
+
+      return {
+        ...acc,
+        [optionName]: userOptions[optionName],
+      };
     }
 
-    const { dialog } = electron;
-    const browserWindow = first(electron.BrowserWindow.getAllWindows());
+    return {
+      ...acc,
+      [optionName]: DEFAULT_EXPORT_OPTIONS[optionName],
+    };
+  }, {});
+};
 
-    dialog.showSaveDialog(
-      browserWindow,
-      {
-        filters: [{ name: 'zip', extensions: ['zip'] }],
-        defaultPath: filename,
-      },
-    )
-      .then(({ canceled, filePath }) => {
-        if (canceled) {
-          resolve(true);
+const validateUserFormatOptionType = (format, optionName, optionValue) => {
+  const optionType = typeof SUPPORTED_FORMATS[format].options[optionName];
+
+  // eslint-disable-next-line valid-typeof
+  if (optionType !== typeof optionValue) {
+    return false;
+  }
+
+  return true;
+};
+
+const makeFormats = (userFormats) => {
+  // User can provide an array of formats, which will use the default
+  // options.
+  if (Array.isArray(userFormats)) {
+    return userFormats.reduce((acc, format) => {
+      if (!Object.keys(SUPPORTED_FORMATS).includes(format)) {
+        throw new ExportError(ErrorMessages.InvalidFormat, format);
+      }
+
+      return {
+        ...acc,
+        [format]: Object.keys(SUPPORTED_FORMATS[format].options).reduce((acc2, option) => ({
+          ...acc2,
+          [option]: SUPPORTED_FORMATS[format].options[option],
+        }), {}),
+      };
+    }, {});
+  }
+
+  // User can provide an object, with options specified for each format.
+  // In this case merge the user-supplied options with the default options.
+  if (typeof userFormats === 'object') {
+    return Object.keys(userFormats).reduce((acc, format) => {
+      // Check if the format is supported
+      if (!Object.keys(SUPPORTED_FORMATS).includes(format)) {
+        throw new ExportError(ErrorMessages.InvalidFormat, format);
+      }
+
+      const userFormatOptions = userFormats[format];
+      const defaultFormatOptions = SUPPORTED_FORMATS[format].options;
+
+      const options = Object.keys(defaultFormatOptions).reduce((acc2, option) => {
+        if (has(userFormatOptions, option)) {
+          if (!validateUserFormatOptionType(format, option, userFormatOptions[option])) {
+            // eslint-disable-next-line no-console
+            console.warn(`${option} is not a valid option for ${format}. Ignoring.`);
+            return {
+              ...acc2,
+              [option]: defaultFormatOptions[option],
+            };
+          }
+
+          return {
+            ...acc2,
+            [option]: userFormatOptions[option],
+          };
         }
 
-        copy(zipLocation, filePath)
-          .then(() => {
-            const { shell } = electron;
-            shell.showItemInFolder(filePath);
-            resolve();
-          })
-          .catch(reject);
-      });
+        return {
+          ...acc2,
+          [option]: defaultFormatOptions[option],
+        };
+      }, {});
+
+      return {
+        ...acc,
+        [format]: options,
+      };
+    }, {});
   }
 
-  if (isCordova()) {
-    getFileNativePath(zipLocation)
-      .then((nativePath) => {
-        window.plugins.socialsharing.shareWithOptions({
-          message: 'Your zipped network canvas data.', // not supported on some apps
-          subject: 'network canvas export',
-          files: [nativePath],
-          chooserTitle: 'Share zip file via', // Android only
-        }, resolve, reject);
-      });
-  }
-});
-
-// The idea behind this is to allow for an event listener to be attached to
-// an object property which fires when it changes.
-class ObservableValue {
-  constructor(value) {
-    this.valueInternal = value;
-    this.valueListener = () => {};
-  }
-
-  set value(val) {
-    this.valueInternal = val;
-    this.valueListener(val);
-  }
-
-  get value() {
-    return this.valueInternal;
-  }
-
-  registerListener(listener) {
-    this.valueListener = listener;
-  }
-}
+  throw new ExportError(ErrorMessages.MissingParameters);
+};
 
 module.exports = {
-  escapeFilePart,
-  extensionPattern,
-  extensions,
+  makeFormats,
+  makeOptions,
+  getFileExportListFromFormats,
+  concatTypedArrays,
   getEntityAttributes,
-  getFileExtension,
+  getFileExtensionForType,
   getFilePrefix,
   makeFilename,
   verifySessionVariables,
-  sleep,
-  randomFail,
-  handlePlatformSaveDialog,
-  ObservableValue,
 };

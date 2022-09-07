@@ -1,8 +1,6 @@
 const { isNil } = require('lodash');
-const { VariableType } = require('../../utils/protocol-consts');
-const { entityAttributesProperty } = require('../../utils/reservedAttributes');
-
-const getEntityAttributes = (node) => (node && node[entityAttributesProperty]) || {};
+const { variableTypes } = require('@codaco/shared-consts');
+const { getEntityAttributes } = require('../../utils/general');
 
 // Gephi does not support long lines in graphML, meaning we need to "beautify" the output
 const formatXml = (xml, tab = '\t') => { // tab = optional indent value, default is tab (\t)
@@ -17,7 +15,7 @@ const formatXml = (xml, tab = '\t') => { // tab = optional indent value, default
   return formatted.substring(1, formatted.length - 3);
 };
 
-const VariableTypeValues = Object.freeze(Object.values(VariableType));
+const VariableTypeValues = Object.freeze(Object.values(variableTypes));
 
 /**
  * For a given key, return a valid Graphml data 'type' for encoding
@@ -129,7 +127,6 @@ module.exports = {
   formatXml,
   getAttributePropertyFromCodebook,
   getEgoVariableInfo,
-  getEntityAttributes,
   getGraphMLTypeForKey,
   getVariableInfo,
   VariableTypeValues,

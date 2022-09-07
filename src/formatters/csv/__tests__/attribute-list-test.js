@@ -1,15 +1,16 @@
 /* eslint-env jest */
 
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { AttributeListFormatter, asAttributeList, toCSVStream } from '../attribute-list';
-import {
+const {
   entityPrimaryKeyProperty,
   entityAttributesProperty,
   egoProperty,
   nodeExportIDProperty,
   ncUUIDProperty,
-} from '../../../utils/reservedAttributes';
+} = require('@codaco/shared-consts');
+const { makeWriteableStream } = require('../../../../config/setupTestEnv');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
+const { mockCodebook } = require('../../network');
+const { AttributeListFormatter, asAttributeList, toCSVStream } = require('../attribute-list');
 
 const node = {
   [egoProperty]: 123,
@@ -195,7 +196,7 @@ describe('AttributeListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new AttributeListFormatter({}, mockCodebook, mockExportOptions);
+    const formatter = new AttributeListFormatter({}, mockCodebook, DEFAULT_EXPORT_OPTIONS);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

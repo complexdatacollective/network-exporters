@@ -1,8 +1,9 @@
 /* eslint-env jest */
 
-import { Writable } from 'stream';
-import { mockNetwork, mockCodebook } from '../../../../config/mockObjects';
-import GraphMLFormatter from '../GraphMLFormatter';
+const { Writable } = require('stream');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
+const { mockNetwork, mockCodebook } = require('../../network');
+const GraphMLFormatter = require('../GraphMLFormatter');
 
 const makeWriteableStream = () => {
   const chunks = [];
@@ -33,13 +34,7 @@ describe('GraphMLFormatter writeToStream', () => {
     network = mockNetwork;
     codebook = mockCodebook;
     exportOptions = {
-      exportGraphML: true,
-      exportCSV: false,
-      globalOptions: {
-        resequenceIDs: false,
-        unifyNetworks: false,
-        useDirectedEdges: false,
-      },
+      ...DEFAULT_EXPORT_OPTIONS,
     };
   });
 

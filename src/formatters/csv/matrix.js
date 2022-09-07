@@ -1,7 +1,7 @@
 /* eslint-disable no-bitwise,max-classes-per-file */
 /* eslint space-infix-ops: ["error", {"int32Hint": true}] */
 const { Readable } = require('stream');
-const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require('../../utils/reservedAttributes');
+const { entityPrimaryKeyProperty, ncSourceUUID, ncTargetUUID } = require('@codaco/shared-consts');
 const { csvEOL } = require('./csv');
 
 /**
@@ -65,7 +65,7 @@ class AdjacencyMatrix {
 
     // By using a buffer + typedArray, we avoid the need to fill
     // (which is inefficient on very large arrays)
-    const bitLength = Math.ceil(dimension * dimension / 8);
+    const bitLength = Math.ceil((dimension * dimension) / 8);
     this.buffer = new ArrayBuffer(bitLength);
 
     // A persisted view into the buffer to make the initial construction faster
@@ -146,7 +146,7 @@ class AdjacencyMatrix {
         // zero-compare is slower if it has to convert Number, the 0|0 literal is a hint for int32.
         // Storing 0|0 in variable or surrounding in parens loses this hint in node 8.x
         // (though not 10.x; TODO: revisit after version bump.)
-        cols[i] = (byte & bitmask) !== 0|0;
+        cols[i] = (byte & bitmask) !== 0 | 0;
 
         matrixIndex += 1;
 
@@ -155,7 +155,7 @@ class AdjacencyMatrix {
         }
 
         bitIndex = (bitIndex + 1) % 8;
-        if (bitIndex === 0|0) {
+        if (bitIndex === 0 | 0) {
           byteIndex += 1;
           byte = matrix[byteIndex];
         }

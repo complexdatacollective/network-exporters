@@ -1,33 +1,20 @@
 /* eslint-env jest */
-import GraphMLFormatter from '../graphml/GraphMLFormatter';
-import { mockCodebook } from '../../../config/mockObjects';
-import { entityPrimaryKeyProperty } from '../../utils/reservedAttributes';
-import {
-  extensions,
-  getFileExtension,
-} from '../../utils/general';
-import {
-  partitionNetworkByType,
-} from '../network';
-import getFormatterClass from '../../utils/getFormatterClass';
+const { entityPrimaryKeyProperty } = require('@codaco/shared-consts');
+const GraphMLFormatter = require('../graphml/GraphMLFormatter');
+const {
+  partitionNetworkByType, mockCodebook,
+} = require('../network');
+const getFormatterClass = require('../../utils/getFormatterClass');
+const { SUPPORTED_FORMATS } = require('../../consts/export-consts');
 
 describe('formatter utilities', () => {
-  describe('getFileExtension', () => {
-    it('maps CSV types', () => {
-      expect(getFileExtension('adjacencyMatrix')).toEqual('.csv');
-      expect(getFileExtension('edgeList')).toEqual('.csv');
-      expect(getFileExtension('attributeList')).toEqual('.csv');
-      expect(getFileExtension('ego')).toEqual('.csv');
-    });
-  });
-
   describe('getFormatterClass', () => {
     it('maps graphml to its formatter', () => {
       expect(getFormatterClass('graphml')).toEqual(GraphMLFormatter);
     });
 
     it('maps each format to a class', () => {
-      Object.keys(extensions).forEach((format) => {
+      Object.keys(SUPPORTED_FORMATS).forEach((format) => {
         expect(getFormatterClass(format)).toBeDefined();
       });
     });

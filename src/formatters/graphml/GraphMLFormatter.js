@@ -1,6 +1,15 @@
 const { Readable } = require('stream');
 const graphMLGenerator = require('./createGraphML');
 
+const streamToString = (stream) => {
+  const chunks = [];
+  return new Promise((resolve, reject) => {
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
+  });
+};
+
 /** Class providing a graphML formatter. */
 class GraphMLFormatter {
   /**
@@ -9,19 +18,10 @@ class GraphMLFormatter {
    * @param {Object} codebook - the codebook for this network.
    * @param {Object} exportOptions - global export options object from FileExportManager.
    */
-  constructor(network, codebook, exportOptions) {
+  constructor(network, codebook, exportSettings) {
     this.network = network;
     this.codebook = codebook;
-    this.exportOptions = exportOptions;
-  }
-
-  streamToString = (stream) => {
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-      stream.on('data', (chunk) => chunks.push(chunk));
-      stream.on('error', reject);
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    });
+    this.exportSettings = exportSettings;
   }
 
   /**
@@ -31,7 +31,7 @@ class GraphMLFormatter {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.exportOptions,
+      this.exportSettings,
     );
 
     const inStream = new Readable({
@@ -45,7 +45,7 @@ class GraphMLFormatter {
       },
     });
 
-    return this.streamToString(inStream);
+    return streamToString(inStream);
   }
 
   /**
@@ -56,7 +56,7 @@ class GraphMLFormatter {
     const generator = graphMLGenerator(
       this.network,
       this.codebook,
-      this.exportOptions,
+      this.exportSettings,
     );
     const inStream = new Readable({
       read(/* size */) {

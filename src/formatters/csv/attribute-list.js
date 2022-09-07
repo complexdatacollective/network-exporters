@@ -5,7 +5,7 @@ const {
   entityPrimaryKeyProperty,
   nodeExportIDProperty,
   ncUUIDProperty,
-} = require('../../utils/reservedAttributes');
+} = require('@codaco/shared-consts');
 const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
 

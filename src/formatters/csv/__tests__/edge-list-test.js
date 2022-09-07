@@ -1,7 +1,5 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import {
+const {
   entityPrimaryKeyProperty,
   edgeSourceProperty,
   edgeTargetProperty,
@@ -11,8 +9,11 @@ import {
   ncUUIDProperty,
   ncSourceUUID,
   ncTargetUUID,
-} from '../../../utils/reservedAttributes';
-import { EdgeListFormatter, asEdgeList, toCSVStream } from '../edge-list';
+} = require('@codaco/shared-consts');
+const { makeWriteableStream } = require('../../../../config/setupTestEnv');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
+const { mockCodebook } = require('../../network');
+const { EdgeListFormatter, asEdgeList, toCSVStream } = require('../edge-list');
 
 const nodes = [
   { [entityPrimaryKeyProperty]: 1 },
@@ -21,11 +22,8 @@ const nodes = [
 ];
 
 const listFromEdges = (edges, directed = false) => asEdgeList({ edges, nodes }, mockCodebook, {
-  ...mockExportOptions,
-  globalOptions: {
-    ...mockExportOptions.globalOptions,
-    useDirectedEdges: directed,
-  },
+  ...DEFAULT_EXPORT_OPTIONS,
+  useDirectedEdges: directed,
 });
 
 describe('asEdgeList', () => {
@@ -37,7 +35,7 @@ describe('asEdgeList', () => {
       }],
       ego: { [entityPrimaryKeyProperty]: 123 },
     };
-    expect(asEdgeList(network, mockCodebook, mockExportOptions)[0]).toEqual(
+    expect(asEdgeList(network, mockCodebook, DEFAULT_EXPORT_OPTIONS)[0]).toEqual(
       {
         [entityPrimaryKeyProperty]: 456, [edgeTargetProperty]: 'nodeB', [edgeSourceProperty]: 'nodeA', type: 'type', [entityAttributesProperty]: {},
       },
@@ -129,7 +127,7 @@ describe('EdgeListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new EdgeListFormatter({}, mockCodebook, mockExportOptions);
+    const formatter = new EdgeListFormatter({}, mockCodebook, DEFAULT_EXPORT_OPTIONS);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });

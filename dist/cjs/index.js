@@ -1,3 +1,5 @@
+'use strict';
+
 const { isEmpty, groupBy } = require('lodash');
 const uuid = require('uuid').v4;
 const path = require('path');
@@ -320,3 +322,4 @@ class FileExportManager {
 }
 
 module.exports = FileExportManager;
+//# sourceMappingURL=index.js.map

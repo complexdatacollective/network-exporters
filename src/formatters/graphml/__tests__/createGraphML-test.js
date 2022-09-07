@@ -1,10 +1,10 @@
 /* eslint-env jest */
-
-import { DOMParser } from 'xmldom';
-import {
-  mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
-} from '../../../../config/mockObjects';
-import graphMLGenerator from '../createGraphML';
+const { DOMParser } = require('@xmldom/xmldom');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
+const {
+  mockCodebook, mockNetwork, mockNetwork2, processMockNetworks,
+} = require('../../network');
+const graphMLGenerator = require('../createGraphML');
 
 const getChildElements = (parentEl, elements) => Array.from(elements)
   .filter((el) => el.parentNode === parentEl);
@@ -25,11 +25,7 @@ describe('buildGraphML', () => {
   let xml;
 
   beforeEach(() => {
-    exportOptions = {
-      ...mockExportOptions,
-      exportGraphML: true,
-    };
-
+    exportOptions = DEFAULT_EXPORT_OPTIONS;
     const processedNetworks = processMockNetworks([mockNetwork, mockNetwork2], false);
     const protocolNetwork = processedNetworks['protocol-uid-1'][0];
 
@@ -161,9 +157,7 @@ describe('buildGraphML', () => {
 
       xml = buildXML(protocolNetwork, codebook, {
         ...exportOptions,
-        globalOptions: {
-          useDirectedEdges: true,
-        },
+        useDirectedEdges: true,
       });
     });
 
@@ -179,9 +173,7 @@ describe('buildGraphML', () => {
 
       xml = buildXML(protocolNetwork, codebook, {
         ...exportOptions,
-        globalOptions: {
-          unifyNetworks: true,
-        },
+        unifyNetworks: true,
       });
     });
 

@@ -1,8 +1,5 @@
 /* eslint-env jest */
-import { makeWriteableStream } from '../../../../config/setupTestEnv';
-import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from '../ego-list';
-import {
+const {
   entityPrimaryKeyProperty,
   entityAttributesProperty,
   egoProperty,
@@ -15,7 +12,11 @@ import {
   protocolName,
   ncCaseProperty,
   sessionProperty,
-} from '../../../utils/reservedAttributes';
+} = require('@codaco/shared-consts');
+const { makeWriteableStream } = require('../../../../config/setupTestEnv');
+const { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } = require('../ego-list');
+const { mockCodebook } = require('../../network');
+const { DEFAULT_EXPORT_OPTIONS } = require('../../../consts/export-consts');
 
 const ego = {
   [egoProperty]: 123,
@@ -47,7 +48,7 @@ describe('asEgoAndSessionVariablesList', () => {
     expect(asEgoAndSessionVariablesList(
       network,
       mockCodebook,
-      mockExportOptions,
+      DEFAULT_EXPORT_OPTIONS,
     )).toEqual([network.ego]);
   });
 });
@@ -233,7 +234,7 @@ describe('EgoListFormatter', () => {
   });
 
   it('writeToStream returns an abort controller', () => {
-    const formatter = new EgoListFormatter({}, mockCodebook, mockExportOptions);
+    const formatter = new EgoListFormatter({}, mockCodebook, DEFAULT_EXPORT_OPTIONS);
     const controller = formatter.writeToStream(writable);
     expect(controller.abort).toBeInstanceOf(Function);
   });
