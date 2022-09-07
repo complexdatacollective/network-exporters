@@ -11,7 +11,6 @@ const {
 } = require('../network');
 const { getEntityAttributes } = require('../../utils/general');
 
-// todo: add resequence ID test
 const protocolID = 123;
 
 // Utility method for use during testing.

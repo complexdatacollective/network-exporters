@@ -19,7 +19,6 @@ const {
   ncUUIDProperty,
   nodeExportIDProperty,
   edgeExportIDProperty,
-  variableTypes,
 } = require('@codaco/shared-consts');
 const { DOMParser, XMLSerializer } = require('@xmldom/xmldom');
 const {
@@ -31,6 +30,17 @@ const {
 const { getEntityAttributes } = require('../../utils/general');
 
 const eol = '\n';
+
+const variableTypes = Object.freeze({
+  boolean: 'boolean',
+  text: 'text',
+  number: 'number',
+  ordinal: 'ordinal',
+  categorical: 'categorical',
+  layout: 'layout',
+  scalar: 'scalar',
+  datetime: 'datetime',
+});
 
 // Create a serializer for reuse below.
 const serializer = new XMLSerializer();

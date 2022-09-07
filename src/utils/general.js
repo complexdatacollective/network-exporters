@@ -74,7 +74,9 @@ const getFilePrefix = (session, protocol, unifyNetworks) => {
     return sanitizeFilename(protocol.name);
   }
 
-  return `${sanitizeFilename(session.sessionVariables[caseProperty])}_${session.sessionVariables[sessionProperty]}`;
+  const caseAsString = session.sessionVariables[caseProperty].toString();
+
+  return `${sanitizeFilename(caseAsString)}_${session.sessionVariables[sessionProperty]}`;
 };
 
 const concatTypedArrays = (a, b) => {

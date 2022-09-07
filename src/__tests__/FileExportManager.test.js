@@ -3,7 +3,7 @@ const { SUPPORTED_FORMATS } = require('../consts/export-consts');
 const { ExportError, ErrorMessages } = require('../consts/errors/ExportError');
 const FileExportManager = require('../FileExportManager');
 const MockFSInterface = require('../filesystem/testFs');
-const { mockNetwork, mockNetwork2 } = require('../formatters/network');
+const { mockNetwork, mockNetwork2, mockCodebook } = require('../formatters/network');
 
 describe('FileExportManager', () => {
   let instance;
@@ -41,10 +41,33 @@ describe('FileExportManager', () => {
   describe('Run Export', () => {
     it('Returns a list of paths when export completes', async () => {
       const sessions = [mockNetwork, mockNetwork2];
+      const protocols = { 'protocol-uid-1': { codebook: mockCodebook } };
+      const job = instance.prepareExportJob(sessions, protocols);
+      const { completedExports } = await job.run();
+      expect(completedExports).toHaveLength(2);
+    });
+
+    it('Returns an object containing completed and failed exports', async () => {
+      const mockNetwork3 = {
+        ...mockNetwork,
+        sessionVariables: {
+          protocolName: 'missing',
+        },
+      };
+
+      const sessions = [mockNetwork, mockNetwork3];
+      const protocols = { 'protocol-uid-1': { codebook: mockCodebook } };
+      const job = instance.prepareExportJob(sessions, protocols);
+      const { completedExports, failedExports } = await job.run();
+      expect(completedExports).toHaveLength(1);
+      expect(failedExports).toHaveLength(1);
+    });
+
+    it('Returns a rejected promise when no sessions can be exported', async () => {
+      const sessions = [mockNetwork, mockNetwork2];
       const protocols = { 123: 243 };
       const job = instance.prepareExportJob(sessions, protocols);
-      const paths = await job.run();
-      expect(paths).toEqual(['/path/to/file1', '/path/to/file2']);
+      await expect(job.run()).rejects.toThrow(new ExportError(ErrorMessages.NothingToExport));
     });
 
     it.todo('Emits progress events');

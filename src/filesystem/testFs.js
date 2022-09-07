@@ -1,3 +1,5 @@
+const EventEmitter = require('events');
+
 /* eslint-disable no-console */
 const copyFile = async (src, dest) => {
   console.info(`testFS: Copying ${src} to ${dest}`);
@@ -16,9 +18,33 @@ const writeFile = async (filePath) => {
 
 const createWriteStream = async (filePath) => {
   console.info(`testFS: Creating write stream for ${filePath}`);
-  const writer = () => {};
 
-  writer.abort = () => {};
+  const ee = new EventEmitter();
+  const writer = {
+    on(...args) {
+      ee.on(...args);
+    },
+    write: async (data) => {
+      console.info(`testFS: writeStream.write(${data})`);
+      return Promise.resolve();
+    },
+    abort: () => {
+      console.info('testFS: writeStream.abort()');
+    },
+    end: () => {
+      console.info('testFS: writeStream.end()');
+      ee.emit('finish');
+    },
+    once(...args) {
+      ee.once(...args);
+    },
+    emit(...args) {
+      ee.emit(...args);
+    },
+    removeListener(...args) {
+      ee.removeListener(...args);
+    },
+  };
 
   return Promise.resolve(writer);
 };
