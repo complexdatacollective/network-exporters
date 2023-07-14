@@ -3,12 +3,14 @@ const { merge, isEmpty, groupBy } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
+const uuid = require('uuid/v4');
+const path = require('path');
 const {
   protocolProperty,
 } = require('./utils/reservedAttributes');
 const {
   removeDirectory,
-  makeTempDir,
+  tempDataPath,
 } = require('./utils/filesystem');
 const exportFile = require('./exportFile');
 const {
@@ -28,7 +30,7 @@ const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
-const { isElectron } = require('./utils/Environment');
+const { isElectron, isCordova } = require('./utils/Environment');
 
 const defaultCSVOptions = {
   adjacencyMatrix: false,
@@ -101,7 +103,7 @@ class FileExportManager {
    *                        protocol in the sessions collection.
    */
   exportSessions(sessions, protocols) {
-    let tmpDir; // will hold temporary directory location
+    const tmpDir = tempDataPath();
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
@@ -161,18 +163,11 @@ class FileExportManager {
 
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
-        makeTempDir().then((dir) => { tmpDir = dir; })
-          // Short delay to give consumer UI time to render
-          .then(sleep(1000))
-          .then(() => {
-            if (!shouldContinue()) {
-              throw new UserCancelledExport();
-            }
-          })
-          // Insert a reference to the ego ID into all nodes and edges
+
+        // Short delay to give consumer UI time to render
+        sleep(1000)(shouldContinue)
           .then(() => {
             this.emit('update', ProgressMessages.Formatting);
-            // Insert a reference to the ego ID into all nodes and edges
             return insertEgoIntoSessionNetworks(sessions);
           })
           // Resequence IDs for this export

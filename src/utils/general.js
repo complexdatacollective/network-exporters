@@ -1,9 +1,9 @@
 /* eslint-disable global-require */
-const { first } = require('lodash');
+const { first, zip } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
 const { isCordova, isElectron } = require('./Environment');
-const { getFileNativePath, copy } = require('./filesystem');
+const { copy } = require('./filesystem');
 const {
   caseProperty,
   sessionProperty,
@@ -134,15 +134,13 @@ const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve
   }
 
   if (isCordova()) {
-    getFileNativePath(zipLocation)
-      .then((nativePath) => {
-        window.plugins.socialsharing.shareWithOptions({
-          message: 'Your zipped network canvas data.', // not supported on some apps
-          subject: 'network canvas export',
-          files: [nativePath],
-          chooserTitle: 'Share zip file via', // Android only
-        }, resolve, reject);
-      });
+    console.log('zipLocation', zipLocation);
+    window.plugins.socialsharing.shareWithOptions({
+      message: 'Your zipped network canvas data.', // not supported on some apps
+      // subject: 'network canvas export',
+      files: [zipLocation],
+      chooserTitle: 'Share zip file via', // Android only
+    }, resolve, reject);
   }
 });
 
@@ -151,7 +149,7 @@ const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve
 class ObservableValue {
   constructor(value) {
     this.valueInternal = value;
-    this.valueListener = () => {};
+    this.valueListener = () => { };
   }
 
   set value(val) {

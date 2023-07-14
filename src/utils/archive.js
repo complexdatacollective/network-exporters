@@ -125,6 +125,7 @@ const archive = (sourcePaths, tempDir, filename, updateCallback, shouldContinue)
 
   if (isCordova()) {
     writePath = `${tempDir}${filenameWithExtension}`;
+    console.log('writePath', writePath);
     return archiveCordova(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 

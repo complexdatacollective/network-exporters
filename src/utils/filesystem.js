@@ -1,6 +1,5 @@
 /* eslint-disable global-require */
 /* global FileWriter, FileError, cordova */
-const uuid = require('uuid/v4');
 const { Writable } = require('stream');
 const { trimChars } = require('lodash/fp');
 const { Buffer } = require('buffer/');
@@ -9,6 +8,14 @@ const { ExportError, ErrorMessages } = require('../errors/ExportError');
 const { inEnvironment, isElectron, isCordova } = require('./Environment');
 
 const trimPath = trimChars('/ ');
+
+const resolveOrRejectWith = (resolve, reject) => (err, ...args) => {
+  if (err) {
+    reject(err);
+  } else {
+    resolve(...args);
+  }
+};
 
 const splitUrl = (targetPath) => {
   const pathParts = trimPath(targetPath).split('/');
@@ -43,6 +50,53 @@ const tempDataPath = inEnvironment((environment) => {
   throw new Error(`userDataPath() not available on platform ${environment}`);
 });
 
+const userDataPath = inEnvironment((environment) => {
+  if (environment === environments.ELECTRON) {
+    let electron;
+
+    if (typeof window !== 'undefined' && window) {
+      electron = window.require('electron');
+    } else {
+      // if no window object assume we are in nodejs environment (Electron main)
+      electron = require('electron');
+    }
+
+    return () => (electron.app || electron.remote.app).getPath('userData');
+  }
+
+  if (environment === environments.CORDOVA) {
+    return () => cordova.file.applicationStorageDirectory;
+  }
+
+  throw new Error(`userDataPath() not available on platform ${environment}`);
+});
+
+const appPath = inEnvironment((environment) => {
+  if (environment === environments.ELECTRON) {
+    const electron = require('electron');
+
+    return () => (electron.app || electron.remote.app).getAppPath();
+  }
+
+  if (environment === environments.CORDOVA) {
+    return () => cordova.file.applicationDirectory;
+  }
+
+  throw new Error(`appDataPath() not available on platform ${environment}`);
+});
+
+const getFileEntry = (filename, fileSystem) => new Promise((resolve, reject) => {
+  fileSystem.root.getFile(filename, { create: true, exclusive: false },
+    (fileEntry) => resolve(fileEntry),
+    (err) => reject(err));
+});
+
+const getTempFileSystem = () => new Promise((resolve, reject) => {
+  window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, (dirEntry) => {
+    resolve(dirEntry);
+  }, (error) => reject(error));
+});
+
 const resolveFileSystemUrl = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
     return (path) => new Promise((resolve, reject) => (
@@ -51,6 +105,35 @@ const resolveFileSystemUrl = inEnvironment((environment) => {
   }
 
   throw new Error(`resolveFileSystemUrl() not available on platform ${environment}`);
+});
+
+const readFile = inEnvironment((environment) => {
+  if (environment === environments.ELECTRON) {
+    const fse = require('fs-extra');
+
+    return (filename) => fse.readFile(filename, null);
+  }
+
+  if (environment === environments.CORDOVA) {
+    const fileReader = (fileEntry) => new Promise((resolve, reject) => {
+      fileEntry.file((file) => {
+        const reader = new FileReader();
+
+        reader.onloadend = (event) => {
+          resolve(Buffer.from(event.target.result));
+        };
+
+        reader.onerror = (error) => reject(error);
+
+        reader.readAsArrayBuffer(file);
+      }, reject);
+    });
+
+    return (filename) => resolveFileSystemUrl(filename)
+      .then(fileReader);
+  }
+
+  throw new Error(`readFile() not available on platform ${environment}`);
 });
 
 const createDirectory = inEnvironment((environment) => {
@@ -88,51 +171,7 @@ const createDirectory = inEnvironment((environment) => {
   throw new Error(`createDirectory() not available on platform ${environment}`);
 });
 
-/**
- * Create a new temp directory to hold intermediate export files
- * @async
- * @return {string} the directory (path) created
- */
 
-const makeTempDir = () => {
-  const directoryName = `temp-export-${uuid()}`;
-  let directoryPath;
-  if (isElectron()) {
-    const path = require('path');
-    directoryPath = path.join(tempDataPath(), directoryName);
-  }
-
-  if (isCordova()) {
-    directoryPath = `${tempDataPath()}${directoryName}`;
-  }
-
-  if (!directoryPath) {
-    return Promise.reject(new ExportError(ErrorMessages.NoTmpFS));
-  }
-
-  return createDirectory(directoryPath).then((dir) => (isCordova() ? dir.toInternalURL() : dir));
-};
-
-const userDataPath = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    let electron;
-
-    if (typeof window !== 'undefined' && window) {
-      electron = window.require('electron');
-    } else {
-      // if no window object assume we are in nodejs environment (Electron main)
-      electron = require('electron');
-    }
-
-    return () => (electron.app || electron.remote.app).getPath('userData');
-  }
-
-  if (environment === environments.CORDOVA) {
-    return () => 'cdvfile://localhost/persistent';
-  }
-
-  throw new Error(`userDataPath() not available on platform ${environment}`);
-});
 
 const getFileNativePath = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
@@ -146,60 +185,6 @@ const getFileNativePath = inEnvironment((environment) => {
   throw new Error(`getFileNativePath() not available on platform ${environment}`);
 });
 
-const appPath = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    const electron = require('electron');
-
-    return () => (electron.app || electron.remote.app).getAppPath();
-  }
-
-  if (environment === environments.CORDOVA) {
-    return () => cordova.file.applicationDirectory;
-  }
-
-  throw new Error(`appDataPath() not available on platform ${environment}`);
-});
-
-const getFileEntry = (filename, fileSystem) => new Promise((resolve, reject) => {
-  fileSystem.root.getFile(filename, { create: true, exclusive: false },
-    (fileEntry) => resolve(fileEntry),
-    (err) => reject(err));
-});
-
-const getTempFileSystem = () => new Promise((resolve, reject) => {
-  window.resolveLocalFileSystemURL(cordova.file.cacheDirectory, (dirEntry) => {
-    resolve(dirEntry);
-  }, (error) => reject(error));
-});
-
-const readFile = inEnvironment((environment) => {
-  if (environment === environments.ELECTRON) {
-    const fse = require('fs-extra');
-
-    return (filename) => fse.readFile(filename, null);
-  }
-
-  if (environment === environments.CORDOVA) {
-    const fileReader = (fileEntry) => new Promise((resolve, reject) => {
-      fileEntry.file((file) => {
-        const reader = new FileReader();
-
-        reader.onloadend = (event) => {
-          resolve(Buffer.from(event.target.result));
-        };
-
-        reader.onerror = (error) => reject(error);
-
-        reader.readAsArrayBuffer(file);
-      }, reject);
-    });
-
-    return (filename) => resolveFileSystemUrl(filename)
-      .then(fileReader);
-  }
-
-  throw new Error(`readFile() not available on platform ${environment}`);
-});
 
 const makeFileWriter = (fileEntry) => new Promise((resolve, reject) => {
   fileEntry.createWriter(resolve, reject);
@@ -286,7 +271,7 @@ const removeDirectory = inEnvironment((environment) => {
       try {
         if (
           !targetPath.includes(userDataPath())
-            && !targetPath.includes(tempDataPath())
+          && !targetPath.includes(tempDataPath())
         ) { reject(new Error('Attempted to remove path outside of safe directories!')); return; }
         fse.rmdir(targetPath, { recursive: true }, resolve);
       } catch (error) {
@@ -667,7 +652,6 @@ module.exports = {
   getTempFileSystem,
   inSequence,
   makeFileWriter,
-  makeTempDir,
   makeTmpDirCopy,
   newFile,
   readFile,
