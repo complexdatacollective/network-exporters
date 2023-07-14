@@ -134,7 +134,6 @@ const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve
   }
 
   if (isCordova()) {
-    console.log('zipLocation', zipLocation);
     window.plugins.socialsharing.shareWithOptions({
       message: 'Your zipped network canvas data.', // not supported on some apps
       // subject: 'network canvas export',
