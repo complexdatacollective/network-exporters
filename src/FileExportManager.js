@@ -180,6 +180,8 @@ class FileExportManager {
               throw new UserCancelledExport();
             }
 
+            console.log('union option enabled?', this.exportOptions.globalOptions.unifyNetworks);
+
             if (!this.exportOptions.globalOptions.unifyNetworks) {
               return sessionsByProtocol;
             }
@@ -188,6 +190,7 @@ class FileExportManager {
             return unionOfNetworks(sessionsByProtocol);
           })
           .then((unifiedSessions) => {
+            console.log('unifiedSessions', unifiedSessions);
             if (!shouldContinue()) {
               throw new UserCancelledExport();
             }

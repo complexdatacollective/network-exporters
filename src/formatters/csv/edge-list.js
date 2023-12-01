@@ -10,6 +10,7 @@ const {
 } = require('../../utils/reservedAttributes');
 const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
+const Papa = require('papaparse');
 
 /**
  * Builds an edge list for a network, based only on its edges (it need
@@ -147,6 +148,54 @@ const toCSVStream = (edges, outStream) => {
   };
 };
 
+const toCSVString = (edges) => {
+  const attrNames = attributeHeaders(edges);
+  let edge;
+
+  const data = [];
+
+  const columns = attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr)))
+
+  data.push(columns);
+
+  for (let rowIndex = 0; rowIndex < edges.length; rowIndex += 1) {
+    edge = edges[rowIndex];
+    const values = attrNames.map((attrName) => {
+      // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
+      let value;
+      if (
+        attrName === entityPrimaryKeyProperty
+        || attrName === edgeExportIDProperty
+        || attrName === egoProperty
+        || attrName === 'to'
+        || attrName === 'from'
+        || attrName === ncSourceUUID
+        || attrName === ncTargetUUID
+      ) {
+        value = edge[attrName];
+      } else {
+        value = edge[entityAttributesProperty][attrName];
+      }
+      return sanitizedCellValue(value);
+    });
+    data.push(values);
+  }
+
+  const papa = Papa.unparse(data, {
+    quotes: false, //or array of booleans
+    quoteChar: '"',
+    escapeChar: '"',
+    delimiter: ",",
+    header: true,
+    newline: "\r\n",
+    skipEmptyLines: false, //other option is 'greedy', meaning skip delimiters, quotes, and whitespace.
+  })
+
+  console.log('finished:', columns, data, papa);
+  return papa;
+
+};
+
 class EdgeListFormatter {
   constructor(data, codebook, exportOptions) {
     this.list = asEdgeList(data, codebook, exportOptions);
@@ -154,6 +203,11 @@ class EdgeListFormatter {
 
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
+  }
+
+  writeToString(writeFile, filepath) {
+    const string = toCSVString(this.list);
+    return writeFile(filepath, string);
   }
 }
 

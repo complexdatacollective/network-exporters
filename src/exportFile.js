@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { createWriteStream } = require('./utils/filesystem');
+const { createWriteStream, writeFile } = require('./utils/filesystem');
 const {
   getFileExtension,
   makeFilename,
@@ -63,18 +63,24 @@ const exportFile = (
       filePath = `${outDir}${outputName}`;
     }
 
-    createWriteStream(filePath)
-      .then((ws) => {
-        writeStream = ws;
-        writeStream.on('finish', () => {
-          promiseResolve(filePath);
-        });
-        writeStream.on('error', (err) => {
-          promiseReject(err);
-        });
+    if (exportFormat !== 'graphml' && isCordova()) {
+      const writer = async (data, path) => writeFile(data, path).then(promiseResolve(filePath)).catch(promiseReject);
 
-        streamController = formatter.writeToStream(writeStream);
-      });
+      streamController = formatter.writeToString(writer, filePath);
+    } else {
+      createWriteStream(filePath)
+        .then((ws) => {
+          writeStream = ws;
+          writeStream.on('finish', () => {
+            promiseResolve(filePath);
+          });
+          writeStream.on('error', (err) => {
+            promiseReject(err);
+          });
+
+          streamController = formatter.writeToStream(writeStream);
+        });
+    }
   });
 
   // Decorate the promise with an abort method that also tears down the
