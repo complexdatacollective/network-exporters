@@ -63,24 +63,18 @@ const exportFile = (
       filePath = `${outDir}${outputName}`;
     }
 
-    if (exportFormat !== 'graphml' && isCordova()) {
-      const writer = async (data, path) => writeFile(data, path).then(promiseResolve(filePath)).catch(promiseReject);
-
-      streamController = formatter.writeToString(writer, filePath);
-    } else {
-      createWriteStream(filePath)
-        .then((ws) => {
-          writeStream = ws;
-          writeStream.on('finish', () => {
-            promiseResolve(filePath);
-          });
-          writeStream.on('error', (err) => {
-            promiseReject(err);
-          });
-
-          streamController = formatter.writeToStream(writeStream);
+    createWriteStream(filePath)
+      .then((ws) => {
+        writeStream = ws;
+        writeStream.on('finish', () => {
+          promiseResolve(filePath);
         });
-    }
+        writeStream.on('error', (err) => {
+          promiseReject(err);
+        });
+
+        streamController = formatter.writeToStream(writeStream);
+      });
   });
 
   // Decorate the promise with an abort method that also tears down the

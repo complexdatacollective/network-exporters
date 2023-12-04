@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { merge, isEmpty, groupBy } = require('lodash');
+const { merge, isEmpty, groupBy, get } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
@@ -11,6 +11,7 @@ const {
 const {
   removeDirectory,
   tempDataPath,
+  createDirectory,
 } = require('./utils/filesystem');
 const exportFile = require('./exportFile');
 const {
@@ -55,6 +56,40 @@ const defaultExportOptions = {
     screenLayoutWidth: 1920,
   },
 };
+
+// Create a subdirectory for the export, because we can't delete
+// files from the root cache directory during cleanup.
+const getTempDir = () => {
+  const unique = Date.now();
+  if (isCordova()) {
+
+
+    const osTempDir = tempDataPath();
+
+    const dirName = `network-canvas-export-${unique}`;
+    const dirPath = `${osTempDir}${dirName}/`;
+
+    // Attempt to create the directory
+    try {
+      createDirectory(dirPath);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('Error creating temp directory:', e);
+      return null;
+    }
+
+    console.log('created temp dir', dirPath);
+    return dirPath;
+  }
+
+  if (isElectron()) {
+    const tempPath = path.join(tempDataPath(), unique);
+    createDirectory(tempPath);
+    return tempPath;
+  }
+
+  return null;
+}
 
 // Merge default and user-supplied options
 const getOptions = (exportOptions) => ({
@@ -103,7 +138,11 @@ class FileExportManager {
    *                        protocol in the sessions collection.
    */
   exportSessions(sessions, protocols) {
-    const tmpDir = tempDataPath();
+    const tmpDir = getTempDir();
+
+    if (!tmpDir) {
+      return Promise.reject(new ExportError(`Couldn't create temp directory.`));
+    }
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
@@ -130,7 +169,9 @@ class FileExportManager {
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
+      console.log('cleanup', tmpDir);
       if (tmpDir) {
+        console.log('was temp dir', tmpDir);
         try {
           removeDirectory(tmpDir);
         } catch (error) {

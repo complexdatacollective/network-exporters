@@ -74,16 +74,31 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldConti
   const zip = new JSZip();
 
   return new Promise((resolve, reject) => {
-    const promisedExports = sourcePaths.map(
-      (sourcePath) => {
-        const [, filename] = splitUrl(sourcePath);
-        return readFile(sourcePath)
-          .then((fileContent) => {
-            if (!shouldContinue()) { resolve(); }
-            return zip.file(filename, fileContent);
-          });
-      },
-    );
+
+    let promisedExports;
+    try {
+      promisedExports = sourcePaths.map(
+        (sourcePath) => {
+          const [, filename] = splitUrl(sourcePath);
+          console.log('promised', sourcePath, filename);
+          return readFile(sourcePath)
+            .catch((error) => {
+              console.log('error reading file', error);
+              return null;
+            })
+            .then((fileContent) => {
+              if (!shouldContinue()) { resolve(); }
+              return zip.file(filename, fileContent);
+            });
+        },
+      );
+    } catch (e) {
+      console.log('error collecting paths for export', e);
+      reject(e);
+    }
+
+
+    console.log('collected promised exports', promisedExports);
 
     Promise.all(promisedExports).then(() => {
       const [baseDirectory, filename] = splitUrl(targetFileName);

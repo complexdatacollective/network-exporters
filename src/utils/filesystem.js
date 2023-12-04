@@ -129,6 +129,11 @@ const readFile = inEnvironment((environment) => {
     });
 
     return (filename) => resolveFileSystemUrl(filename)
+      .catch((error) => {
+        console.log('Error resolving file system url', filename, error);
+
+        throw error;
+      })
       .then(fileReader);
   }
 
@@ -186,6 +191,7 @@ const getFileNativePath = inEnvironment((environment) => {
 
 
 const makeFileWriter = (fileEntry) => new Promise((resolve, reject) => {
+  console.log('makeFileWriter', fileEntry);
   fileEntry.createWriter(resolve, reject);
 });
 
@@ -197,6 +203,7 @@ const createReader = (fileEntry) => new Promise((resolve, reject) => {
 });
 
 const newFile = (directoryEntry, filename) => new Promise((resolve, reject) => {
+  console.log('newFile', directoryEntry, filename);
   directoryEntry.getFile(filename, { create: true }, resolve, reject);
 });
 
@@ -212,12 +219,22 @@ const writeFile = inEnvironment((environment) => {
     return (fileUrl, data) => {
       const [baseDirectory, filename] = splitUrl(fileUrl);
 
+      console.log('writeFile', fileUrl, baseDirectory, filename);
       return resolveFileSystemUrl(baseDirectory)
         .then((directoryEntry) => newFile(directoryEntry, filename))
+        .catch((error) => {
+          console.log('Error creating file', directoryEntry, filename, error);
+        })
         .then(makeFileWriter)
         .then((fileWriter) => new Promise((resolve, reject) => {
-          fileWriter.onwriteend = () => resolve(fileUrl); // eslint-disable-line no-param-reassign
-          fileWriter.onerror = (error) => reject(error); // eslint-disable-line no-param-reassign
+          fileWriter.onwriteend = () => {
+            console.log('finished writing', fileUrl);
+            resolve(fileUrl)
+          }; // eslint-disable-line no-param-reassign
+          fileWriter.onerror = (error) => {
+            console.log('error writing file', error);
+            reject(error);
+          }; // eslint-disable-line no-param-reassign
           fileWriter.write(data);
         }));
     };
