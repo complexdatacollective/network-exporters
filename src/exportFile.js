@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { createWriteStream, writeFile } = require('./utils/filesystem');
+const { createWriteStream } = require('./utils/filesystem');
 const {
   getFileExtension,
   makeFilename,

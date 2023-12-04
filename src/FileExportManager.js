@@ -1,15 +1,13 @@
 /* eslint-disable global-require */
-const { merge, isEmpty, groupBy, get } = require('lodash');
+const { merge, isEmpty, groupBy } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
-const uuid = require('uuid/v4');
 const path = require('path');
 const {
   protocolProperty,
 } = require('./utils/reservedAttributes');
 const {
-  removeDirectory,
   tempDataPath,
   createDirectory,
 } = require('./utils/filesystem');
@@ -63,14 +61,14 @@ const getTempDir = () => {
   const osTempDir = tempDataPath();
   const dirName = `network-canvas-export-${Date.now()}`;
 
-  let dirPath = null
+  let dirPath = null;
 
   if (isCordova()) {
     dirPath = `${osTempDir}${dirName}/`;
   }
 
   if (isElectron()) {
-    dirPath = path.join(osTempDir, unique);
+    dirPath = path.join(osTempDir, dirName);
   }
 
   try {
@@ -81,7 +79,7 @@ const getTempDir = () => {
   }
 
   return dirPath;
-}
+};
 
 // Merge default and user-supplied options
 const getOptions = (exportOptions) => ({
@@ -133,7 +131,7 @@ class FileExportManager {
     const tmpDir = getTempDir();
 
     if (!tmpDir) {
-      return Promise.reject(new ExportError(`Couldn't create temp directory.`));
+      return Promise.reject(new ExportError('Couldn\'t create temp directory.'));
     }
 
     // This queue instance accepts one or more promises and limits their
@@ -186,7 +184,6 @@ class FileExportManager {
 
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
-
         // Short delay to give consumer UI time to render
         sleep(1000)(shouldContinue)
           .then(() => {
@@ -203,8 +200,6 @@ class FileExportManager {
               throw new UserCancelledExport();
             }
 
-            console.log('union option enabled?', this.exportOptions.globalOptions.unifyNetworks);
-
             if (!this.exportOptions.globalOptions.unifyNetworks) {
               return sessionsByProtocol;
             }
@@ -213,7 +208,6 @@ class FileExportManager {
             return unionOfNetworks(sessionsByProtocol);
           })
           .then((unifiedSessions) => {
-            console.log('unifiedSessions', unifiedSessions);
             if (!shouldContinue()) {
               throw new UserCancelledExport();
             }

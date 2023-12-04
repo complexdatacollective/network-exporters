@@ -62,7 +62,6 @@ const toCSVStream = (nodes, outStream) => {
 
     read(/* size */) {
       if (!headerWritten) {
-
         const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`;
         this.push(headerValue);
         headerWritten = true;
@@ -99,18 +98,14 @@ const toCSVStream = (nodes, outStream) => {
   };
 };
 
-
 class AttributeListFormatter {
   constructor(data, codebook, exportOptions) {
-
     this.list = asAttributeList(data, codebook, exportOptions);
-    console.log('CSV attribute list formatter', data, codebook, exportOptions, this.list);
   }
 
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
   }
-
 }
 
 module.exports = {
