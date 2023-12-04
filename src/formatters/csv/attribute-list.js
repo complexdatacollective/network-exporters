@@ -8,7 +8,6 @@ const {
 } = require('../../utils/reservedAttributes');
 const { processEntityVariables } = require('../network');
 const { sanitizedCellValue, csvEOL } = require('./csv');
-const Papa = require('papaparse');
 
 const asAttributeList = (network, codebook, exportOptions) => {
   const processedNodes = (network.nodes || []).map((node) => {
@@ -100,48 +99,6 @@ const toCSVStream = (nodes, outStream) => {
   };
 };
 
-const toCSVString = (nodes) => {
-  const attrNames = attributeHeaders(nodes);
-  let node;
-
-  const data = [];
-
-  const columns = attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr)))
-
-  data.push(columns);
-
-  for (let rowIndex = 0; rowIndex < nodes.length; rowIndex += 1) {
-    node = nodes[rowIndex];
-    const values = attrNames.map((attrName) => {
-      // The primary key and ego id exist at the top-level; all others inside `.attributes`
-      let value;
-      if (
-        attrName === entityPrimaryKeyProperty
-        || attrName === egoProperty
-        || attrName === nodeExportIDProperty
-      ) {
-        value = node[attrName];
-      } else {
-        value = node[entityAttributesProperty][attrName];
-      }
-      return sanitizedCellValue(value);
-    });
-    data.push(values);
-  }
-
-  const papa = Papa.unparse(data, {
-    quotes: false, //or array of booleans
-    quoteChar: '"',
-    escapeChar: '"',
-    delimiter: ",",
-    header: true,
-    newline: "\r\n",
-    skipEmptyLines: false, //other option is 'greedy', meaning skip delimiters, quotes, and whitespace.
-  })
-
-  console.log('finished:', columns, data, papa);
-  return papa;
-};
 
 class AttributeListFormatter {
   constructor(data, codebook, exportOptions) {
@@ -152,11 +109,6 @@ class AttributeListFormatter {
 
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
-  }
-
-  writeToString(writeFile, filepath) {
-    const string = toCSVString(this.list);
-    return writeFile(filepath, string);
   }
 
 }
