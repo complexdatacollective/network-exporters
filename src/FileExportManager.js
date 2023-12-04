@@ -60,35 +60,27 @@ const defaultExportOptions = {
 // Create a subdirectory for the export, because we can't delete
 // files from the root cache directory during cleanup.
 const getTempDir = () => {
-  const unique = Date.now();
+  const osTempDir = tempDataPath();
+  const dirName = `network-canvas-export-${Date.now()}`;
+
+  let dirPath = null
+
   if (isCordova()) {
-
-
-    const osTempDir = tempDataPath();
-
-    const dirName = `network-canvas-export-${unique}`;
-    const dirPath = `${osTempDir}${dirName}/`;
-
-    // Attempt to create the directory
-    try {
-      createDirectory(dirPath);
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.error('Error creating temp directory:', e);
-      return null;
-    }
-
-    console.log('created temp dir', dirPath);
-    return dirPath;
+    dirPath = `${osTempDir}${dirName}/`;
   }
 
   if (isElectron()) {
-    const tempPath = path.join(tempDataPath(), unique);
-    createDirectory(tempPath);
-    return tempPath;
+    dirPath = path.join(osTempDir, unique);
   }
 
-  return null;
+  try {
+    createDirectory(dirPath);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Error creating temp directory:', e);
+  }
+
+  return dirPath;
 }
 
 // Merge default and user-supplied options
@@ -169,16 +161,6 @@ class FileExportManager {
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
-      console.log('cleanup', tmpDir);
-      if (tmpDir) {
-        console.log('was temp dir', tmpDir);
-        try {
-          removeDirectory(tmpDir);
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error removing temp directory:', error);
-        }
-      }
     };
 
     this.emit('begin', ProgressMessages.Begin);
