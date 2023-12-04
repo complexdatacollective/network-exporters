@@ -8,14 +8,6 @@ const { inEnvironment } = require('./Environment');
 
 const trimPath = trimChars('/ ');
 
-const resolveOrRejectWith = (resolve, reject) => (err, ...args) => {
-  if (err) {
-    reject(err);
-  } else {
-    resolve(...args);
-  }
-};
-
 const splitUrl = (targetPath) => {
   const pathParts = trimPath(targetPath).split('/');
   const baseDirectory = `${pathParts.slice(0, -1).join('/')}/`;
@@ -129,6 +121,11 @@ const readFile = inEnvironment((environment) => {
     });
 
     return (filename) => resolveFileSystemUrl(filename)
+      .catch((error) => {
+        // eslint-disable-next-line no-console
+        console.log('Error resolving file system url', filename, error);
+        throw error;
+      })
       .then(fileReader);
   }
 
@@ -170,8 +167,6 @@ const createDirectory = inEnvironment((environment) => {
   throw new Error(`createDirectory() not available on platform ${environment}`);
 });
 
-
-
 const getFileNativePath = inEnvironment((environment) => {
   if (environment === environments.CORDOVA) {
     return (filePath) => new Promise((resolve, reject) => {
@@ -183,7 +178,6 @@ const getFileNativePath = inEnvironment((environment) => {
 
   throw new Error(`getFileNativePath() not available on platform ${environment}`);
 });
-
 
 const makeFileWriter = (fileEntry) => new Promise((resolve, reject) => {
   fileEntry.createWriter(resolve, reject);
@@ -216,8 +210,14 @@ const writeFile = inEnvironment((environment) => {
         .then((directoryEntry) => newFile(directoryEntry, filename))
         .then(makeFileWriter)
         .then((fileWriter) => new Promise((resolve, reject) => {
-          fileWriter.onwriteend = () => resolve(fileUrl); // eslint-disable-line no-param-reassign
-          fileWriter.onerror = (error) => reject(error); // eslint-disable-line no-param-reassign
+          // eslint-disable-next-line no-param-reassign
+          fileWriter.onwriteend = () => {
+            resolve(fileUrl);
+          };
+          // eslint-disable-next-line no-param-reassign
+          fileWriter.onerror = (error) => {
+            reject(error);
+          };
           fileWriter.write(data);
         }));
     };

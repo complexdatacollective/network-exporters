@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { first, zip } = require('lodash');
+const { first } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
 const { isCordova, isElectron } = require('./Environment');

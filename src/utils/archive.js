@@ -74,16 +74,21 @@ const archiveCordova = (sourcePaths, targetFileName, updateCallback, shouldConti
   const zip = new JSZip();
 
   return new Promise((resolve, reject) => {
-    const promisedExports = sourcePaths.map(
-      (sourcePath) => {
-        const [, filename] = splitUrl(sourcePath);
-        return readFile(sourcePath)
-          .then((fileContent) => {
-            if (!shouldContinue()) { resolve(); }
-            return zip.file(filename, fileContent);
-          });
-      },
-    );
+    let promisedExports;
+    try {
+      promisedExports = sourcePaths.map(
+        (sourcePath) => {
+          const [, filename] = splitUrl(sourcePath);
+          return readFile(sourcePath)
+            .then((fileContent) => {
+              if (!shouldContinue()) { resolve(); }
+              return zip.file(filename, fileContent);
+            });
+        },
+      );
+    } catch (e) {
+      reject(e);
+    }
 
     Promise.all(promisedExports).then(() => {
       const [baseDirectory, filename] = splitUrl(targetFileName);
@@ -125,7 +130,6 @@ const archive = (sourcePaths, tempDir, filename, updateCallback, shouldContinue)
 
   if (isCordova()) {
     writePath = `${tempDir}${filenameWithExtension}`;
-    console.log('writePath', writePath);
     return archiveCordova(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 

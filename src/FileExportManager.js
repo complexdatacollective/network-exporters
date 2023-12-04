@@ -3,14 +3,13 @@ const { merge, isEmpty, groupBy } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
 const queue = require('async/queue');
-const uuid = require('uuid/v4');
 const path = require('path');
 const {
   protocolProperty,
 } = require('./utils/reservedAttributes');
 const {
-  removeDirectory,
   tempDataPath,
+  createDirectory,
 } = require('./utils/filesystem');
 const exportFile = require('./exportFile');
 const {
@@ -54,6 +53,32 @@ const defaultExportOptions = {
     screenLayoutHeight: 1080,
     screenLayoutWidth: 1920,
   },
+};
+
+// Create a subdirectory for the export, because we can't delete
+// files from the root cache directory during cleanup.
+const getTempDir = () => {
+  const osTempDir = tempDataPath();
+  const dirName = `network-canvas-export-${Date.now()}`;
+
+  let dirPath = null;
+
+  if (isCordova()) {
+    dirPath = `${osTempDir}${dirName}/`;
+  }
+
+  if (isElectron()) {
+    dirPath = path.join(osTempDir, dirName);
+  }
+
+  try {
+    createDirectory(dirPath);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('Error creating temp directory:', e);
+  }
+
+  return dirPath;
 };
 
 // Merge default and user-supplied options
@@ -103,7 +128,11 @@ class FileExportManager {
    *                        protocol in the sessions collection.
    */
   exportSessions(sessions, protocols) {
-    const tmpDir = tempDataPath();
+    const tmpDir = getTempDir();
+
+    if (!tmpDir) {
+      return Promise.reject(new ExportError('Couldn\'t create temp directory.'));
+    }
 
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
@@ -130,14 +159,6 @@ class FileExportManager {
     // the export promise resolves.
     const cleanUp = () => {
       q.kill();
-      if (tmpDir) {
-        try {
-          removeDirectory(tmpDir);
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Error removing temp directory:', error);
-        }
-      }
     };
 
     this.emit('begin', ProgressMessages.Begin);
@@ -163,7 +184,6 @@ class FileExportManager {
 
       // Main work of the process happens here
       const run = () => new Promise((resolveRun, rejectRun) => {
-
         // Short delay to give consumer UI time to render
         sleep(1000)(shouldContinue)
           .then(() => {

@@ -146,7 +146,6 @@ const toCSVStream = (edges, outStream) => {
     abort: () => { inStream.destroy(); },
   };
 };
-
 class EdgeListFormatter {
   constructor(data, codebook, exportOptions) {
     this.list = asEdgeList(data, codebook, exportOptions);
