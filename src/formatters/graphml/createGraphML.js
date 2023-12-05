@@ -37,7 +37,7 @@ let globalContext;
 if (typeof window !== 'undefined' && window.DOMParser && window.XMLSerializer) {
   globalContext = window;
 } else {
-  const dom = require('xmldom');
+  const dom = require('@xmldom/xmldom');
   globalContext = {};
   globalContext.DOMParser = dom.DOMParser;
   globalContext.XMLSerializer = dom.XMLSerializer;
@@ -490,10 +490,10 @@ const generateDataElements = (
               !!entityAttributes[key] && includes(entityAttributes[key], option.value),
             ));
           });
-        // Handle all codebook variables apart from layout variables
+          // Handle all codebook variables apart from layout variables
         } else if (keyType && typeof entityAttributes[key] !== 'object') {
           domElement.appendChild(createDataElement(document, { key }, entityAttributes[key]));
-        // Handle layout variables
+          // Handle layout variables
         } else if (keyType === 'layout') {
           // Determine if we should use the normalized or the "screen space" value
           const xCoord = entityAttributes[key].x;
@@ -511,7 +511,7 @@ const generateDataElements = (
             domElement.appendChild(createDataElement(document, { key: `${key}_screenSpaceY` }, screenSpaceYCoord));
           }
 
-        // Handle non-codebook variables
+          // Handle non-codebook variables
         } else {
           // If we reach this point, we could not detect the attribute type by looking
           // in the codebook.
@@ -595,7 +595,7 @@ function* graphMLGenerator(network, codebook, exportOptions) {
   if (exportOptions.globalOptions.unifyNetworks) {
     const combinedEgos = Object.values(network.ego).reduce((union, ego) => ({
       [entityAttributesProperty]:
-          { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] },
+        { ...union[entityAttributesProperty], ...ego[entityAttributesProperty] },
     }), { [entityAttributesProperty]: {} });
 
     yield generateEgoKeys(combinedEgos);

@@ -190,8 +190,6 @@ class FileExportManager {
             this.emit('update', ProgressMessages.Formatting);
             return insertEgoIntoSessionNetworks(sessions);
           })
-          // Resequence IDs for this export
-          .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
           // Group sessions by protocol UUID
           .then((sessionsWithResequencedIDs) => groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`))
           // Then, process the union option
@@ -207,6 +205,8 @@ class FileExportManager {
             this.emit('update', ProgressMessages.Merging);
             return unionOfNetworks(sessionsByProtocol);
           })
+          // Resequence IDs for this export
+          .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
           .then((unifiedSessions) => {
             if (!shouldContinue()) {
               throw new UserCancelledExport();
