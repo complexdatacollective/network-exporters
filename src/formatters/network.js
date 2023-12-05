@@ -150,8 +150,10 @@ const partitionNetworkByType = (codebook, session, format) => {
 
 // Iterates sessions and adds an automatically incrementing counter to
 // allow for human readable IDs
-const resequenceIds = (sessions) => {
-  const resequencedEntities = sessions.map((session) => {
+// Incoming is either: sessionsByProtocol, OR
+const resequenceIds = (sessionsByProtocol) => {
+
+  const resequenceEntities = (target) => target.map((session) => {
     let resequencedNodeId = 0;
     let resequencedEdgeId = 0;
     const IDLookupMap = {}; // Create a lookup object { [oldID] -> [incrementedID] }
@@ -185,7 +187,11 @@ const resequenceIds = (sessions) => {
     };
   });
 
-  return resequencedEntities;
+  return Object.keys(sessionsByProtocol)
+    .reduce((sessions, protocolUID) => ({
+      ...sessions,
+      [protocolUID]: resequenceEntities(sessionsByProtocol[protocolUID]),
+    }), {});
 };
 
 // Result is a SINGLE session, with MULTIPLE ego and sessionVariables
@@ -195,7 +201,7 @@ const unionOfNetworks = (sessionsByProtocol) => Object.keys(sessionsByProtocol)
   .reduce((sessions, protocolUID) => {
     const protocolSessions = sessionsByProtocol[protocolUID]
       .reduce((union, session) => ({
-      // Merge node list when union option is selected
+        // Merge node list when union option is selected
         nodes: [...union.nodes, ...session.nodes.map((node) => ({
           ...node,
           [sessionProperty]: session.sessionVariables[sessionProperty],
