@@ -1,6 +1,6 @@
 /* eslint-env jest */
 
-import { DOMParser } from 'xmldom';
+import { DOMParser } from '@xmldom/xmldom';
 import {
   mockExportOptions, mockNetwork, mockCodebook, processMockNetworks, mockNetwork2,
 } from '../../../../config/mockObjects';
@@ -14,7 +14,10 @@ const buildXML = (...args) => {
   for (const chunk of graphMLGenerator(...args)) { // eslint-disable-line no-restricted-syntax, no-unused-vars, max-len
     xmlString += chunk;
   }
-  return (new DOMParser()).parseFromString(xmlString);
+
+  const parser = new DOMParser();
+  const result = parser.parseFromString(xmlString);
+  return result;
 };
 
 describe('buildGraphML', () => {

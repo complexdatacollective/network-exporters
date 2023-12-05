@@ -152,7 +152,6 @@ const partitionNetworkByType = (codebook, session, format) => {
 // allow for human readable IDs
 // Incoming is either: sessionsByProtocol, OR
 const resequenceIds = (sessionsByProtocol) => {
-
   const resequenceEntities = (target) => target.map((session) => {
     let resequencedNodeId = 0;
     let resequencedEdgeId = 0;

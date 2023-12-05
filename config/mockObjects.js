@@ -50,7 +50,7 @@ export const mockNetwork = {
     { [entityPrimaryKeyProperty]: '1', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Dee', 'mock-uuid-2': 40, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': true, 'mock-uuid-5': null } },
     { [entityPrimaryKeyProperty]: '2', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Carl', 'mock-uuid-2': 0, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': false, 'mock-uuid-5': null } },
     { [entityPrimaryKeyProperty]: '3', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Jumbo', 'mock-uuid-2': 50, 'mock-uuid-3': null, 'mock-uuid-4': true, 'mock-uuid-5': null } },
-    { [entityPrimaryKeyProperty]: '4', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Francis', 'mock-uuid-2': 10, 'mock-uuid-3': {x: 0, y: 0 }, 'mock-uuid-4': null, 'mock-uuid-5': null } },
+    { [entityPrimaryKeyProperty]: '4', type: 'mock-node-type', [entityAttributesProperty]: { 'mock-uuid-1': 'Francis', 'mock-uuid-2': 10, 'mock-uuid-3': { x: 0, y: 0 }, 'mock-uuid-4': null, 'mock-uuid-5': null } },
   ],
   edges: [
     { from: '1', to: '2', type: 'mock-edge-type' },
@@ -106,11 +106,11 @@ export const mockNetwork2 = {
 // Function designed to mirror the flow in FileExportManager.exportSessions()
 export const processMockNetworks = (networkCollection, unify) => {
   const sessionsWithEgo = insertEgoIntoSessionNetworks(networkCollection);
-  const sessionsWithResequencedIDs = resequenceIds(sessionsWithEgo);
-  const sessionsByProtocol = groupBy(sessionsWithResequencedIDs, `sessionVariables.${protocolProperty}`);
+  const sessionsByProtocol = groupBy(sessionsWithEgo, `sessionVariables.${protocolProperty}`);
+  const sessionsWithResequencedIDs = resequenceIds(sessionsByProtocol);
 
   if (!unify) {
-    return sessionsByProtocol;
+    return sessionsWithResequencedIDs;
   }
-  return unionOfNetworks(sessionsByProtocol);
+  return unionOfNetworks(sessionsWithResequencedIDs);
 };
