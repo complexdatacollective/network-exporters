@@ -125,6 +125,9 @@ const archive = (sourcePaths, tempDir, filename, updateCallback, shouldContinue)
 
   if (isElectron()) {
     writePath = path.join(tempDir, filenameWithExtension);
+    console.log('archiveElectron', {
+      sourcePaths, writePath, updateCallback, shouldContinue,
+    });
     return archiveElectron(sourcePaths, writePath, updateCallback, shouldContinue);
   }
 

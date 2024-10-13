@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { createWriteStream } = require('./utils/filesystem');
+const { writeFile } = require('./utils/filesystem');
 const {
   getFileExtension,
   makeFilename,
@@ -7,7 +7,6 @@ const {
 const { isCordova, isElectron } = require('./utils/Environment');
 const getFormatterClass = require('./utils/getFormatterClass');
 const { ExportError } = require('./errors/ExportError');
-const UserCancelledExport = require('./errors/UserCancelledExport');
 
 /**
  * Export a single (CSV or graphml) file
@@ -23,7 +22,7 @@ const UserCancelledExport = require('./errors/UserCancelledExport');
  *                    If aborted, the returned promise will never settle.
  * @private
  */
-const exportFile = (
+const exportFile = async (
   namePrefix,
   partitonedEntityName,
   exportFormat,
@@ -31,66 +30,57 @@ const exportFile = (
   network,
   codebook,
   exportOptions,
+  logger,
 ) => {
   const Formatter = getFormatterClass(exportFormat);
   const extension = getFileExtension(exportFormat);
 
   if (!Formatter || !extension) {
-    return Promise.reject(new ExportError(`Invalid export format ${exportFormat}`));
+    throw new ExportError(`Invalid export format ${exportFormat}`);
   }
 
-  // Establish variables to hold the stream controller (needed to handle abort method)
-  // and the stream itself.
-  let streamController;
-  let writeStream;
-  let promiseResolve;
-  let promiseReject;
+  logger(`Exporting session ${namePrefix} (${partitonedEntityName}) in ${exportFormat} format...`);
+  logger(network);
 
-  // Create a promise
-  const pathPromise = new Promise((resolve, reject) => {
-    promiseResolve = resolve;
-    promiseReject = reject;
-    let filePath;
+  let filePath;
 
-    const formatter = new Formatter(network, codebook, exportOptions);
-    const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
-    if (isElectron()) {
-      const path = require('path');
-      filePath = path.join(outDir, outputName);
-    }
+  const formatter = new Formatter(network, codebook, exportOptions);
+  const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
+  if (isElectron()) {
+    const path = require('path');
+    filePath = path.join(outDir, outputName);
+  }
 
-    if (isCordova()) {
-      filePath = `${outDir}${outputName}`;
-    }
+  if (isCordova()) {
+    filePath = `${outDir}${outputName}`;
+  }
 
-    createWriteStream(filePath)
-      .then((ws) => {
-        writeStream = ws;
-        writeStream.on('finish', () => {
-          promiseResolve(filePath);
-        });
-        writeStream.on('error', (err) => {
-          promiseReject(err);
-        });
+  logger(`Exporting to ${filePath}.`);
 
-        streamController = formatter.writeToStream(writeStream);
-      });
-  });
+  // createWriteStream(filePath)
+  //   .then((ws) => {
+  //     writeStream = ws;
+  //     writeStream.on('finish', () => {
+  //       promiseResolve(filePath);
+  //     });
+  //     writeStream.on('error', (err) => {
+  //       promiseReject(err);
+  //     });
 
-  // Decorate the promise with an abort method that also tears down the
-  // streamController and the writeStream
-  pathPromise.abort = () => {
-    if (streamController) {
-      streamController.abort();
-    }
-    if (writeStream) {
-      writeStream.destroy();
-    }
+  //     streamController = formatter.writeToStream(writeStream);
+  //   });
 
-    promiseReject(new UserCancelledExport());
-  };
-
-  return pathPromise;
+  // Test writing to string
+  try {
+    const string = formatter.writeToString();
+    logger(string);
+    await writeFile(filePath, string);
+    logger(`Completed exporting ${namePrefix} as ${exportFormat} to path ${filePath}`);
+    return filePath;
+  } catch (e) {
+    logger(`Failed to write file! ${err}`);
+    throw (e);
+  }
 };
 
 module.exports = exportFile;

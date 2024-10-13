@@ -2,7 +2,6 @@
 const { merge, isEmpty, groupBy } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
-const queue = require('async/queue');
 const path = require('path');
 const {
   protocolProperty,
@@ -30,6 +29,7 @@ const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
 const { isElectron, isCordova } = require('./utils/Environment');
+
 
 const defaultCSVOptions = {
   adjacencyMatrix: false,
@@ -94,6 +94,7 @@ class FileExportManager {
   constructor(exportOptions = {}) {
     this.exportOptions = getOptions(exportOptions);
     this.events = new EventEmitter();
+    this.logs = [];
   }
 
   on = (...args) => {
@@ -106,7 +107,6 @@ class FileExportManager {
       console.warn('Malformed emit.');
       return;
     }
-
     this.events.emit(event, payload);
   }
 
@@ -134,18 +134,9 @@ class FileExportManager {
       return Promise.reject(new ExportError('Couldn\'t create temp directory.'));
     }
 
-    // This queue instance accepts one or more promises and limits their
-    // concurrency for better usability in consuming apps
-    // https://caolan.github.io/async/v3/docs.html#queue
-
-    // Set concurrency to conservative values for now, based on platform
-    const QUEUE_CONCURRENCY = isElectron() ? 50 : 1;
-
-    const q = queue((task, callback) => {
-      task()
-        .then((result) => callback(null, result))
-        .catch((error) => callback(error));
-    }, QUEUE_CONCURRENCY);
+    const logger = (message) => {
+      this.logs.push(message);
+    };
 
     const exportFormats = [
       ...(this.exportOptions.exportGraphML ? ['graphml'] : []),
@@ -158,7 +149,7 @@ class FileExportManager {
     // Cleanup function called by abort method, after fatal errors, and after
     // the export promise resolves.
     const cleanUp = () => {
-      q.kill();
+      // q.kill();
     };
 
     this.emit('begin', ProgressMessages.Begin);
@@ -187,6 +178,10 @@ class FileExportManager {
         // Short delay to give consumer UI time to render
         sleep(1000)(shouldContinue)
           .then(() => {
+            this.logs.push(`Starting export process...`);
+            this.logs.push(this.exportOptions);
+            // this.logs.push(sessions);
+            this.logs.push(`Temporary directory: ${tmpDir}`);
             this.emit('update', ProgressMessages.Formatting);
             return insertEgoIntoSessionNetworks(sessions);
           })
@@ -207,12 +202,12 @@ class FileExportManager {
           })
           // Resequence IDs for this export
           .then((sessionsWithEgo) => resequenceIds(sessionsWithEgo))
-          .then((unifiedSessions) => {
+          .then(async (unifiedSessions) => {
             if (!shouldContinue()) {
               throw new UserCancelledExport();
             }
 
-            const promisedExports = [];
+            const exportPromises = [];
 
             // Create an array of promises representing each session in each export format
             const finishedSessions = [];
@@ -263,9 +258,10 @@ class FileExportManager {
 
                   partitionedNetworks.forEach((partitionedNetwork) => {
                     const partitionedEntity = partitionedNetwork.partitionEntity;
-                    promisedExports.push(() => new Promise((resolve, reject) => {
+
+                    exportPromises.push(async () => {
                       try {
-                        exportFile(
+                        const result = await exportFile(
                           prefix,
                           partitionedEntity,
                           format,
@@ -273,46 +269,45 @@ class FileExportManager {
                           partitionedNetwork,
                           protocol.codebook,
                           this.exportOptions,
-                        ).then((result) => {
-                          if (!finishedSessions.includes(prefix)) {
-                            // If we unified the networks, we need to iterate sessionVariables and
-                            // emit a 'session-exported' event for each sessionID
-                            if (this.exportOptions.globalOptions.unifyNetworks) {
-                              Object.values(session.sessionVariables)
-                                .forEach((sessionVariables) => {
-                                  this.emit('session-exported', sessionVariables.sessionId);
-                                });
-                            } else {
-                              this.emit('session-exported', session.sessionVariables.sessionId);
-                            }
+                          logger
+                        );
 
-                            this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                            finishedSessions.push(prefix);
+                        if (!finishedSessions.includes(prefix)) {
+                          // If we unified the networks, we need to iterate sessionVariables and
+                          // emit a 'session-exported' event for each sessionID
+                          if (this.exportOptions.globalOptions.unifyNetworks) {
+                            Object.values(session.sessionVariables)
+                              .forEach((sessionVariables) => {
+                                this.emit('session-exported', sessionVariables.sessionId);
+                              });
+                          } else {
+                            this.emit('session-exported', session.sessionVariables.sessionId);
                           }
-                          resolve(result);
-                        }).catch((e) => reject(e));
+
+                          this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
+                          finishedSessions.push(prefix);
+                        }
+
+                        succeeded.push(result);
+                        return result;
+
                       } catch (error) {
                         this.emit('error', `Encoding ${prefix} failed: ${error.message}`);
                         this.emit('update', ProgressMessages.ExportSession(finishedSessions.length + 1, sessionExportTotal));
-                        reject(error);
+                        failed.push(error);
                       }
-                    }));
+                    });
                   });
                 });
               });
             });
 
-            q.push(promisedExports, (err, result) => {
-              if (err) {
-                failed.push(err);
-                return;
-              }
-              succeeded.push(result);
-            });
+            // Process one at a time
+            for (const fn of exportPromises) {
+              await fn();
+            }
 
-            return new Promise((resolve, reject) => q.drain()
-              .then(() => resolve({ exportedPaths: succeeded, failedExports: failed }))
-              .catch(reject));
+            return { exportedPaths: succeeded, failedExports: failed };
           })
           // Then, Zip the result.
           .then(({ exportedPaths, failedExports }) => {
@@ -328,7 +323,7 @@ class FileExportManager {
             // If we have no files to encode (but we do have errors), finish
             // the task here so the user can see the errors
             if (exportedPaths.length === 0) {
-              this.emit('finished', ProgressMessages.Finished);
+              this.emit('finished', this.logs);
               cleanUp();
               resolveRun();
               cancelled = true;
@@ -386,7 +381,7 @@ class FileExportManager {
             }
 
             if (!saveCancelled) {
-              this.emit('finished', ProgressMessages.Finished);
+              this.emit('finished', this.logs);
             }
 
             cleanUp();

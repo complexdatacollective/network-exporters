@@ -98,6 +98,31 @@ const toCSVStream = (nodes, outStream) => {
   };
 };
 
+const toCSVString = (nodes) => {
+  const attrNames = attributeHeaders(nodes);
+  const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`;
+
+  const rows = nodes.map((node) => {
+    const values = attrNames.map((attrName) => {
+      // The primary key and ego id exist at the top-level; all others inside `.attributes`
+      let value;
+      if (
+        attrName === entityPrimaryKeyProperty
+        || attrName === egoProperty
+        || attrName === nodeExportIDProperty
+      ) {
+        value = node[attrName];
+      } else {
+        value = node[entityAttributesProperty][attrName];
+      }
+      return sanitizedCellValue(value);
+    });
+    return `${values.join(',')}${csvEOL}`;
+  });
+
+  return headerValue + rows.join('');
+}
+
 class AttributeListFormatter {
   constructor(data, codebook, exportOptions) {
     this.list = asAttributeList(data, codebook, exportOptions);
@@ -105,6 +130,10 @@ class AttributeListFormatter {
 
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
+  }
+
+  writeToString() {
+    return toCSVString(this.list);
   }
 }
 
