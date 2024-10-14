@@ -12,7 +12,7 @@ import {
   ncSourceUUID,
   ncTargetUUID,
 } from '../../../utils/reservedAttributes';
-import { EdgeListFormatter, asEdgeList, toCSVStream } from '../edge-list';
+import { EdgeListFormatter, asEdgeList, toCSVStream, toCSVString } from '../edge-list';
 
 const nodes = [
   { [entityPrimaryKeyProperty]: 1 },
@@ -73,6 +73,44 @@ describe('asEdgeList', () => {
         [entityAttributesProperty]: {},
       },
     ]);
+  });
+});
+
+describe('toCSVString', () => {
+  it('Writes a csv with attributes', () => {
+    const list = listFromEdges([
+      {
+        [entityPrimaryKeyProperty]: 123,
+        [egoProperty]: 456,
+        [edgeExportIDProperty]: 1,
+        [ncSourceUUID]: 1,
+        [ncTargetUUID]: 2,
+        [edgeSourceProperty]: 1,
+        [edgeTargetProperty]: 2,
+        [entityAttributesProperty]: {
+          a: 1,
+        },
+      },
+    ]);
+    const csv = toCSVString(list);
+    const result = [
+      edgeExportIDProperty,
+      edgeSourceProperty,
+      edgeTargetProperty,
+      egoProperty,
+      ncUUIDProperty,
+      ncSourceUUID,
+      ncTargetUUID,
+      'a\r\n1',
+      1,
+      2,
+      456,
+      123,
+      1,
+      2,
+      '1\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 });
 

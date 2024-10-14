@@ -146,6 +146,33 @@ const toCSVStream = (edges, outStream) => {
     abort: () => { inStream.destroy(); },
   };
 };
+
+const toCSVString = (edges) => {
+  const attrNames = attributeHeaders(edges);
+  const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`;
+  const rows = edges.map((edge) => {
+    const values = attrNames.map((attrName) => {
+      // primary key/ego id/to/from exist at the top-level; all others inside `.attributes`
+      let value;
+      if (
+        attrName === entityPrimaryKeyProperty
+        || attrName === edgeExportIDProperty
+        || attrName === egoProperty
+        || attrName === 'to'
+        || attrName === 'from'
+        || attrName === ncSourceUUID
+        || attrName === ncTargetUUID
+      ) {
+        value = edge[attrName];
+      } else {
+        value = edge[entityAttributesProperty][attrName];
+      }
+      return sanitizedCellValue(value);
+    });
+    return `${values.join(',')}${csvEOL}`;
+  });
+  return headerValue + rows.join('');
+};
 class EdgeListFormatter {
   constructor(data, codebook, exportOptions) {
     this.list = asEdgeList(data, codebook, exportOptions);
@@ -154,10 +181,15 @@ class EdgeListFormatter {
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
   }
+
+  writeToString() {
+    return toCSVString(this.list);
+  }
 }
 
 module.exports = {
   EdgeListFormatter,
   asEdgeList,
   toCSVStream,
+  toCSVString,
 };

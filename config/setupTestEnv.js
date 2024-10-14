@@ -2,12 +2,9 @@
 // Cert verification is disabled during tests for now to work around
 // https://github.com/nodejs/node/issues/14736; fixed with Node 8.10.0.
 
-const http = require('http');
-const https = require('https');
 const enzyme = require('enzyme');
 const Adapter = require('enzyme-adapter-react-16');
-const url = require('url');
-const Writable = require('stream').Writable;
+const { Writable } = require('stream');
 
 enzyme.configure({ adapter: new Adapter() });
 
