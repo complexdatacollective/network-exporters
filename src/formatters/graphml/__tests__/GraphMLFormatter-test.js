@@ -1,9 +1,9 @@
 /* eslint-env jest */
 
+import { DOMParser } from '@xmldom/xmldom';
 import { Writable } from 'stream';
 import { mockNetwork, mockCodebook } from '../../../../config/mockObjects';
 import GraphMLFormatter from '../GraphMLFormatter';
-import { DOMParser } from '@xmldom/xmldom';
 
 const makeWriteableStream = () => {
   const chunks = [];
