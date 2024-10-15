@@ -7,10 +7,6 @@
     "lint": "eslint src",
     "test": "jest"
   },
-  "engines": {
-    "node": "12.14.1",
-    "npm": "7.6.3"
-  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/codaco/network-exporters.git"
@@ -66,7 +62,7 @@
     "@babel/runtime": "^7.8.3",
     "@xmldom/xmldom": "^0.8.10",
     "archiver": "^4.0.1",
-    "async": "^3.2.0",
+    "async": "^3.2.6",
     "eventemitter3": "^4.0.4",
     "jssha": "^3.1.0",
     "jszip": "^3.7.1",
