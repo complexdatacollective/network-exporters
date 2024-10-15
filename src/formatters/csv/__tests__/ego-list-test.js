@@ -1,7 +1,12 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream, toCSVString } from '../ego-list';
+import {
+  EgoListFormatter,
+  asEgoAndSessionVariablesList,
+  toCSVStream,
+  toCSVString,
+} from '../ego-list';
 import {
   entityPrimaryKeyProperty,
   entityAttributesProperty,
