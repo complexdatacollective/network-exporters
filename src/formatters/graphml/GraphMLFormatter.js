@@ -15,18 +15,6 @@ class GraphMLFormatter {
     this.exportOptions = exportOptions;
   }
 
-  streamToString = (stream) => {
-    const chunks = [];
-    return new Promise((resolve, reject) => {
-      stream.on('data', (chunk) => chunks.push(chunk));
-      stream.on('error', reject);
-      stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    });
-  }
-
-  /**
-   * A method allowing writing the file to a string. Used for tests.
-   */
   writeToString() {
     const generator = graphMLGenerator(
       this.network,
@@ -34,18 +22,14 @@ class GraphMLFormatter {
       this.exportOptions,
     );
 
-    const inStream = new Readable({
-      read(/* size */) {
-        const { done, value } = generator.next();
-        if (done) {
-          this.push(null);
-        } else {
-          this.push(value);
-        }
-      },
-    });
+    const chunks = [];
 
-    return this.streamToString(inStream);
+    // Call the generator until it is done
+    for (let { done, value } = generator.next(); !done; { done, value } = generator.next()) {
+      chunks.push(value);
+    }
+
+    return chunks.join('');
   }
 
   /**
@@ -58,6 +42,7 @@ class GraphMLFormatter {
       this.codebook,
       this.exportOptions,
     );
+
     const inStream = new Readable({
       read(/* size */) {
         const { done, value } = generator.next();

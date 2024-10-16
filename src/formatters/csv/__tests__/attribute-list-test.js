@@ -32,6 +32,23 @@ describe('asAttributeList', () => {
   });
 });
 
+describe('writeToString', () => {
+  it('writes a simple CSV', () => {
+    const formatter = new AttributeListFormatter(
+      { nodes: [node] }, mockCodebook, mockExportOptions,
+    );
+    const csv = formatter.writeToString();
+    const result = [
+      ...baseCSVAttributes,
+      'name\r\n',
+      123,
+      1,
+      'Jane\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
+  });
+});
+
 describe('toCSVStream', () => {
   let writable;
   let testNode;

@@ -139,7 +139,7 @@ const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve
       // subject: 'network canvas export',
       files: [zipLocation],
       chooserTitle: 'Share zip file via', // Android only
-    }, resolve, reject);
+    }, () => resolve(null), reject);
   }
 });
 

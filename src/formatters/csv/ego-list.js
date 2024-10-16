@@ -128,6 +128,35 @@ const toCSVStream = (egos, outStream) => {
   };
 };
 
+const toCSVString = (egos) => {
+  const attrNames = attributeHeaders(egos);
+  const headerValue = `${attrNames.map((attr) => sanitizedCellValue(getPrintableAttribute(attr))).join(',')}${csvEOL}`;
+
+  const rows = egos.map((ego) => {
+    const values = attrNames.map((attrName) => {
+      // Session variables exist at the top level - all others inside `attributes`
+      let value;
+      if (
+        attrName === entityPrimaryKeyProperty
+        || attrName === caseProperty
+        || attrName === sessionProperty
+        || attrName === protocolName
+        || attrName === sessionStartTimeProperty
+        || attrName === sessionFinishTimeProperty
+        || attrName === sessionExportTimeProperty
+      ) {
+        value = ego[attrName];
+      } else {
+        value = ego[entityAttributesProperty][attrName];
+      }
+      return sanitizedCellValue(value);
+    });
+    return `${values.join(',')}${csvEOL}`;
+  });
+
+  return headerValue + rows.join('');
+};
+
 class EgoListFormatter {
   constructor(network, codebook, exportOptions) {
     this.list = asEgoAndSessionVariablesList(network, codebook, exportOptions) || [];
@@ -136,10 +165,15 @@ class EgoListFormatter {
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
   }
+
+  writeToString() {
+    return toCSVString(this.list);
+  }
 }
 
 module.exports = {
   EgoListFormatter,
   asEgoAndSessionVariablesList,
   toCSVStream,
+  toCSVString,
 };

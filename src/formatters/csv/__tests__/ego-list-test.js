@@ -1,7 +1,12 @@
 /* eslint-env jest */
 import { makeWriteableStream } from '../../../../config/setupTestEnv';
 import { mockCodebook, mockExportOptions } from '../../../../config/mockObjects';
-import { EgoListFormatter, asEgoAndSessionVariablesList, toCSVStream } from '../ego-list';
+import {
+  EgoListFormatter,
+  asEgoAndSessionVariablesList,
+  toCSVStream,
+  toCSVString,
+} from '../ego-list';
 import {
   entityPrimaryKeyProperty,
   entityAttributesProperty,
@@ -49,6 +54,24 @@ describe('asEgoAndSessionVariablesList', () => {
       mockCodebook,
       mockExportOptions,
     )).toEqual([network.ego]);
+  });
+});
+
+describe('toCSVString', () => {
+  it('writes a simple CSV', () => {
+    const csv = toCSVString([ego]);
+    const result = [
+      ...baseCSVAttributes,
+      'name\r\n1',
+      'case id',
+      789,
+      'protocol name',
+      100,
+      200,
+      300,
+      'Jane\r\n',
+    ].join(',');
+    expect(csv).toEqual(result);
   });
 });
 

@@ -1,5 +1,5 @@
 /* eslint-disable global-require */
-const { createWriteStream } = require('./utils/filesystem');
+const { createWriteStream, writeFile } = require('./utils/filesystem');
 const {
   getFileExtension,
   makeFilename,
@@ -50,31 +50,41 @@ const exportFile = (
   const pathPromise = new Promise((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
-    let filePath;
 
     const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
     if (isElectron()) {
       const path = require('path');
-      filePath = path.join(outDir, outputName);
-    }
+      const filePath = path.join(outDir, outputName);
 
-    if (isCordova()) {
-      filePath = `${outDir}${outputName}`;
-    }
+      createWriteStream(filePath)
+        .then((ws) => {
+          writeStream = ws;
+          writeStream.on('finish', () => {
+            promiseResolve(filePath);
+          });
+          writeStream.on('error', (err) => {
+            promiseReject(err);
+          });
 
-    createWriteStream(filePath)
-      .then((ws) => {
-        writeStream = ws;
-        writeStream.on('finish', () => {
-          promiseResolve(filePath);
+          streamController = formatter.writeToStream(writeStream);
         });
-        writeStream.on('error', (err) => {
+    }
+
+    // We encountered a bug with Cordova where CSV files where sometimes empty.
+    // As a precaution, we switched to writing the file in one go.
+    if (isCordova()) {
+      const filePath = `${outDir}${outputName}`;
+      const string = formatter.writeToString();
+
+      writeFile(filePath, string)
+        .then(() => {
+          promiseResolve(filePath);
+        })
+        .catch((err) => {
           promiseReject(err);
         });
-
-        streamController = formatter.writeToStream(writeStream);
-      });
+    }
   });
 
   // Decorate the promise with an abort method that also tears down the
