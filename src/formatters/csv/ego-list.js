@@ -165,6 +165,10 @@ class EgoListFormatter {
   writeToStream(outStream) {
     return toCSVStream(this.list, outStream);
   }
+
+  writeToString() {
+    return toCSVString(this.list);
+  }
 }
 
 module.exports = {
