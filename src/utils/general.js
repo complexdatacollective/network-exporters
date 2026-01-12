@@ -1,9 +1,8 @@
-/* eslint-disable global-require */
 const { first } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
+const { dialog, shell, BrowserWindow } = require('electron');
+const fse = require('fs-extra');
 const { ExportError, ErrorMessages } = require('../errors/ExportError');
-const { isCordova, isElectron } = require('./Environment');
-const { copy } = require('./filesystem');
 const {
   caseProperty,
   sessionProperty,
@@ -13,7 +12,6 @@ const {
   codebookHashProperty,
 } = require('./reservedAttributes');
 
-// Session vars should match https://github.com/codaco/graphml-schemas/blob/master/xmlns/1.0/graphml%2Bnetcanvas.xsd
 const verifySessionVariables = (sessionVariables) => {
   if (
     !sessionVariables[caseProperty]
@@ -36,15 +34,6 @@ const sleep = (time = 2000) => (passThrough) => (
   new Promise((resolve) => setTimeout(() => resolve(passThrough), time))
 );
 
-// Utility method for use during testing.
-const randomFail = (passThrough) => new Promise((resolve, reject) => {
-  if (Math.random() >= 0.5) {
-    reject(new Error('Error happened!'));
-  }
-
-  resolve(passThrough);
-});
-
 const makeFilename = (prefix, entityType, exportFormat, extension) => {
   let name = prefix;
   if (extension !== `.${exportFormat}`) {
@@ -62,11 +51,6 @@ const extensions = {
   csv: '.csv',
 };
 
-/**
- * Provide the appropriate file extension for the export type
- * @param  {string} formatterType one of the `format`s
- * @return {string}
- */
 const getFileExtension = (formatterType) => {
   switch (formatterType) {
     case 'graphml':
@@ -81,8 +65,6 @@ const getFileExtension = (formatterType) => {
   }
 };
 
-// Determine filename prefix based on if we are exporting a single session
-// or a unified network
 const getFilePrefix = (session, protocol, unifyNetworks) => {
   if (unifyNetworks) {
     return sanitizeFilename(protocol.name);
@@ -96,55 +78,33 @@ const extensionPattern = new RegExp(`${Object.values(extensions).join('|')}$`);
 const handlePlatformSaveDialog = (zipLocation, filename) => new Promise((resolve, reject) => {
   if (!zipLocation) {
     reject();
-  }
-  if (isElectron()) {
-    let electron;
-
-    if (typeof window !== 'undefined' && window) {
-      electron = window.require('electron').remote;
-    } else {
-      // if no window object assume we are in nodejs environment (Electron main)
-      // no remote needed
-      electron = require('electron');
-    }
-
-    const { dialog } = electron;
-    const browserWindow = first(electron.BrowserWindow.getAllWindows());
-
-    dialog.showSaveDialog(
-      browserWindow,
-      {
-        filters: [{ name: 'zip', extensions: ['zip'] }],
-        defaultPath: filename,
-      },
-    )
-      .then(({ canceled, filePath }) => {
-        if (canceled) {
-          resolve(true);
-        }
-
-        copy(zipLocation, filePath)
-          .then(() => {
-            const { shell } = electron;
-            shell.showItemInFolder(filePath);
-            resolve();
-          })
-          .catch(reject);
-      });
+    return;
   }
 
-  if (isCordova()) {
-    window.plugins.socialsharing.shareWithOptions({
-      message: 'Your zipped network canvas data.', // not supported on some apps
-      // subject: 'network canvas export',
-      files: [zipLocation],
-      chooserTitle: 'Share zip file via', // Android only
-    }, () => resolve(null), reject);
-  }
+  const browserWindow = first(BrowserWindow.getAllWindows());
+
+  dialog.showSaveDialog(
+    browserWindow,
+    {
+      filters: [{ name: 'zip', extensions: ['zip'] }],
+      defaultPath: filename,
+    },
+  )
+    .then(({ canceled, filePath }) => {
+      if (canceled) {
+        resolve(true);
+        return;
+      }
+
+      fse.copy(zipLocation, filePath)
+        .then(() => {
+          shell.showItemInFolder(filePath);
+          resolve();
+        })
+        .catch(reject);
+    });
 });
 
-// The idea behind this is to allow for an event listener to be attached to
-// an object property which fires when it changes.
 class ObservableValue {
   constructor(value) {
     this.valueInternal = value;
@@ -175,7 +135,6 @@ module.exports = {
   makeFilename,
   verifySessionVariables,
   sleep,
-  randomFail,
   handlePlatformSaveDialog,
   ObservableValue,
 };

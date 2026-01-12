@@ -1,4 +1,3 @@
-/* eslint-disable global-require */
 const { merge, isEmpty, groupBy } = require('lodash');
 const sanitizeFilename = require('sanitize-filename');
 const { EventEmitter } = require('eventemitter3');
@@ -29,7 +28,6 @@ const archive = require('./utils/archive');
 const { ExportError, ErrorMessages } = require('./errors/ExportError');
 const ProgressMessages = require('./ProgressMessages');
 const UserCancelledExport = require('./errors/UserCancelledExport');
-const { isElectron, isCordova } = require('./utils/Environment');
 
 const defaultCSVOptions = {
   adjacencyMatrix: false,
@@ -60,16 +58,7 @@ const defaultExportOptions = {
 const getTempDir = () => {
   const osTempDir = tempDataPath();
   const dirName = `network-canvas-export-${Date.now()}`;
-
-  let dirPath = null;
-
-  if (isCordova()) {
-    dirPath = `${osTempDir}${dirName}/`;
-  }
-
-  if (isElectron()) {
-    dirPath = path.join(osTempDir, dirName);
-  }
+  const dirPath = path.join(osTempDir, dirName);
 
   try {
     createDirectory(dirPath);
@@ -137,9 +126,7 @@ class FileExportManager {
     // This queue instance accepts one or more promises and limits their
     // concurrency for better usability in consuming apps
     // https://caolan.github.io/async/v3/docs.html#queue
-
-    // Set concurrency to conservative values for now, based on platform
-    const QUEUE_CONCURRENCY = isElectron() ? 50 : 1;
+    const QUEUE_CONCURRENCY = 50;
 
     const q = queue((task, callback) => {
       task()

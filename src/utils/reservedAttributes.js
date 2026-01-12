@@ -1,52 +1,27 @@
 // Model properties
-const entityPrimaryKeyProperty = '_uid';
-const entityAttributesProperty = 'attributes';
-const edgeSourceProperty = 'from';
-const edgeTargetProperty = 'to';
+export const entityPrimaryKeyProperty = '_uid';
+export const entityAttributesProperty = 'attributes';
+export const edgeSourceProperty = 'from';
+export const edgeTargetProperty = 'to';
 
 // Session variable properties
-const caseProperty = 'caseId';
-const sessionProperty = 'sessionId';
-const protocolProperty = 'protocolUID';
-const protocolName = 'protocolName';
-const sessionStartTimeProperty = 'sessionStart';
-const sessionFinishTimeProperty = 'sessionFinish';
-const sessionExportTimeProperty = 'sessionExported';
-const codebookHashProperty = 'codebookHash';
+export const caseProperty = 'caseId';
+export const sessionProperty = 'sessionId';
+export const protocolProperty = 'protocolUID';
+export const protocolName = 'protocolName';
+export const sessionStartTimeProperty = 'sessionStart';
+export const sessionFinishTimeProperty = 'sessionFinish';
+export const sessionExportTimeProperty = 'sessionExported';
+export const codebookHashProperty = 'codebookHash';
 
 // Export properties
-const nodeExportIDProperty = 'nodeID'; // Incrementing ID number for nodes
-const edgeExportIDProperty = 'edgeID'; // Incrementing ID number for edges
-const egoProperty = 'networkCanvasEgoUUID';
-const ncTypeProperty = 'networkCanvasType';
-const ncProtocolNameProperty = 'networkCanvasProtocolName';
-const ncCaseProperty = 'networkCanvasCaseID';
-const ncSessionProperty = 'networkCanvasSessionID';
-const ncUUIDProperty = 'networkCanvasUUID';
-const ncSourceUUID = 'networkCanvasSourceUUID';
-const ncTargetUUID = 'networkCanvasTargetUUID';
-
-module.exports = {
-  caseProperty,
-  edgeSourceProperty,
-  edgeTargetProperty,
-  egoProperty,
-  entityAttributesProperty,
-  entityPrimaryKeyProperty,
-  nodeExportIDProperty,
-  edgeExportIDProperty,
-  ncCaseProperty,
-  ncProtocolNameProperty,
-  ncSessionProperty,
-  ncSourceUUID,
-  ncTargetUUID,
-  ncTypeProperty,
-  ncUUIDProperty,
-  protocolName,
-  protocolProperty,
-  sessionExportTimeProperty,
-  sessionFinishTimeProperty,
-  sessionProperty,
-  sessionStartTimeProperty,
-  codebookHashProperty,
-};
+export const nodeExportIDProperty = 'nodeID'; // Incrementing ID number for nodes
+export const edgeExportIDProperty = 'edgeID'; // Incrementing ID number for edges
+export const egoProperty = 'networkCanvasEgoUUID';
+export const ncTypeProperty = 'networkCanvasType';
+export const ncProtocolNameProperty = 'networkCanvasProtocolName';
+export const ncCaseProperty = 'networkCanvasCaseID';
+export const ncSessionProperty = 'networkCanvasSessionID';
+export const ncUUIDProperty = 'networkCanvasUUID';
+export const ncSourceUUID = 'networkCanvasSourceUUID';
+export const ncTargetUUID = 'networkCanvasTargetUUID';

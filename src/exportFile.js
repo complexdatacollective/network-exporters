@@ -1,10 +1,9 @@
-/* eslint-disable global-require */
-const { createWriteStream, writeFile } = require('./utils/filesystem');
+const path = require('path');
+const { createWriteStream } = require('./utils/filesystem');
 const {
   getFileExtension,
   makeFilename,
 } = require('./utils/general');
-const { isCordova, isElectron } = require('./utils/Environment');
 const getFormatterClass = require('./utils/getFormatterClass');
 const { ExportError } = require('./errors/ExportError');
 const UserCancelledExport = require('./errors/UserCancelledExport');
@@ -39,56 +38,33 @@ const exportFile = (
     return Promise.reject(new ExportError(`Invalid export format ${exportFormat}`));
   }
 
-  // Establish variables to hold the stream controller (needed to handle abort method)
-  // and the stream itself.
   let streamController;
   let writeStream;
   let promiseResolve;
   let promiseReject;
 
-  // Create a promise
   const pathPromise = new Promise((resolve, reject) => {
     promiseResolve = resolve;
     promiseReject = reject;
 
     const formatter = new Formatter(network, codebook, exportOptions);
     const outputName = makeFilename(namePrefix, partitonedEntityName, exportFormat, extension);
-    if (isElectron()) {
-      const path = require('path');
-      const filePath = path.join(outDir, outputName);
+    const filePath = path.join(outDir, outputName);
 
-      createWriteStream(filePath)
-        .then((ws) => {
-          writeStream = ws;
-          writeStream.on('finish', () => {
-            promiseResolve(filePath);
-          });
-          writeStream.on('error', (err) => {
-            promiseReject(err);
-          });
-
-          streamController = formatter.writeToStream(writeStream);
-        });
-    }
-
-    // We encountered a bug with Cordova where CSV files where sometimes empty.
-    // As a precaution, we switched to writing the file in one go.
-    if (isCordova()) {
-      const filePath = `${outDir}${outputName}`;
-      const string = formatter.writeToString();
-
-      writeFile(filePath, string)
-        .then(() => {
+    createWriteStream(filePath)
+      .then((ws) => {
+        writeStream = ws;
+        writeStream.on('finish', () => {
           promiseResolve(filePath);
-        })
-        .catch((err) => {
+        });
+        writeStream.on('error', (err) => {
           promiseReject(err);
         });
-    }
+
+        streamController = formatter.writeToStream(writeStream);
+      });
   });
 
-  // Decorate the promise with an abort method that also tears down the
-  // streamController and the writeStream
   pathPromise.abort = () => {
     if (streamController) {
       streamController.abort();
